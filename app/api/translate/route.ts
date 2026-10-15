@@ -1,0 +1,84 @@
+import {NextRequest,NextResponse} from 'next/server';
+
+export const runtime='nodejs';
+export const dynamic='force-dynamic';
+
+type TranslationItem={id:string;title:string;summary:string};
+type Translated=TranslationItem & {translated:boolean;provider:'google-cloud'|'mymemory'|'original';error?:string};
+const MAX_ITEMS=4;
+const MAX_BODY=4500;
+const hasGreek=(s:string)=>/[\u0370-\u03ff\u1f00-\u1fff]/.test(s);
+const input=(v:unknown,n:number)=>typeof v==='string'?v.trim().slice(0,n):'';
+const cache=new Map<string,string>();
+function decodeEntities(s:string){return s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp|#39);/gi,(_,entity:string)=>{
+ if(entity[0]==='#'){const n=entity[1]?.toLowerCase()==='x'?parseInt(entity.slice(2),16):parseInt(entity.slice(1),10);return Number.isInteger(n)&&n>0&&n<=0x10ffff?String.fromCodePoint(n):'';}
+ return ({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '} as Record<string,string>)[entity.toLowerCase()]??'';
+});}
+
+async function withTimeout(url:string,options:RequestInit,ms:number){
+ const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),ms);
+ try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}
+}
+
+async function googleTranslate(texts:string[]):Promise<string[]>{
+ const key=process.env.GOOGLE_TRANSLATE_API_KEY;
+ if(!key)throw new Error('No Google Cloud key');
+ const response=await withTimeout('https://translation.googleapis.com/language/translate/v2?key='+encodeURIComponent(key),{
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:texts,source:'en',target:'el',format:'text'}),cache:'no-store'
+ },7000);
+ if(!response.ok)throw new Error('Google Cloud service '+response.status);
+ const data=await response.json() as {data?:{translations?:Array<{translatedText?:string}>}};
+ const output=data.data?.translations?.map(x=>decodeEntities(x.translatedText||''));
+ if(!output||output.length!==texts.length||output.some(x=>!x))throw new Error('Google Cloud incomplete translation');
+ return output;
+}
+
+async function myMemoryTranslate(text:string):Promise<string>{
+ const key='el:'+text;
+ const hit=cache.get(key);if(hit)return hit;
+ const url=new URL('https://api.mymemory.translated.net/get');
+ url.searchParams.set('q',text.slice(0,450));url.searchParams.set('langpair','en|el');
+ const response=await withTimeout(url.toString(),{headers:{Accept:'application/json'},next:{revalidate:604800}},7000);
+ if(!response.ok)throw new Error('MyMemory HTTP '+response.status);
+ const data=await response.json() as {responseStatus?:number;responseData?:{translatedText?:string}};
+ const translated=decodeEntities(data.responseData?.translatedText||'').trim();
+ if(data.responseStatus!==200||!translated||translated.toLowerCase().includes('quota exceeded'))throw new Error('MyMemory quota or translation unavailable');
+ if(cache.size>1200)cache.clear();cache.set(key,translated);
+ return translated;
+}
+
+async function one(item:TranslationItem):Promise<Translated>{
+ const titleGreek=hasGreek(item.title),summaryGreek=hasGreek(item.summary);
+ if(titleGreek&&summaryGreek)return {...item,translated:true,provider:'original'};
+ const fields=[...(!titleGreek&&item.title?[item.title]:[]),...(!summaryGreek&&item.summary?[item.summary]:[])];
+ try{
+  let translations:string[],provider:'google-cloud'|'mymemory';
+  if(process.env.GOOGLE_TRANSLATE_API_KEY){translations=await googleTranslate(fields);provider='google-cloud';}
+  else{translations=await Promise.all(fields.map(myMemoryTranslate));provider='mymemory';}
+  let pos=0;
+  return {id:item.id,title:titleGreek?item.title:translations[pos++],summary:summaryGreek?item.summary:translations[pos++],translated:true,provider};
+ }catch(error){
+  return {...item,translated:false,provider:'original',error:error instanceof Error?error.message:'Translation unavailable'};
+ }
+}
+
+export async function POST(request:NextRequest){
+ try{
+  if(Number(request.headers.get('content-length')||'0')>MAX_BODY)return NextResponse.json({error:'Request too large'},{status:413});
+  const body=await request.text();if(body.length>MAX_BODY)return NextResponse.json({error:'Request too large'},{status:413});
+  const value=JSON.parse(body) as {items?:unknown;title?:unknown;summary?:unknown};
+  const legacy=!Array.isArray(value.items);
+  const raw=legacy?[{id:'legacy',title:value.title,summary:value.summary}]:value.items;
+  if(!Array.isArray(raw)||raw.length<1||raw.length>MAX_ITEMS)return NextResponse.json({error:'Invalid batch'},{status:400});
+  const items:TranslationItem[]=raw.map((v:unknown)=>{
+   const x=v as Record<string,unknown>;
+   return {id:input(x.id,150),title:input(x.title,160),summary:input(x.summary,430)};
+  });
+  if(items.some(x=>!x.id||(!x.title&&!x.summary)))return NextResponse.json({error:'Invalid translation item'},{status:400});
+  // Bound parallelism to avoid hammering public translation services.
+  const result:Translated[]=[];
+  for(let i=0;i<items.length;i+=2)result.push(...await Promise.all(items.slice(i,i+2).map(one)));
+  if(legacy){const a=result[0];return NextResponse.json({title:a.title,summary:a.summary,translated:a.translated,provider:a.provider,error:a.error},{headers:{'Cache-Control':'private, no-store'}})}
+  return NextResponse.json({items:result},{headers:{'Cache-Control':'private, no-store'}});
+ }catch{return NextResponse.json({error:'Invalid translation request'},{status:400})}
+}
