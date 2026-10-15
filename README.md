@@ -1,3 +1,38 @@
+# GLITCH 7 — Global Pulse (Trends + Prediction Markets)
+
+**GitHub-connected Vercel edition.** The new **Τάσεις & Αγορές / Trends & Markets** tab adds:
+
+- Polymarket Gamma `GET /events` (top 80 *sample* by 24-hour volume; one active binary YES/NO market per event) — read-only and no credentials.
+- Kalshi public `GET /markets` (up to 400 open, non-combination contracts; sorted only inside returned sample) — read-only and no credentials.
+- Probabilities shown as **indicative YES contract prices**, explicitly NOT calibrated probabilities or forecasts. Bid/ask midpoint is labelled; Kalshi previous-price deltas are *reference changes*, not necessarily 24-hour moves.
+- Google Trends RSS from selectable countries plus a **multi-country sample** for worldwide (NOT a worldwide Google ranking).
+- Optional official X trends by WOEID, **disabled by default** until `X_BEARER_TOKEN` and `X_TRENDS_ENABLED=true` are provided as server secrets. Requests to X can incur charges; use rate limits, logging and a persistent cross-instance cache for heavier usage.
+- Readable Greek interface; machine translation for top displayed questions is best effort using existing `/api/translate`, and original source links remain available.
+- Optional browser-local change from last observed price; no server historical persistence.
+- Comparison to news uses **lexical overlap only** (two content-bearing words); never interpreted as fact verification.
+- Source failures are visible; **no mock or invented markets/trends**.
+
+## Build
+
+`npm install && npm run test && npm run build`
+
+## New API endpoints
+
+- `/api/markets`: returns quotes, sample notes, provider status and methodology; 15-minute CDN cache.
+- `/api/trends?provider=google&region=WORLD`: public sampled region feeds; 30-minute cache.
+- `/api/trends?provider=x&region=GR`: official X trends, only when opted in and authenticated via server environment.
+
+## Sources
+
+- [Polymarket Gamma documentation](https://docs.polymarket.com/market-data/discover-markets)
+- [Kalshi public market data](https://docs.kalshi.com/api-reference/market/get-markets)
+- [Official X trends](https://docs.x.com/x-api/trends/get-trends-by-woeid)
+- [Google Trends help](https://support.google.com/trends/answer/3076011)
+
+**Informational only.** No wagering, purchase, user authentication to exchanges, or execution functionality. Jurisdiction-specific restrictions of external services remain in force.
+
+---
+
 # GLITCH 5 · Discovery Engine
 
 **Version 5** changes the home screen into an evidence-linked interpretation layer over verified public source feeds. It is **not** a generative-AI system, forecast service, or automated fact checker.
