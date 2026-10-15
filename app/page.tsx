@@ -78,7 +78,7 @@ export default function Home(){
  const [mag,setMag]=useState(6.2);const [baseMag,setBaseMag]=useState(5.0);const [kp,setKp]=useState(5);const searchInput=useRef<HTMLInputElement>(null);const known=useRef<Set<string>>(new Set());const ready=useRef(false);
  const t=(el:string,en:string)=>language==='el'?el:en;
  useEffect(()=>{setLanguage(readStore('glitch-language','el')==='en'?'en':'el');setTheme(readStore('glitch-theme','dark')==='light'?'light':'dark');try{let p=JSON.parse(readStore('glitch-prefs3','null'));if(p&&Array.isArray(p.interests))setPrefs({...initialPrefs,...p});setBookmarks(JSON.parse(readStore('glitch-bookmarks','[]')));setSeen(JSON.parse(readStore('glitch-seen','[]')))}catch{}setLastVisit(Number(readStore('glitch-last','0')));try{setPriorDiscoveries(JSON.parse(readStore('glitch-prior-detections','[]')))}catch{}
- try {const saved=JSON.parse(readStore('glitch-translation-cache-v4','{}')) as Record<string,{title:string;summary:string}>;
+ try {const saved=JSON.parse(readStore('glitch-translation-cache-v8','{}')) as Record<string,{title:string;summary:string}>;
   if(saved&&typeof saved==='object'){translationCacheRef.current=saved;setTranslationCache(saved)}}catch{}
  setHydrated(true);setNotifications('Notification' in window&&Notification.permission==='granted');try{localStorage.setItem('glitch-last',String(Date.now()))}catch{}const vis=()=>{if(document.visibilityState==='hidden')try{localStorage.setItem('glitch-last',String(Date.now()))}catch{}};document.addEventListener('visibilitychange',vis);if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});return()=>document.removeEventListener('visibilitychange',vis)},[]);
  useEffect(()=>{document.documentElement.dataset.theme=theme;document.documentElement.lang=language;if(hydrated){localStorage.setItem('glitch-theme',theme);localStorage.setItem('glitch-language',language)}},[theme,language,hydrated]);
@@ -103,7 +103,7 @@ export default function Home(){
       // Persistent cache capped to 250 stories, so repeat visits are fast.
       const keys=Object.keys(merged);for(const key of keys.slice(0,Math.max(0,keys.length-250)))delete merged[key];
       translationCacheRef.current=merged;setTranslationCache(merged);
-      try{localStorage.setItem('glitch-translation-cache-v4',JSON.stringify(merged))}catch{}
+      try{localStorage.setItem('glitch-translation-cache-v8',JSON.stringify(merged))}catch{}
      }
     }catch{batch.forEach(x=>translationFailed.current.add(x.id))}
     finally{batch.forEach(x=>translationInFlight.current.delete(x.id))}

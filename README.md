@@ -1,3 +1,34 @@
+# GLITCH 8 · X Trends & Readable Headlines
+
+The Global Pulse supports **real X trends** through the official X Trends WOEID API or an optional independent provider (GetXAPI). Access is **not free / not auto-configured**, and is **disabled by default**, avoiding surprise billing. Google Search trends are a separate feed and never masquerade as X data.
+
+To enable on Vercel (Settings → Environment Variables):
+
+- Official: `X_TRENDS_PROVIDER=official`, `X_BEARER_TOKEN=...`, `X_TRENDS_ENABLED=true`
+- Or third-party: `X_TRENDS_PROVIDER=getxapi`, `GETXAPI_KEY=...`, `X_TRENDS_ENABLED=true`
+- Redeploy after setting variables. **Do not add tokens to source control or expose them via NEXT_PUBLIC variables.**
+- Each regional fetch is cached for up to 1 hour. Actual charges and rate limits depend on the API provider; use a spending cap in the provider console. Cache is best effort, not a hard spending ceiling.
+- Without a credential the X tab shows a *clear unconfigured state* and a link to X Explore; it never substitutes Google data. No scraping/login bypass is used.
+
+The news feed now renders full publisher-provided RSS summaries with line wrapping and removes the 2-line clamp. News detail modal is scrollable. A link leads to the **original complete article**; GLITCH does not claim to reproduce entire publishers’ copyrighted articles.
+
+## Local commands
+
+```bash
+npm install
+npm test
+npm run typecheck
+npm run build
+```
+
+## API references
+
+- Official X API: https://docs.x.com/x-api/trends/get-trends-by-woeid
+- X pricing: https://docs.x.com/x-api/getting-started/pricing
+- Optional GetXAPI: https://docs.getxapi.com/docs/trends/get-trends
+
+---
+
 # GLITCH 7 — Global Pulse (Trends + Prediction Markets)
 
 **GitHub-connected Vercel edition.** The new **Τάσεις & Αγορές / Trends & Markets** tab adds:

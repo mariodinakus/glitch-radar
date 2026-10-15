@@ -20,6 +20,16 @@ const feeds:NewsSource[]=[
  {name:'Ναυτεμπορική',url:'https://www.naftemporiki.gr/feed/',category:'economy',limit:32}
 ];
 const clean=(s:unknown,max=240)=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
+// Preserve short publisher-supplied RSS previews. Never cut in the middle of a word.
+export function readableExcerpt(value:string,max=1200):string{
+ const text=value.replace(/\s+/g,' ').trim();
+ if(text.length<=max)return text;
+ const prefix=text.slice(0,max+1);
+ const sentence=[...prefix.matchAll(/[.!?。！？](?=\s|$)/g)].map(m=>(m.index??0)+1).filter(i=>i>=max*.58 && i<=max);
+ if(sentence.length)return text.slice(0,sentence[sentence.length-1]).trim();
+ const words=prefix.slice(0,max).lastIndexOf(' ');
+ return text.slice(0,words>=max*.65?words:max).replace(/[\s,;:–-]+$/,'').trim()+'…';
+}
 const dec=(s:string)=>s.replace(/&#x([0-9a-f]+);/gi,(_,v)=>String.fromCodePoint(parseInt(v,16))).replace(/&#(\d+);/g,(_,v)=>String.fromCodePoint(parseInt(v,10))).replace(/&(?:amp|lt|gt|quot|apos|nbsp|rsquo|lsquo|ldquo|rdquo|mdash|ndash|hellip);/g,(v)=>({
  '&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",'&nbsp;':' ','&rsquo;':'’','&lsquo;':'‘','&ldquo;':'“','&rdquo;':'”','&mdash;':'—','&ndash;':'–','&hellip;':'…'
  } as Record<string,string>)[v]||v);
@@ -39,7 +49,7 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
  const xml=(await res.text()).slice(0,900000);if(!/<rss|<rdf:RDF/i.test(xml)||!xml.includes('<item'))throw Error('Invalid or empty RSS');
  const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,src.limit+8);
  return matches.map(match=>{
-  const t=match[1];const title=field(t,'title').slice(0,170);const description=field(t,'description').slice(0,260);
+  const t=match[1];const title=field(t,'title');const description=readableExcerpt(field(t,'description'));
   const link=safeUrl(field(t,'link'));const dateRaw=field(t,'pubDate')||field(t,'dc:date');const timestamp=Date.parse(dateRaw);
   if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff())return null;
   const cat=classify(src.category,title,description);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
@@ -52,7 +62,7 @@ async function spaceflight():Promise<Signal[]>{const ctl=new AbortController();c
  const r=await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=35',{next:{revalidate:900},signal:ctl.signal});if(!r.ok)throw Error('Spaceflight API '+r.status);
  const data=await r.json() as SpaceNews;
  return (data.results||[]).filter(a=>a.title&&safeUrl(a.url)&&Number.isFinite(Date.parse(a.published_at))&&Date.parse(a.published_at)>=cutoff()).slice(0,30).map(a=>{
- const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,165),summary:clean(a.summary,230)||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
+ const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,800),summary:readableExcerpt(clean(a.summary,2000))||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
  })
  }finally{clearTimeout(timer)}}
 export async function getNewsProviders():Promise<{signals:Signal[];statuses:SourceStatus[]}>{

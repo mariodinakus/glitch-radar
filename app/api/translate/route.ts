@@ -6,7 +6,7 @@ export const dynamic='force-dynamic';
 type TranslationItem={id:string;title:string;summary:string};
 type Translated=TranslationItem & {translated:boolean;provider:'google-cloud'|'mymemory'|'original';error?:string};
 const MAX_ITEMS=4;
-const MAX_BODY=4500;
+const MAX_BODY=9000;
 const hasGreek=(s:string)=>/[\u0370-\u03ff\u1f00-\u1fff]/.test(s);
 const input=(v:unknown,n:number)=>typeof v==='string'?v.trim().slice(0,n):'';
 const cache=new Map<string,string>();
@@ -50,13 +50,22 @@ async function myMemoryTranslate(text:string):Promise<string>{
 async function one(item:TranslationItem):Promise<Translated>{
  const titleGreek=hasGreek(item.title),summaryGreek=hasGreek(item.summary);
  if(titleGreek&&summaryGreek)return {...item,translated:true,provider:'original'};
- const fields=[...(!titleGreek&&item.title?[item.title]:[]),...(!summaryGreek&&item.summary?[item.summary]:[])];
+ const split=(text:string,max=380)=>{
+  const chunks:string[]=[];let remaining=text.trim();
+  while(remaining.length>max){const i=remaining.lastIndexOf(' ',max);const cut=i>max*.55?i:max;chunks.push(remaining.slice(0,cut).trim());remaining=remaining.slice(cut).trim()}
+  if(remaining)chunks.push(remaining);
+  return chunks;
+ };
+ const titleChunks=!titleGreek&&item.title?split(item.title):[];
+ const summaryChunks=!summaryGreek&&item.summary?split(item.summary):[];
+ const fields=[...titleChunks,...summaryChunks];
  try{
   let translations:string[],provider:'google-cloud'|'mymemory';
   if(process.env.GOOGLE_TRANSLATE_API_KEY){translations=await googleTranslate(fields);provider='google-cloud';}
   else{translations=await Promise.all(fields.map(myMemoryTranslate));provider='mymemory';}
-  let pos=0;
-  return {id:item.id,title:titleGreek?item.title:translations[pos++],summary:summaryGreek?item.summary:translations[pos++],translated:true,provider};
+  const title=titleGreek?item.title:translations.slice(0,titleChunks.length).join(' ');
+  const summary=summaryGreek?item.summary:translations.slice(titleChunks.length).join(' ');
+  return {id:item.id,title,summary,translated:true,provider};
  }catch(error){
   return {...item,translated:false,provider:'original',error:error instanceof Error?error.message:'Translation unavailable'};
  }
@@ -72,7 +81,7 @@ export async function POST(request:NextRequest){
   if(!Array.isArray(raw)||raw.length<1||raw.length>MAX_ITEMS)return NextResponse.json({error:'Invalid batch'},{status:400});
   const items:TranslationItem[]=raw.map((v:unknown)=>{
    const x=v as Record<string,unknown>;
-   return {id:input(x.id,150),title:input(x.title,160),summary:input(x.summary,430)};
+   return {id:input(x.id,150),title:input(x.title,650),summary:input(x.summary,1200)};
   });
   if(items.some(x=>!x.id||(!x.title&&!x.summary)))return NextResponse.json({error:'Invalid translation item'},{status:400});
   // Bound parallelism to avoid hammering public translation services.

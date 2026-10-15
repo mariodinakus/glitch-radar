@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {GOOGLE_WORLD_REGIONS,REGIONS,isRegion,mergeCountryTrends,parseGoogleTrends,parseXTrends,type Trend,type TrendProvider,type TrendRegion,type TrendsResult} from '@/lib/trends';
+import {GOOGLE_WORLD_REGIONS,REGIONS,isRegion,mergeCountryTrends,parseGoogleTrends,parseXTrends,parseGetXapiTrends,type XBackend,type Trend,type TrendProvider,type TrendRegion,type TrendsResult} from '@/lib/trends';
 export const runtime='nodejs';
 // CDN cache is best effort; large-scale polling of the metered X API should use a persistent cache + budget cap.
 export const revalidate=1800;
@@ -11,14 +11,20 @@ async function readGoogle(region:TrendRegion):Promise<Trend[]>{
   const xml=(await res.text()).slice(0,1200000);return parseGoogleTrends(xml,region);
  }finally{clearTimeout(timeout)}
 }
+const backend=():XBackend=>process.env.X_TRENDS_PROVIDER==='getxapi'?'getxapi':'official';
+const xConfigured=()=>process.env.X_TRENDS_ENABLED==='true'&&!!(backend()==='getxapi'?process.env.GETXAPI_KEY:process.env.X_BEARER_TOKEN);
 async function readX(region:TrendRegion):Promise<Trend[]>{
- const token=process.env.X_BEARER_TOKEN;
- if(!token||process.env.X_TRENDS_ENABLED!=='true')throw new Error('X developer token and explicit X_TRENDS_ENABLED=true required');
+ if(!xConfigured())throw new Error('X trends require an explicitly enabled API credential');
+ const chosen=backend();const token=chosen==='getxapi'?process.env.GETXAPI_KEY!:process.env.X_BEARER_TOKEN!;
  const woeid=REGIONS.find(x=>x.id===region)?.woeid||1;
  const ctrl=new AbortController();const timeout=setTimeout(()=>ctrl.abort(),8000);
- try{const res=await fetch(`https://api.x.com/2/trends/by/woeid/${woeid}?max_trends=30&trend.fields=trend_name,tweet_count`,{next:{revalidate:3600},signal:ctrl.signal,headers:{Authorization:`Bearer ${token}`,Accept:'application/json'}});
-  if(!res.ok)throw Error(`X API HTTP ${res.status}`);
-  return parseXTrends(await res.json(),region);
+ try{
+  // Both services are metered. A one-hour Next.js fetch cache limits repeat requests per region.
+  const address=chosen==='getxapi'?`https://api.getxapi.com/twitter/trends?woeid=${woeid}&count=30`:`https://api.x.com/2/trends/by/woeid/${woeid}?max_trends=30&trend.fields=trend_name,tweet_count`;
+  const res=await fetch(address,{next:{revalidate:3600},signal:ctrl.signal,headers:{Authorization:`Bearer ${token}`,Accept:'application/json'}});
+  if(!res.ok)throw Error(`X trends provider HTTP ${res.status}`);
+  const body=await res.json();
+  return chosen==='getxapi'?parseGetXapiTrends(body,region):parseXTrends(body,region);
  }finally{clearTimeout(timeout)}
 }
 export async function GET(request:NextRequest){
@@ -28,9 +34,9 @@ export async function GET(request:NextRequest){
  const region=requested;
  let out:TrendsResult;
  if(provider==='x'){
-  if(!process.env.X_BEARER_TOKEN||process.env.X_TRENDS_ENABLED!=='true')out=empty('x',region,'unconfigured','Official X API is not connected. Add X_BEARER_TOKEN and opt in with X_TRENDS_ENABLED=true to enable metered requests.');
-  else try{const trends=await readX(region);out={...empty('x',region,'ok','Live X trends by geographic WOEID. Some topics have no tweet count.',[region]),trends}}
-  catch(e){out=empty('x',region,'unavailable',e instanceof Error?e.message:'X API unavailable',[region],[region])}
+  if(!xConfigured())out=empty('x',region,'unconfigured','X API is not connected. Use X_TRENDS_PROVIDER=official with X_BEARER_TOKEN or X_TRENDS_PROVIDER=getxapi with GETXAPI_KEY, and set X_TRENDS_ENABLED=true to accept metered requests.');
+  else try{const trends=await readX(region);out={...empty('x',region,'ok',backend()==='official'?'Official X trends by WOEID.':'X trends supplied by third-party GetXAPI (not directly by X).',[region]),backend:backend(),trends}}
+  catch(e){out={...empty('x',region,'unavailable',e instanceof Error?e.message:'X API unavailable',[region],[region]),backend:backend()}}
  }else{
   const regions:TrendRegion[]=region==='WORLD'?GOOGLE_WORLD_REGIONS:[region];
   const settled=await Promise.allSettled(regions.map(readGoogle));
@@ -39,5 +45,5 @@ export async function GET(request:NextRequest){
   const trends=region==='WORLD'?mergeCountryTrends(fetched):fetched;
   out={...empty('google',region,failed.length===regions.length?'unavailable':failed.length?'partial':'ok',region==='WORLD'?`Regional sample: ${regions.length-failed.length}/${regions.length} country feeds available. Cross-country presence is NOT a worldwide trend ranking.`:'Google Trends RSS for the selected country.',regions,failed),trends};
  }
- return NextResponse.json(out,{headers:{'Cache-Control':'public, s-maxage=1800, stale-while-revalidate=3600','X-Content-Type-Options':'nosniff'}});
+ return NextResponse.json(out,{headers:{'Cache-Control':provider==='x'?'public, s-maxage=3600, stale-while-revalidate=3600':'public, s-maxage=1800, stale-while-revalidate=3600','X-Content-Type-Options':'nosniff'}});
 }
