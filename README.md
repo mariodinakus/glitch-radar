@@ -1,144 +1,61 @@
-# GLITCH 8 · X Trends & Readable Headlines
+# GLITCH 9 — What matters now
 
-The Global Pulse supports **real X trends** through the official X Trends WOEID API or an optional independent provider (GetXAPI). Access is **not free / not auto-configured**, and is **disabled by default**, avoiding surprise billing. Google Search trends are a separate feed and never masquerade as X data.
+A **from-scratch editorial UX**, Greek-first and English-enabled, mobile-first Next.js app. Not an AI fact-checker or news publisher. Source-backed world observations, publisher RSS excerpts, Google/X trends, Polymarket/Kalshi prices, and limited-sample coverage gaps. All live data is requested through server-side route handlers; **no demo data or invented quotes**.
 
-To enable on Vercel (Settings → Environment Variables):
+## New experience
 
-- Official: `X_TRENDS_PROVIDER=official`, `X_BEARER_TOKEN=...`, `X_TRENDS_ENABLED=true`
-- Or third-party: `X_TRENDS_PROVIDER=getxapi`, `GETXAPI_KEY=...`, `X_TRENDS_ENABLED=true`
-- Redeploy after setting variables. **Do not add tokens to source control or expose them via NEXT_PUBLIC variables.**
-- Each regional fetch is cached for up to 1 hour. Actual charges and rate limits depend on the API provider; use a spending cap in the provider console. Cache is best effort, not a hard spending ceiling.
-- Without a credential the X tab shows a *clear unconfigured state* and a link to X Explore; it never substitutes Google data. No scraping/login bypass is used.
+- **Σήμερα / Today:** a source-linked briefing with six initially visible prioritized, diverse stories, reader-friendly full titles and available excerpts, topic filters, search, visit counts, and detailed original-source drawer.
+- **Τάσεις / Trends:** clearly separate Google Trends and X. X requires the user to configure the official developer API and opt in to metered usage. No Google-as-X relabeling.
+- **Αγορές / Markets:** Polymarket Gamma **events** and Kalshi **open events with nested markets**, falling back to its non-combination markets endpoint if needed. YES price shows alongside price type, volume, provider health and methodology. No trading, odds comparison, synthetic quotes, or inferred missing values.
+- **Στη σκιά / Overlooked:** transparent source-to-news coverage matching against four monitored general publisher feeds. Includes primary evidence and a *user-triggered* GDELT broader check. Limited coverage in the monitored sample does **not** imply censorship.
+- **Αποθηκευμένα / Saved:** bookmarks persisted per-device in browser local storage.
+- **Map:** secondary, optional interactive globe of actually geolocated source events.
+- **Accessibility:** full natural titles and previews, responsive mobile bottom navigation, desktop left nav, light/dark palette, readable detail drawer, informative offline/error/empty states.
 
-The news feed now renders full publisher-provided RSS summaries with line wrapping and removes the 2-line clamp. News detail modal is scrollable. A link leads to the **original complete article**; GLITCH does not claim to reproduce entire publishers’ copyrighted articles.
-
-## Local commands
+## Local setup
 
 ```bash
 npm install
+npm run dev
 npm test
 npm run typecheck
 npm run build
 ```
 
-## API references
+Requires Node 20.9+; deploy to Vercel by importing this GitHub repo. Do not set a root subdirectory. The deployment does **not** require credentials for Polymarket, Kalshi, RSS, NASA, NOAA or USGS.
 
-- Official X API: https://docs.x.com/x-api/trends/get-trends-by-woeid
-- X pricing: https://docs.x.com/x-api/getting-started/pricing
-- Optional GetXAPI: https://docs.getxapi.com/docs/trends/get-trends
+### Optional environment variables
 
----
+```
+X_TRENDS_ENABLED=false
+X_TRENDS_PROVIDER=official
+X_BEARER_TOKEN=
+GOOGLE_TRANSLATE_API_KEY=
+CRON_SECRET=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
 
-# GLITCH 7 — Global Pulse (Trends + Prediction Markets)
+The default public MyMemory translation fallback has rate/quality limitations. Set `GOOGLE_TRANSLATE_API_KEY` for more reliable English→Greek translations and review quota/billing before enabling it. Never put secrets in GitHub or client-side `NEXT_PUBLIC_*` variables.
 
-**GitHub-connected Vercel edition.** The new **Τάσεις & Αγορές / Trends & Markets** tab adds:
+### Reliable operation
 
-- Polymarket Gamma `GET /events` (top 80 *sample* by 24-hour volume; one active binary YES/NO market per event) — read-only and no credentials.
-- Kalshi public `GET /markets` (up to 400 open, non-combination contracts; sorted only inside returned sample) — read-only and no credentials.
-- Probabilities shown as **indicative YES contract prices**, explicitly NOT calibrated probabilities or forecasts. Bid/ask midpoint is labelled; Kalshi previous-price deltas are *reference changes*, not necessarily 24-hour moves.
-- Google Trends RSS from selectable countries plus a **multi-country sample** for worldwide (NOT a worldwide Google ranking).
-- Optional official X trends by WOEID, **disabled by default** until `X_BEARER_TOKEN` and `X_TRENDS_ENABLED=true` are provided as server secrets. Requests to X can incur charges; use rate limits, logging and a persistent cross-instance cache for heavier usage.
-- Readable Greek interface; machine translation for top displayed questions is best effort using existing `/api/translate`, and original source links remain available.
-- Optional browser-local change from last observed price; no server historical persistence.
-- Comparison to news uses **lexical overlap only** (two content-bearing words); never interpreted as fact verification.
-- Source failures are visible; **no mock or invented markets/trends**.
+`/api/feed`, `/api/markets`, `/api/trends` and `/api/coverage` return data/provider statuses independently. Missing values are null, and failures are never quietly converted to numbers, '0%' or invented source items. A provider may fail due to geo/network/API restrictions; Vercel build success is **not** end-to-end upstream proof. Source APIs cache approximately 10 minutes to 1 hour. The X and translation APIs may cost money.
 
-## Build
+### Why not full publisher articles?
 
-`npm install && npm run test && npm run build`
-
-## New API endpoints
-
-- `/api/markets`: returns quotes, sample notes, provider status and methodology; 15-minute CDN cache.
-- `/api/trends?provider=google&region=WORLD`: public sampled region feeds; 30-minute cache.
-- `/api/trends?provider=x&region=GR`: official X trends, only when opted in and authenticated via server environment.
+Only the available RSS excerpt is shown; full copyrighted articles open on the publisher's site. This is intentional.
 
 ## Sources
 
-- [Polymarket Gamma documentation](https://docs.polymarket.com/market-data/discover-markets)
-- [Kalshi public market data](https://docs.kalshi.com/api-reference/market/get-markets)
-- [Official X trends](https://docs.x.com/x-api/trends/get-trends-by-woeid)
-- [Google Trends help](https://support.google.com/trends/answer/3076011)
+- [Polymarket Gamma API](https://docs.polymarket.com/)
+- [Kalshi API](https://docs.kalshi.com/)
+- [USGS Earthquake GeoJSON](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)
+- [NASA EONET](https://eonet.gsfc.nasa.gov/docs/v3)
+- [NOAA SWPC](https://www.swpc.noaa.gov/)
+- [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/)
+- [Google Trends](https://trends.google.com/trending)
 
-**Informational only.** No wagering, purchase, user authentication to exchanges, or execution functionality. Jurisdiction-specific restrictions of external services remain in force.
-
----
-
-# GLITCH 5 · Discovery Engine
-
-**Version 5** changes the home screen into an evidence-linked interpretation layer over verified public source feeds. It is **not** a generative-AI system, forecast service, or automated fact checker.
-
-## Core additions
-
-- Live discovery cards with underlying sources and explanatory caveats.
-- USGS magnitude-4.5+ 24-hour count vs the prior 6 days (separate weekly feed).
-- Cross-publisher lexical headline similarities, explicitly labeled as *coverage overlaps* rather than confirmation.
-- Recent NASA natural-event records, NOAA bulletins, OpenAlex index and source-health summaries.
-- Discovery view: inspect evidence, compare 24-hour activity and copy a sourced briefing.
-- Greek-first interface with automatic visible-item translation via optional Google Cloud Translation API; public MyMemory fallback is best-effort and subject to quotas.
-- Saves reading state and preferences to local browser storage.
-
-# GLITCH 3.0 — World Signal Radar / Παγκόσμιο Radar
-
-A completely redesigned **mobile-first bilingual Greek / English** Next.js application: a live signals dashboard, an interactive rotating globe, curated world feeds, personal topic selection, bookmarks, return-visit digest, four interactive labs, and source transparency.
-
-## Quick start
-
-- Requires Node.js >= 20.9 and npm.
-- `npm install`
-- `npm run dev` (http://localhost:3000)
-- `npm run build` (production check)
-- Deploy from the project root to Vercel, framework Next.js. No provider keys required for reading data.
-- Install as PWA from a compatible phone browser; the live feed requires internet.
-
-## Data / trust
-
-- **Original data APIs:** USGS (earthquakes), NASA EONET (natural events), NOAA SWPC (space-weather alerts), Hacker News/Algolia (community activity), OpenAlex (research), Spaceflight News API.
-- **Publisher RSS headlines:** BBC, Guardian, Al Jazeera, **ERT News and Naftemporiki in Greek**. Providers are independently health-checked. Unavailable feeds are clearly shown, never replaced with invented samples.
-- News headlines and abstracts remain the publisher's original content and link to the publisher. Greek UI is complete; a separate opt-in **Greek machine translation** function for foreign-language titles/short summaries uses the public MyMemory Translation API. Translation can fail, be inaccurate, or be rate-limited. When used, the brief excerpt is sent to the translation provider. Only source-provided previews are translated; not entire copyrighted articles.
-- Scores (0–100) are transparent editorial *interest heuristics*, **not** independently validated statistical anomalies, threat levels, probabilities, or fact-checking ratings.
-- No implicit geographical inference. Globe points require event-specific source coordinates. Globe texture is Natural Earth illustrated geography, not live satellite photography.
-
-## Features
-
-- Greek default UI, English switch, persistent theme, browser-local topic and bookmark preferences.
-- A genuinely rotating globe (touch drag / zoom / markers), with geolocated events from source data.
-- Daily snapshot / since-last-visit counters; trending-by-score and topic-diverse side stream.
-- Search (Ctrl/Cmd+K), category filters, recency ordering, news-only and high-interest modes, infinite incremental list loading.
-- Modals contain source link, original record and transparent score methodology.
-- Four interactive labs: seismic energy, solar Kp, score threshold, source health.
-- Browser notifications while open after explicit permission; optional Telegram cron digest only with secure Vercel environment variables. Not full native background push.
-- Installable PWA; service-worker cached app shell with versioning, network-first page navigation.
-
-## Operational limitations
-
-- `localStorage` sync is per browser. No accounts or cross-device sync.
-- RSS publishers may throttle, move feeds, or change terms; provider-specific failures are shown in Settings.
-- An opt-in machine translation can briefly send story text to a third-party service. Consider disabling `app/api/translate` if you do not want that behavior.
-- Vercel's runtime/fetch caches may mean some changes are delayed by several minutes.
-
-## Notifications
-
-Daily optional Telegram digest: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `CRON_SECRET`, and (for deduplication, if documented) Vercel KV/Upstash configuration according to `app/api/cron/notify/route.ts`. Never commit credentials.
-
-## Public APIs
-
-`GET /api/feed` => `{signals, sources, generatedAt, methodology}`
-
-`GET /api/status` => source-health snapshot
-
-`POST /api/translate` => `{title, summary}` (en → el, only on explicit user action)
-
-## GLITCH 6 — Blind Spot Watch / Στη σκιά
-
-Under **Στη σκιά / Blind spots**, the application now surfaces potentially consequential but lightly covered events **within a defined observable news sample**. It sources qualifying events from UN News, USGS seismic data, and NOAA bulletins, applies disclosed editorial importance heuristics, and compares topic overlap across recent 72-hour headlines from up to four independent general-news RSS feeds (BBC World, Guardian World, Al Jazeera World, ΕΡΤ).
-
-- The counter reads **matches / successfully retrieved monitored feeds**; it is *not* global coverage, audience share, or proof of deliberate suppression. If fewer than three general feeds work, the sample is labeled insufficient and no low-coverage conclusion is drawn.
-- Every card links to its original source, the matching outlets, category rationale, and limitations.
-- A voluntary **Check broader coverage (GDELT)** button sends a keyword query to the GDELT DOC 2.0 API. The response reports matching article records over 48 hours; keyword undercount, GDELT's own collection limits and outages are explicit. Failed lookups never become a zero-coverage value.
-- No fabricated article counts or coverage claims. No generative AI involved. Automatic Greek translation remains best-effort, dependent on the configured translation API or quota-limited fallback.
-- First-party linked documentation: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/ and https://news.un.org/feed/subscribe/en/news/all/rss.xml
-
-## GitHub & Vercel
-
-The ZIP contains all deployable source files. To link GitHub and Vercel, create an empty GitHub repository named `glitch-radar` in your own account and connect it in Vercel Project Settings → Git, or use the available GitHub/Vercel connectors. Never put secrets in the repository. If you use source upload deployment, it can be deployed independently of Git but it does **not** set up GitHub automatic deployments. This workflow requires creating the repository before linking it.
+No financial advice. Market prices are not calibrated probabilities, confidence intervals, or recommendations to trade.
