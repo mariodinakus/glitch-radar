@@ -1,14 +1,14 @@
-# GLITCH 9 — What matters now
+# GLITCH 10 — Ελληνική έκδοση χωρίς X
 
-A **from-scratch editorial UX**, Greek-first and English-enabled, mobile-first Next.js app. Not an AI fact-checker or news publisher. Source-backed world observations, publisher RSS excerpts, Google/X trends, Polymarket/Kalshi prices, and limited-sample coverage gaps. All live data is requested through server-side route handlers; **no demo data or invented quotes**.
+Η διεπαφή είναι αποκλειστικά ελληνική. Οι διεθνείς τίτλοι και οι περιγραφές μεταφράζονται αυτόματα όπου ο πάροχος μετάφρασης ανταποκρίνεται. Το πρωτότυπο διατηρείται με εμφανή ένδειξη εάν η μετάφραση αποτύχει. Δεν υπάρχουν X/Twitter integrations, κλειδιά ή χρεώσιμες X κλήσεις.
 
 ## New experience
 
-- **Σήμερα / Today:** a source-linked briefing with six initially visible prioritized, diverse stories, reader-friendly full titles and available excerpts, topic filters, search, visit counts, and detailed original-source drawer.
-- **Τάσεις / Trends:** clearly separate Google Trends and X. X requires the user to configure the official developer API and opt in to metered usage. No Google-as-X relabeling.
-- **Αγορές / Markets:** Polymarket Gamma **events** and Kalshi **open events with nested markets**, falling back to its non-combination markets endpoint if needed. YES price shows alongside price type, volume, provider health and methodology. No trading, odds comparison, synthetic quotes, or inferred missing values.
-- **Στη σκιά / Overlooked:** transparent source-to-news coverage matching against four monitored general publisher feeds. Includes primary evidence and a *user-triggered* GDELT broader check. Limited coverage in the monitored sample does **not** imply censorship.
-- **Αποθηκευμένα / Saved:** bookmarks persisted per-device in browser local storage.
+- **Σήμερα:** a source-linked briefing with six initially visible prioritized, diverse stories, reader-friendly full titles and available excerpts, topic filters, search, visit counts, and detailed original-source drawer.
+- **Τάσεις:** δημόσιες τάσεις αναζήτησης Google ανά χώρα.
+- **Αγορές:** Polymarket Gamma **events** and Kalshi **open events with nested markets**, falling back to its non-combination markets endpoint if needed. YES price shows alongside price type, volume, provider health and methodology. No trading, odds comparison, synthetic quotes, or inferred missing values.
+- **Στη σκιά:** transparent source-to-news coverage matching against four monitored general publisher feeds. Includes primary evidence and a *user-triggered* GDELT broader check. Limited coverage in the monitored sample does **not** imply censorship.
+- **Αποθηκευμένα:** bookmarks persisted per-device in browser local storage.
 - **Map:** secondary, optional interactive globe of actually geolocated source events.
 - **Accessibility:** full natural titles and previews, responsive mobile bottom navigation, desktop left nav, light/dark palette, readable detail drawer, informative offline/error/empty states.
 
@@ -27,9 +27,6 @@ Requires Node 20.9+; deploy to Vercel by importing this GitHub repo. Do not set 
 ### Optional environment variables
 
 ```
-X_TRENDS_ENABLED=false
-X_TRENDS_PROVIDER=official
-X_BEARER_TOKEN=
 GOOGLE_TRANSLATE_API_KEY=
 CRON_SECRET=
 TELEGRAM_BOT_TOKEN=
@@ -42,7 +39,7 @@ The default public MyMemory translation fallback has rate/quality limitations. S
 
 ### Reliable operation
 
-`/api/feed`, `/api/markets`, `/api/trends` and `/api/coverage` return data/provider statuses independently. Missing values are null, and failures are never quietly converted to numbers, '0%' or invented source items. A provider may fail due to geo/network/API restrictions; Vercel build success is **not** end-to-end upstream proof. Source APIs cache approximately 10 minutes to 1 hour. The X and translation APIs may cost money.
+`/api/feed`, `/api/markets`, `/api/trends` and `/api/coverage` return data/provider statuses independently. Missing values are null, and failures are never quietly converted to numbers, '0%' or invented source items. A provider may fail due to geo/network/API restrictions; Vercel build success is **not** end-to-end upstream proof. Source APIs cache approximately 10 minutes to 1 hour. Google Cloud Translation may cost money if configured.
 
 ### Why not full publisher articles?
 

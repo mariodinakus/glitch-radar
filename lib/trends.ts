@@ -1,9 +1,8 @@
-/** Trend provenance is part of the API contract: Google Search interest is NEVER an X trend. */
-export type TrendProvider='google'|'x';
-export type XBackend='official'|'getxapi';
+/** Google search trends, sourced only from regional public RSS. */
+export type TrendProvider='google';
 export type TrendRegion='WORLD'|'GR'|'US'|'GB'|'IN'|'JP'|'BR'|'DE'|'FR'|'CA'|'AU'|'KR'|'ZA'|'TR';
 export type Trend={id:string;name:string;rank:number;provider:TrendProvider;regions:TrendRegion[];traffic:string|null;tweetCount:number|null;publishedAt:string|null;url:string;relatedHeadlines:string[]};
-export type TrendsResult={backend?:'official'|'getxapi'|'google';provider:TrendProvider;region:TrendRegion;status:'ok'|'partial'|'unconfigured'|'unavailable';updatedAt:string;trends:Trend[];checkedRegions:TrendRegion[];failedRegions:TrendRegion[];message:string;methodology:string};
+export type TrendsResult={provider:TrendProvider;region:TrendRegion;status:'ok'|'partial'|'unavailable';updatedAt:string;trends:Trend[];checkedRegions:TrendRegion[];failedRegions:TrendRegion[];message:string;methodology:string};
 export const REGIONS:ReadonlyArray<{id:TrendRegion;el:string;en:string;woeid:number}>=[
  {id:'WORLD',el:'Παγκόσμια',en:'Worldwide',woeid:1},
  {id:'GR',el:'Ελλάδα',en:'Greece',woeid:23424833},
@@ -50,29 +49,4 @@ export function mergeCountryTrends(trends:Trend[]):Trend[]{
   existing.rank=Math.min(existing.rank,trend.rank);
  }else m.set(k,{...trend,regions:[...trend.regions]})}
  return [...m.values()].sort((a,b)=>b.regions.length-a.regions.length||a.rank-b.rank||a.name.localeCompare(b.name)).slice(0,65).map((t,i)=>({...t,rank:i+1,traffic:t.regions.length===1?t.traffic:null}));
-}
-export function parseXTrends(value:unknown,region:TrendRegion):Trend[]{
- if(!value||typeof value!=='object'||!Array.isArray((value as {data?:unknown}).data))throw new Error('Invalid X API response');
- return ((value as {data:unknown[]}).data).slice(0,50).map((item,i)=>{
-  const v=item as {trend_name?:unknown;tweet_count?:unknown};
-  if(typeof v?.trend_name!=='string'||!v.trend_name.trim())return null;
-  const name=v.trend_name.trim().slice(0,160);const tweetCount=typeof v.tweet_count==='number'&&Number.isFinite(v.tweet_count)&&v.tweet_count>=0?v.tweet_count:null;
-  return {id:'x-'+region+'-'+id(name),name,provider:'x' as const,rank:i+1,regions:[region],traffic:null,tweetCount,publishedAt:null,url:'https://x.com/search?q='+encodeURIComponent(name)+'&f=live',relatedHeadlines:[]};
- }).filter((x):x is NonNullable<typeof x>=>x!==null);
-}
-
-/** Licensed third-party X trends are separate from X's official API. Never relabel Google data. */
-export function parseGetXapiTrends(value:unknown,region:TrendRegion):Trend[]{
- const doc=value as {trends?:unknown;data?:{trends?:unknown}};
- const raw=Array.isArray(doc?.trends)?doc.trends:doc?.data?.trends;
- if(!Array.isArray(raw))throw new Error('Invalid third-party X trends response');
- return raw.slice(0,50).map((rawItem:unknown,index:number)=>{
-  const item=rawItem as {name?:unknown;trend?:{name?:unknown};rank?:unknown;tweet_volume?:unknown;tweet_count?:unknown};
-  const name=typeof item?.name==='string'?item.name:typeof item?.trend?.name==='string'?item.trend.name:'';
-  if(!name.trim())return null;
-  const count=typeof item.tweet_volume==='number'?item.tweet_volume:item.tweet_count;
-  const tweetCount=typeof count==='number'&&Number.isFinite(count)&&count>=0?count:null;
-  const rank=typeof item.rank==='number'&&item.rank>0?item.rank:index+1;
-  return {id:'x-'+region+'-'+id(name),name:name.trim().slice(0,300),provider:'x' as const,rank,regions:[region],traffic:null,tweetCount,publishedAt:null,url:'https://x.com/search?q='+encodeURIComponent(name)+'&f=live',relatedHeadlines:[]};
- }).filter((x):x is NonNullable<typeof x>=>x!==null).sort((a,b)=>a.rank-b.rank);
 }
