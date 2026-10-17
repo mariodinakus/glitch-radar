@@ -1,4 +1,5 @@
 import type {Category,Signal,SourceStatus} from './types';
+import {rssField,rssPlainText,googleNewsPreview} from './rss-text';
 
 type NewsSource={name:string;url:string;category:Category;limit:number};
 const feeds:NewsSource[]=[
@@ -69,7 +70,7 @@ function imageFromItem(item:string):{imageUrl?:string;imageCredit?:string}{
  const embeddedUrl=embedded?safeUrl(dec(embedded).replace(/&amp;/g,'&')):null;
  if(embeddedUrl&&!/\.(?:svg|gif)(?:[?#]|$)/i.test(embeddedUrl))candidates.push({url:embeddedUrl,weight:4});
  const best=candidates.sort((a,b)=>b.weight-a.weight)[0];
- const credit=field(item,'media:credit')||field(item,'media:copyright');
+ const credit=rssField(item,'media:credit',120)||rssField(item,'media:copyright',120);
  return best?{imageUrl:best.url,imageCredit:credit||undefined}:{};
 }
 
@@ -80,6 +81,17 @@ const aiPattern=/\b(artificial intelligence|generative ai|machine learning|chatg
 const climatePattern=/\b(climate|heatwave|warming|emissions|carbon|drought|flooding|wildfire|temperature record|ocean heat)\b/i;
 const energyPattern=/\b(energy|renewables|nuclear|fusion|oil|gas|solar power|wind power|electricity grid|power station|hydrogen)\b/i;
 function classify(base:Category,title:string,summary:string):Category{const txt=title+' '+summary;if(base==='tech'&&aiPattern.test(txt))return 'ai';if(base==='science'&&climatePattern.test(txt))return 'climate';if(base==='climate'&&energyPattern.test(txt)&&!climatePattern.test(txt))return 'energy';if(base==='economy'&&energyPattern.test(title))return 'energy';return base}
+// A keyword appearing inside a film title or a review is NOT a breaking geopolitical event.
+const cultureNotBreaking=/\b(review|theatre|theater|film|movie|trailer|series|novel|book review|album|concert|drama|thriller|fiction|game|entertainment|art exhibit|box office)\b|κριτική|ταινία|θεατρικ|σειρά|μυθιστόρημα|βιβλίο|παράσταση|θέατρο/iu;
+const protestHeadline=/\b(protests?|protesters?|demonstrat(?:ion|ions|ors|or)|mass march|riots?|political unrest|general strike|anti-government rally)\b|διαδηλ|διαμαρτυρ|συλλαλητ|απεργ|αντικυβερνητικ/iu;
+const conflictHeadline=/\b(airstrikes?|bombardment|bombings?|ceasefire|invasion|troops (?:advance|withdraw|deployed)|military offensives?|missile attack|drone strikes?|armed clash|shelling|war in|civil war|ukraine war|gaza war|israel.ham.as war|iran war|russia.ukraine war|frontline|hostage release)\b|βομβαρδ|εισβολ|εκεχειρ|πυραυλικ[ήη] επίθεση|ένοπλ[ηες] σύγκρουσ|πόλεμος στ|μάχες στ/iu;
+function matchesGoogleSearch(name:string,title:string):boolean {
+ if(!name.startsWith('Google News /'))return true;
+ if(cultureNotBreaking.test(title))return false;
+ if(name==='Google News / World Conflicts')return conflictHeadline.test(title);
+ if(name==='Google News / World Protests'||name==='Google News / France'||name==='Google News / Albania')return protestHeadline.test(title);
+ return true;
+}
 const cutoff=()=>Date.now()-4*86400000;
 const priority=(title:string,age:number)=>{const hrs=Math.max(0,(Date.now()-age)/3600000);return Math.max(35,Math.min(88,Math.round(45+(important.test(title)?22:0)+(hrs<6?12:hrs<24?8:hrs<48?4:0))))};
 async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),8000);try{
@@ -88,11 +100,13 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
  const xml=(await res.text()).slice(0,900000);if(!/<rss|<rdf:RDF/i.test(xml)||!xml.includes('<item'))throw Error('Invalid or empty RSS');
  const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,src.limit+8);
  return matches.map(match=>{
-  const t=match[1];const title=field(t,'title');const description=readableExcerpt(field(t,'description'));
+  const t=match[1];const title=rssField(t,'title',600);
+  const rawDescription=rssPlainText(t.match(/<description(?:\\s[^>]*)?>([\\s\\S]*?)<\\/description>/i)?.[1]||'',1700);
+  const description=src.name.startsWith('Google News /')?googleNewsPreview(rawDescription):readableExcerpt(rawDescription);
   const link=safeUrl(field(t,'link'));const dateRaw=field(t,'pubDate')||field(t,'dc:date');const timestamp=Date.parse(dateRaw);
-  if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff())return null;
+  if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff()||!matchesGoogleSearch(src.name,title))return null;
   const cat=classify(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
-  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'News headline from a credited publisher RSS feed. Open the original article for the full reporting.',score,level,timestamp:new Date(timestamp).toISOString(),source:src.name,url:link,...media,details:[`Published by: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
+  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'Η πηγή δεν παρέχει αναλυτική περίληψη. Άνοιξε το αρχικό άρθρο για πλήρες ρεπορτάζ.',score,level,timestamp:new Date(timestamp).toISOString(),source:src.name,url:link,...media,details:[`Published by: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
  }).filter((x):x is Signal=>x!==null).slice(0,src.limit)
  }finally{clearTimeout(timer)}}
 
