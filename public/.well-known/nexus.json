@@ -1,0 +1,14 @@
+{
+  "schema": "nexus.v1",
+  "appId": "glitchradargithub",
+  "name": "GLITCH",
+  "url": "https://glitch-radar-github.vercel.app",
+  "capabilities": [
+    "world-news",
+    "markets",
+    "trend-links"
+  ],
+  "notifications": [],
+  "connection": "read-only",
+  "notice": "Public integration handshake only. No breaking-news signals are fabricated."
+}
