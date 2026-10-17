@@ -48,27 +48,41 @@ async function myMemoryTranslate(text:string):Promise<string>{
 }
 
 async function one(item:TranslationItem):Promise<Translated>{
- const titleGreek=hasGreek(item.title),summaryGreek=hasGreek(item.summary);
+ const titleGreek=hasGreek(item.title),summaryGreek=!item.summary||hasGreek(item.summary);
  if(titleGreek&&summaryGreek)return {...item,translated:true,provider:'original'};
- const split=(text:string,max=380)=>{
-  const chunks:string[]=[];let remaining=text.trim();
-  while(remaining.length>max){const i=remaining.lastIndexOf(' ',max);const cut=i>max*.55?i:max;chunks.push(remaining.slice(0,cut).trim());remaining=remaining.slice(cut).trim()}
-  if(remaining)chunks.push(remaining);
-  return chunks;
- };
- const titleChunks=!titleGreek&&item.title?split(item.title):[];
- const summaryChunks=!summaryGreek&&item.summary?split(item.summary):[];
- const fields=[...titleChunks,...summaryChunks];
- try{
-  let translations:string[],provider:'google-cloud'|'mymemory';
-  if(process.env.GOOGLE_TRANSLATE_API_KEY){translations=await googleTranslate(fields);provider='google-cloud';}
-  else{translations=await Promise.all(fields.map(myMemoryTranslate));provider='mymemory';}
-  const title=titleGreek?item.title:translations.slice(0,titleChunks.length).join(' ');
-  const summary=summaryGreek?item.summary:translations.slice(titleChunks.length).join(' ');
-  return {id:item.id,title,summary,translated:true,provider};
- }catch(error){
-  return {...item,translated:false,provider:'original',error:error instanceof Error?error.message:'Translation unavailable'};
+ // Headline comes first: a failed, long RSS description must never discard a good title.
+ const translate=(text:string)=>process.env.GOOGLE_TRANSLATE_API_KEY
+   ?googleTranslate([text]).then(x=>x[0]).catch(()=>myMemoryTranslate(text))
+   :myMemoryTranslate(text);
+ let title=item.title,summary=item.summary;
+ let titleOk=titleGreek,summaryOk=summaryGreek;
+ let provider:'google-cloud'|'mymemory'|'original'='original';
+ try {
+  if(!titleGreek&&title){
+   const result=await translate(title.slice(0,420));
+   if(!hasGreek(result))throw new Error('Headline provider did not return Greek');
+   title=result;
+   titleOk=true;
+   provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
+  }
+ }catch{}
+ // Translate short news blurbs only; long publisher excerpts consume the entire free quota.
+ if(!summaryGreek&&summary&&titleOk){
+  try {
+   const raw=summary.slice(0,300);
+   const limit=raw.length<summary.length?raw.lastIndexOf(' '):-1;
+   const snippet=limit>190?raw.slice(0,limit):raw;
+   const result=await translate(snippet);
+   if(hasGreek(result)){
+    summary=result+(snippet.length<summary.length?'…':'');
+    summaryOk=true;
+    provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
+   }
+  }catch{}
  }
+ if(!summaryOk)summary='Δεν υπάρχει διαθέσιμη ελληνική μετάφραση της περίληψης. Διάβασε το αρχικό δημοσίευμα για πλήρες πλαίσιο.';
+ return {id:item.id,title,summary,translated:titleOk,provider,
+   ...(titleOk?{}:{error:'Η μετάφραση τίτλου δεν είναι διαθέσιμη από τον πάροχο'})};
 }
 
 export async function POST(request:NextRequest){
