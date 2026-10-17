@@ -38,9 +38,10 @@ export default function Home(){
  const [translations,setTranslations]=useState<Translations>({}),[translating,setTranslating]=useState<Record<string,boolean>>({}),[showMap,setShowMap]=useState(false),[showAll,setShowAll]=useState(false),[showSources,setShowSources]=useState(false);
  const [coverageChecks,setCoverageChecks]=useState<Record<string,{checking?:boolean;articles?:number;message?:string;sourceUrl?:string}>>({});
  const t=(el:string,_en:string)=>el;
- useEffect(()=>{setTheme(localRead('glitch-v11-theme','dark'));setSaved(localRead('glitch-vnext-saved',[]));const last=localRead<string|null>('glitch-vnext-visit',null);setLastVisit(last);localStorage.setItem('glitch-vnext-visit',JSON.stringify(new Date().toISOString()));setHydrated(true);},[]);
+ useEffect(()=>{setTranslations(localRead<Translations>('glitch-v12-translations',{}));setTheme(localRead('glitch-v11-theme','dark'));setSaved(localRead('glitch-vnext-saved',[]));const last=localRead<string|null>('glitch-vnext-visit',null);setLastVisit(last);localStorage.setItem('glitch-vnext-visit',JSON.stringify(new Date().toISOString()));setHydrated(true);},[]);
  useEffect(()=>{if(hydrated){localStorage.setItem('glitch-v11-theme',JSON.stringify(theme));document.documentElement.dataset.theme=theme;document.documentElement.lang='el';}},[theme,hydrated]);
  useEffect(()=>{if(hydrated)localStorage.setItem('glitch-vnext-saved',JSON.stringify(saved));},[saved,hydrated]);
+ useEffect(()=>{if(hydrated){const latest=Object.entries(translations).slice(-250);localStorage.setItem('glitch-v12-translations',JSON.stringify(Object.fromEntries(latest)));}},[translations,hydrated]);
  const loadFeed=useCallback(async()=>{setRefreshing(true);setFeedError('');try{setFeed(await fetchSafe<Feed>('/api/feed?refresh='+Date.now(),26000))}catch(e){setFeedError(e instanceof Error?e.message:'Source unavailable')}finally{setRefreshing(false)}},[]);
  useEffect(()=>{
   void loadFeed();
