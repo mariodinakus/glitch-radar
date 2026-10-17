@@ -5,6 +5,8 @@ const feeds:NewsSource[]=[
  {name:'UN News',url:'https://news.un.org/feed/subscribe/en/news/all/rss.xml',category:'world',limit:38},
  {name:'UN News SDGs',url:'https://news.un.org/feed/subscribe/en/news/topic/sdgs/feed/rss.xml',category:'world',limit:20},
  {name:'BBC World',url:'https://feeds.bbci.co.uk/news/world/rss.xml',category:'world',limit:24},
+ {name:'BBC Europe',url:'https://feeds.bbci.co.uk/news/world/europe/rss.xml',category:'world',limit:30},
+ {name:'BBC Middle East',url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',category:'world',limit:26},
  {name:'BBC Business',url:'https://feeds.bbci.co.uk/news/business/rss.xml',category:'economy',limit:22},
  {name:'BBC Technology',url:'https://feeds.bbci.co.uk/news/technology/rss.xml',category:'tech',limit:22},
  {name:'BBC Science',url:'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',category:'science',limit:20},
@@ -12,6 +14,12 @@ const feeds:NewsSource[]=[
  {name:'BBC Culture',url:'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',category:'culture',limit:18},
  {name:'BBC Sport',url:'https://feeds.bbci.co.uk/sport/rss.xml',category:'sports',limit:18},
  {name:'Guardian World',url:'https://www.theguardian.com/world/rss',category:'world',limit:20},
+ {name:'Guardian Europe',url:'https://www.theguardian.com/world/europe-news/rss',category:'world',limit:24},
+ {name:'Guardian Americas',url:'https://www.theguardian.com/us-news/rss',category:'world',limit:18},
+ {name:'Google News / World Protests',url:'https://news.google.com/rss/search?q=protests%20OR%20demonstrations%20OR%20riots%20when%3A2d&hl=en-GB&gl=GB&ceid=GB%3Aen',category:'world',limit:30},
+ {name:'Google News / France',url:'https://news.google.com/rss/search?q=France%20protests%20OR%20demonstrations%20when%3A2d&hl=en-GB&gl=GB&ceid=GB%3Aen',category:'world',limit:24},
+ {name:'Google News / Albania',url:'https://news.google.com/rss/search?q=Albania%20protests%20OR%20unrest%20when%3A2d&hl=en-GB&gl=GB&ceid=GB%3Aen',category:'world',limit:24},
+ {name:'Google News / World Conflicts',url:'https://news.google.com/rss/search?q=war%20OR%20airstrike%20OR%20ceasefire%20when%3A2d&hl=en-GB&gl=GB&ceid=GB%3Aen',category:'world',limit:34},
  {name:'Guardian Environment',url:'https://www.theguardian.com/environment/rss',category:'climate',limit:20},
  {name:'Guardian Technology',url:'https://www.theguardian.com/technology/rss',category:'tech',limit:20},
  {name:'Guardian Science',url:'https://www.theguardian.com/science/rss',category:'science',limit:18},
@@ -44,7 +52,7 @@ function classify(base:Category,title:string,summary:string):Category{const txt=
 const cutoff=()=>Date.now()-4*86400000;
 const priority=(title:string,age:number)=>{const hrs=Math.max(0,(Date.now()-age)/3600000);return Math.max(35,Math.min(88,Math.round(45+(important.test(title)?22:0)+(hrs<6?12:hrs<24?8:hrs<48?4:0))))};
 async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),8000);try{
- const res=await fetch(src.url,{next:{revalidate:900},signal:ctl.signal,headers:{'Accept':'application/rss+xml, application/xml, text/xml, */*','User-Agent':'GLITCH Radar/2.0 (+public RSS news index)'}});
+ const res=await fetch(src.url,{next:{revalidate:300},signal:ctl.signal,headers:{'Accept':'application/rss+xml, application/xml, text/xml, */*','User-Agent':'GLITCH Radar/2.0 (+public RSS news index)'}});
  if(!res.ok)throw Error(`RSS upstream HTTP ${res.status}`);
  const xml=(await res.text()).slice(0,900000);if(!/<rss|<rdf:RDF/i.test(xml)||!xml.includes('<item'))throw Error('Invalid or empty RSS');
  const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,src.limit+8);
@@ -59,7 +67,7 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
 
 type SpaceNews={results?:{id:number;title:string;url:string;summary:string;published_at:string;news_site:string;updated_at?:string}[]};
 async function spaceflight():Promise<Signal[]>{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),8000);try{
- const r=await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=35',{next:{revalidate:900},signal:ctl.signal});if(!r.ok)throw Error('Spaceflight API '+r.status);
+ const r=await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=35',{next:{revalidate:300},signal:ctl.signal});if(!r.ok)throw Error('Spaceflight API '+r.status);
  const data=await r.json() as SpaceNews;
  return (data.results||[]).filter(a=>a.title&&safeUrl(a.url)&&Number.isFinite(Date.parse(a.published_at))&&Date.parse(a.published_at)>=cutoff()).slice(0,30).map(a=>{
  const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,800),summary:readableExcerpt(clean(a.summary,2000))||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
