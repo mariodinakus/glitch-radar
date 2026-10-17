@@ -42,6 +42,37 @@ const dec=(s:string)=>s.replace(/&#x([0-9a-f]+);/gi,(_,v)=>String.fromCodePoint(
  '&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'",'&nbsp;':' ','&rsquo;':'’','&lsquo;':'‘','&ldquo;':'“','&rdquo;':'”','&mdash;':'—','&ndash;':'–','&hellip;':'…'
  } as Record<string,string>)[v]||v);
 const field=(s:string,tag:string)=>{const safe=tag.replace(':','\\:');const r=new RegExp('<'+safe+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/'+safe+'>','i');return dec(clean(s.match(r)?.[1]||'',2000))};
+
+/** Source-provided images only; no guessed images or generic stock replacements. */
+function imageFromItem(item:string):{imageUrl?:string;imageCredit?:string}{
+ const tags=[...item.matchAll(/<(media:content|media:thumbnail|enclosure|image|img)\b([^>]*)>/gi)].map(x=>({tag:x[1].toLowerCase(),attrs:x[2]}));
+ const candidates:{url:string;weight:number}[]=[];
+ for(const {tag,attrs} of tags){
+  const raw=attrs.match(/\b(?:url|src)\s*=\s*(["'])(.*?)\1/i)?.[2];
+  if(!raw)continue;
+  const type=attrs.match(/\btype\s*=\s*(["'])(.*?)\1/i)?.[2]||'';
+  const medium=attrs.match(/\bmedium\s*=\s*(["'])(.*?)\1/i)?.[2]||'';
+  if(tag==='enclosure'&&type&&!type.toLowerCase().startsWith('image/'))continue;
+  if(tag==='media:content'&&type&&!type.toLowerCase().startsWith('image/')&&medium.toLowerCase()!=='image')continue;
+  const parsed=safeUrl(dec(raw).replace(/&amp;/g,'&'));
+  if(!parsed)continue;
+  const width=Number(attrs.match(/\bwidth\s*=\s*(["'])(\d+)\1/i)?.[2]||0);
+  if(width>0&&width<220)continue;
+  if(/\.(?:svg|gif)(?:[?#]|$)/i.test(parsed))continue;
+  const weight=(tag==='media:content'?30:tag==='enclosure'?25:tag==='media:thumbnail'?20:0)+(width>=700?10:width>=400?5:0);
+  candidates.push({url:parsed,weight});
+ }
+ // Some feeds embed HTML as escaped text in description/content:encoded.
+ const desc=String(item.match(/<(?:description|content:encoded)(?:\s[^>]*)?>([\s\S]*?)<\/(?:description|content:encoded)>/i)?.[1]||'');
+ const markup=dec(desc);
+ const embedded=markup.match(/<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/i)?.[2];
+ const embeddedUrl=embedded?safeUrl(dec(embedded).replace(/&amp;/g,'&')):null;
+ if(embeddedUrl&&!/\.(?:svg|gif)(?:[?#]|$)/i.test(embeddedUrl))candidates.push({url:embeddedUrl,weight:4});
+ const best=candidates.sort((a,b)=>b.weight-a.weight)[0];
+ const credit=field(item,'media:credit')||field(item,'media:copyright');
+ return best?{imageUrl:best.url,imageCredit:credit||undefined}:{};
+}
+
 const hash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)};
 const safeUrl=(s:string)=>{try{const x=new URL(s);if(x.protocol==='https:')return x.toString()}catch{}return null};
 const important=/\b(first ever|first time|record[- ]breaking|unprecedented|breakthrough|discovered|discovery|rare|mystery|mysterious|historic|surprise|unexpected|warning|emergency|alert|massive|major|crisis|scientists discover|new evidence|astonishing|shock|unusual|incredible|global|historic high|all-time high)\b/i;
@@ -60,17 +91,17 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
   const t=match[1];const title=field(t,'title');const description=readableExcerpt(field(t,'description'));
   const link=safeUrl(field(t,'link'));const dateRaw=field(t,'pubDate')||field(t,'dc:date');const timestamp=Date.parse(dateRaw);
   if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff())return null;
-  const cat=classify(src.category,title,description);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
-  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'News headline from a credited publisher RSS feed. Open the original article for the full reporting.',score,level,timestamp:new Date(timestamp).toISOString(),source:src.name,url:link,details:[`Published by: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
+  const cat=classify(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
+  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'News headline from a credited publisher RSS feed. Open the original article for the full reporting.',score,level,timestamp:new Date(timestamp).toISOString(),source:src.name,url:link,...media,details:[`Published by: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
  }).filter((x):x is Signal=>x!==null).slice(0,src.limit)
  }finally{clearTimeout(timer)}}
 
-type SpaceNews={results?:{id:number;title:string;url:string;summary:string;published_at:string;news_site:string;updated_at?:string}[]};
+type SpaceNews={results?:{id:number;title:string;url:string;summary:string;published_at:string;news_site:string;image_url?:string;updated_at?:string}[]};
 async function spaceflight():Promise<Signal[]>{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),8000);try{
  const r=await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=35',{next:{revalidate:300},signal:ctl.signal});if(!r.ok)throw Error('Spaceflight API '+r.status);
  const data=await r.json() as SpaceNews;
  return (data.results||[]).filter(a=>a.title&&safeUrl(a.url)&&Number.isFinite(Date.parse(a.published_at))&&Date.parse(a.published_at)>=cutoff()).slice(0,30).map(a=>{
- const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,800),summary:readableExcerpt(clean(a.summary,2000))||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
+ const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,800),imageUrl:safeUrl(a.image_url||'' )||undefined,summary:readableExcerpt(clean(a.summary,2000))||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
  })
  }finally{clearTimeout(timer)}}
 export async function getNewsProviders():Promise<{signals:Signal[];statuses:SourceStatus[]}>{
