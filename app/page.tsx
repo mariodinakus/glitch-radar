@@ -84,13 +84,13 @@ export default function Home(){
  // Translate the actually visible source content. Keep originals and label failures explicitly.
  useEffect(()=>{
   const targets:{id:string;title:string;summary:string}[]=[];
-  if(tab==='today')targets.push(...displayed.slice(0,12).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,1000)})));
+  if(tab==='today'){if(lead)targets.push({id:lead.id,title:lead.title,summary:lead.summary.slice(0,550)});targets.push(...displayed.slice(0,12).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,400)})));}
   if(tab==='saved')targets.push(...saved.slice(0,10).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,900)})));
   if(tab==='blindspots')targets.push(...(feed?.blindspots?.candidates||[]).slice(0,10).map(s=>({id:s.signalId,title:s.title,summary:''})));
   if(tab==='markets')targets.push(...(markets?.quotes||[]).filter(m=>marketVenue==='all'||m.venue===marketVenue).slice(0,14).map(m=>({id:'market:'+m.id,title:m.question,summary:''})));
   if(tab==='trends')targets.push(...(trends?.trends||[]).slice(0,16).map(v=>({id:'trend:'+v.id,title:v.name,summary:''})));
   if(selected)targets.push({id:selected.id,title:selected.title,summary:selected.summary.slice(0,1100)});
-  const pending=targets.filter(v=>v.title&&!isGreek(v.title)&&!translations[v.id]&&!translating[v.id]).slice(0,4);
+  const pending=targets.filter((v,i)=>v.title&&targets.findIndex(x=>x.id===v.id)===i&&(!isGreek(v.title)||(!!v.summary&&!isGreek(v.summary)))&&!translations[v.id]&&!translating[v.id]).slice(0,4);
   if(!pending.length||translationBusy.current)return;
   translationBusy.current=true;
   const keys=pending.map(v=>v.id);
@@ -103,10 +103,17 @@ export default function Home(){
    }catch{setTranslations(old=>({...old,...Object.fromEntries(pending.map(v=>[v.id,{...v,translated:false}]))}));}
    finally{translationBusy.current=false;setTranslating(old=>{const next={...old};keys.forEach(id=>delete next[id]);return next})}
   })();
- },[tab,displayed,saved,feed,markets,marketVenue,trends,selected,translations,translating]);
+ },[tab,lead,displayed,saved,feed,markets,marketVenue,trends,selected,translations,translating]);
  const translatedFor=(id:string,original:string)=>translations[id]?.translated?translations[id].title:original;
  const originalNote=(id:string,title:string)=>!isGreek(title)&&translations[id]?.translated!==true;
- const textFor=(s:Signal,field:'title'|'summary')=>translations[s.id]?.translated?translations[s.id][field]:s[field];
+ const textFor=(s:Signal,field:'title'|'summary')=>{
+  const translated=translations[s.id];
+  if(translated?.translated)return translated[field];
+  if(field==='summary'&&!isGreek(s.summary)&&!isGreek(s.title))return translated?.translated===false
+    ?'Δεν διατίθεται ελληνική μετάφραση της περίληψης. Δες το αρχικό άρθρο.'
+    :'Η σύνοψη μεταφράζεται στα ελληνικά…';
+  return s[field];
+ };
  const why=(s:Signal)=>lang==='en'?s.reason:({earth:'Καταγράφηκε σεισμικό γεγονός από το USGS. Το μέγεθος δεν τεκμηριώνει από μόνο του ζημιές ή επιπτώσεις.',nature:'Η NASA EONET έχει καταγράψει ενεργό φυσικό φαινόμενο. Η παρουσία στον κατάλογο δεν σημαίνει αυτόματα μεγάλη καταστροφή.',space:'Εντοπίστηκε νέα αναφορά σχετική με το διάστημα ή τον διαστημικό καιρό. Η πηγή εξηγεί τη φύση της καταγραφής.',economy:'Η είδηση σχετίζεται με οικονομικές εξελίξεις. Για συμπέρασμα σχετικά με τις επιπτώσεις απαιτούνται περισσότερα δεδομένα.',world:'Το θέμα καταγράφηκε σε ειδησεογραφική ή θεσμική πηγή. Ελέγχουμε το αρχικό δημοσίευμα πριν αποδώσουμε βαρύτητα ή αιτιότητα.',tech:'Πρόκειται για νεότερη τεχνολογική εξέλιξη ή ένδειξη ενδιαφέροντος. Η δημοτικότητα δεν αποδεικνύει αξιοπιστία.',ai:'Πρόκειται για εξέλιξη στην τεχνητή νοημοσύνη. Αξιολογούμε χωριστά ισχυρισμούς, αποτελέσματα και ανεξάρτητες δοκιμές.',health:'Πιθανή εξέλιξη στον χώρο της υγείας. Για προσωπικές αποφάσεις απαιτείται επαλήθευση από αρμόδιες πηγές.',climate:'Η εξέλιξη σχετίζεται με το κλίμα ή το περιβάλλον· χρειάζεται πλαίσιο και σύγκριση με μακροχρόνια δεδομένα.',science:'Το θέμα προέρχεται από ερευνητική ή ειδησεογραφική πηγή. Η καταχώριση εργασίας δεν ισοδυναμεί με επιστημονική επιβεβαίωση.',energy:'Σχετική εξέλιξη με ενέργεια ή υποδομές. Οι επιπτώσεις εξαρτώνται από το μέγεθος και την περιοχή.',sports:'Πρόσφατη εξέλιξη στον αθλητισμό, σύμφωνα με την αναφερόμενη πηγή.',culture:'Πρόσφατη πολιτιστική εξέλιξη, σύμφωνα με την αναφερόμενη πηγή.'} as Record<string,string>)[s.category]||'Εντοπίστηκε νέα εγγραφή από αναφερόμενη πηγή. Η σημασία της χρειάζεται περαιτέρω αξιολόγηση.';
  const bookmark=(s:Signal)=>setSaved(old=>old.some(x=>x.id===s.id)?old.filter(x=>x.id!==s.id):[s,...old].slice(0,100));
  const marked=(id:string)=>saved.some(s=>s.id===id);
