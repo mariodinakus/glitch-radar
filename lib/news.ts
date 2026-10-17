@@ -101,7 +101,7 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
  const matches=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi)].slice(0,src.limit+8);
  return matches.map(match=>{
   const t=match[1];const title=rssField(t,'title',600);
-  const rawDescription=rssPlainText(t.match(/<description(?:\\s[^>]*)?>([\\s\\S]*?)<\\/description>/i)?.[1]||'',1700);
+  const rawDescription=rssPlainText(t.match(/<description(?:\s[^>]*)?>([\s\S]*?)<\/description>/i)?.[1]||'',1700);
   const description=src.name.startsWith('Google News /')?googleNewsPreview(rawDescription):readableExcerpt(rawDescription);
   const link=safeUrl(field(t,'link'));const dateRaw=field(t,'pubDate')||field(t,'dc:date');const timestamp=Date.parse(dateRaw);
   if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff()||!matchesGoogleSearch(src.name,title))return null;
