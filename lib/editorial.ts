@@ -8,7 +8,7 @@ export type EventKind='conflict'|'protest'|'politics'|'disaster'|'economy'|'othe
 export type EditorialContext={kind:EventKind;label:string;why:string;impact:string;limits:string};
 
 const protest=/\b(protests?|protesters?|demonstrat(?:ion|ions|ors|or)|march(?:es|ers)?|rall(?:y|ies)|riots?|unrest|general strike|anti-government|sit-in)\b|διαδηλ|διαμαρτυρ|συλλαλητ|απεργ|επεισόδια|επεισοδια|ταραχ|κινητοποι|συγκέντρωση διαμαρτυρίας|πορεία διαμαρτυρίας/iu;
-const conflict=/\b(wars?|invasion|airstrikes?|missiles?|shelling|bombings?|ceasefire|armed conflict|troops|military offensives?|frontline|drone strikes?|hostages?|battlefield|fighting|killed in attack)\b|πόλεμ|εισβολ|πυραυλ|βομβαρδ|εκεχειρ|στρατιωτικ|μάχες|όμηροι|επίθεση με drone/iu;
+const conflict=/\b(invasion|airstrikes?|missile attacks?|shelling|bombings?|ceasefire|armed conflict|military offensive|troops advance|frontline|drone strikes?|hostage release|battlefield|civil war|war in|ukraine war|gaza war|iran war|war against)\b|πόλεμος στ|πόλεμ[οου] στην|εισβολ|πυραυλικ[ήη] επίθεση|βομβαρδ|εκεχειρ|στρατιωτικ[ήη] επιχείρησ|μάχες στ|επίθεση με drone/iu;
 const politics=/\b(coups?|resignations?|impeachment|snap election|government collapses?|political crisis|parliament dissolv|presidential election|constitutional crisis)\b|πραξικόπημ|παραίτησ|εκλογ|κυβερνητικ[ήη] κρίσ|πρόωρ[εέ]ς κάλπες/iu;
 const disaster=/\b(earthquakes?|tsunamis?|hurricanes?|wildfires?|floods?|disaster|evacuation|eruption)\b|σεισμ|πυρκαγι|πλημμύρ|εκκένωσ|ηφαίστ/iu;
 const economy=/\b(financial crisis|bank failure|recession|debt crisis|market crash|inflation shock)\b|οικονομικ[ήη] κρίσ|χρεοκοπ|ύφεσ|τραπεζικ[ήη] κρίσ/iu;
@@ -16,6 +16,7 @@ const evidenceCause=/\b(because of|following|after|over|against|amid|sparked by|
 
 export function eventKind(s:Pick<Signal,'title'|'summary'|'category'>):EventKind {
  const headline=s.title;
+ if(s.category==='culture'||/\b(review|theater|theatre|movie|film|novel|book|trailer|thriller|fiction|series|concert|album|performance|arts desk)\b|ταινία|κριτική|θεατρικ|μυθιστόρημα|παράσταση/iu.test(headline))return 'other';
  if(protest.test(headline))return 'protest';
  if(conflict.test(headline))return 'conflict';
  if(politics.test(headline))return 'politics';
@@ -32,19 +33,15 @@ export function editorialPriority(s:Signal):number {
  const weight:Record<EventKind,number>={conflict:58,protest:55,politics:43,disaster:35,economy:35,other:0};
  const reliable=(s.confidence==='publisher'||s.confidence==='reported')?10:0;
  // Community hype, generic RSS adjectives and non-news catalogs never trump timely reporting.
- return age+weight[kind]+(s.category==='world'?18:0)+reliable+s.score*.23-(hrs>96?100:0);
+ return age+weight[kind]+(s.category==='world'?18:0)+reliable+s.score*.23-(s.source.startsWith('Google News /')?26:0)-(hrs>96?100:0);
 }
 
 export function getEditorialContext(s:Signal):EditorialContext {
  const kind=eventKind(s);
  const causeMentioned=evidenceCause.test(s.title+' '+s.summary);
- const sourceText=(s.title+' · '+s.summary).replace(/\s+/g,' ').trim();
- const causeExcerpt=sourceText.match(/(?:\b(?:over|against|following|amid|after|due to|because of|in response to|sparked by|demanding|opposing)\b|(?:λόγω|εξαιτίας|με αφορμή|διαμαρτυρόμεν(?:οι|ες)? για|κατά της|εναντίον της))\s+([^.!?;:·]{8,155})/iu);
- const excerpt=causeExcerpt?.[1]?.trim().split(/[,—–]/)[0]?.split(/\s+/).slice(0,16).join(' ').trim();
- const sourceContext=excerpt&&excerpt.length>8
-  ? 'Στο διαθέσιμο απόσπασμα αναφέρεται ως πλαίσιο: «'+excerpt+'». Αυτό δεν αποδεικνύει από μόνο του αιτιακή σχέση.'
-  : 'Ο τίτλος και η σύντομη περίληψη δεν επιβεβαιώνουν το ακριβές αίτιο. Χρειάζεται έλεγχος του πλήρους ρεπορτάζ.';
- const reasonPrefix=causeMentioned?sourceContext:'Δεν υπάρχει επαρκής τεκμηρίωση του αιτίου στο απόσπασμα της είδησης.';
+ const reasonPrefix=causeMentioned
+  ? 'Η δημοσίευση αναφέρει ένα γεγονός ή αίτημα ως πλαίσιο. Η συγκεκριμένη αιτιώδης σχέση χρειάζεται επιβεβαίωση από το πλήρες άρθρο.'
+  : 'Η διαθέσιμη περίληψη δεν αποδεικνύει το ακριβές αίτιο. Δες το πλήρες ρεπορτάζ.';
  const limits='Πιθανό σενάριο — όχι βεβαιωμένη εξέλιξη ή πρόβλεψη. Η διαθέσιμη ροή δεν υποκαθιστά το πλήρες άρθρο.';
  const configurations:Record<EventKind,{label:string;why:string;impact:string}>={
   protest:{
