@@ -32,7 +32,7 @@ export function editorialPriority(s:Signal):number {
  const weight:Record<EventKind,number>={conflict:58,protest:55,politics:43,disaster:35,economy:35,other:0};
  const reliable=(s.confidence==='publisher'||s.confidence==='reported')?10:0;
  // Community hype, generic RSS adjectives and non-news catalogs never trump timely reporting.
- return age+weight[kind]+reliable+s.score*.23-(hrs>96?100:0);
+ return age+weight[kind]+(s.category==='world'?18:0)+reliable+s.score*.23-(hrs>96?100:0);
 }
 
 export function getEditorialContext(s:Signal):EditorialContext {
