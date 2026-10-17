@@ -38,9 +38,9 @@ export function editorialPriority(s:Signal):number {
 export function getEditorialContext(s:Signal):EditorialContext {
  const kind=eventKind(s);
  const causeMentioned=evidenceCause.test(s.title+' '+s.summary);
- const sourceText=(s.title+' · '+s.summary).replace(/\\s+/g,' ').trim();
- const causeExcerpt=sourceText.match(/(?:\\b(?:over|against|following|amid|after|due to|because of|in response to|sparked by|demanding|opposing)\\b|(?:λόγω|εξαιτίας|με αφορμή|διαμαρτυρόμεν(?:οι|ες)? για|κατά της|εναντίον της))\\s+([^.!?;:·]{8,155})/iu);
- const excerpt=causeExcerpt?.[1]?.trim().split(/[,—–]/)[0]?.split(/\\s+/).slice(0,16).join(' ').trim();
+ const sourceText=(s.title+' · '+s.summary).replace(/\s+/g,' ').trim();
+ const causeExcerpt=sourceText.match(/(?:\b(?:over|against|following|amid|after|due to|because of|in response to|sparked by|demanding|opposing)\b|(?:λόγω|εξαιτίας|με αφορμή|διαμαρτυρόμεν(?:οι|ες)? για|κατά της|εναντίον της))\s+([^.!?;:·]{8,155})/iu);
+ const excerpt=causeExcerpt?.[1]?.trim().split(/[,—–]/)[0]?.split(/\s+/).slice(0,16).join(' ').trim();
  const sourceContext=excerpt&&excerpt.length>8
   ? 'Στο διαθέσιμο απόσπασμα αναφέρεται ως πλαίσιο: «'+excerpt+'». Αυτό δεν αποδεικνύει από μόνο του αιτιακή σχέση.'
   : 'Ο τίτλος και η σύντομη περίληψη δεν επιβεβαιώνουν το ακριβές αίτιο. Χρειάζεται έλεγχος του πλήρους ρεπορτάζ.';
