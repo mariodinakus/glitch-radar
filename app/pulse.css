@@ -237,3 +237,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--pulse-red);outline-
 .pulse-changes>p{font-size:9px;color:#8c8792;line-height:1.5;margin:11px 0 0}
 @media(max-width:1100px){.pulse-change-list{grid-template-columns:1fr}.pulse-change-list>button{padding:10px 12px}}
 @media(max-width:760px){.pulse-changes{padding:13px 12px}.pulse-changes-head h2{font-size:16px}}
+
+
+/* Relative publisher waves measured from earliest story in available sample. */
+.pulse-wave-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:17px 0 22px}
+.pulse-wave-summary>div{display:flex;flex-direction:column;gap:7px;padding:13px 10px;border-radius:7px;border:1px solid #343541;background:#202129}
+.pulse-wave-summary strong{font-size:23px;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.05em}
+.pulse-wave-summary span{color:#aaa5b1;font-size:9px;font-weight:850;line-height:1.4;letter-spacing:.015em}
+.pulse-original-note{display:block;color:#e3aab9;font-size:9px;line-height:1.5;margin-top:7px}
