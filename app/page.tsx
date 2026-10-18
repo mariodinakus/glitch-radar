@@ -1,205 +1,291 @@
 'use client';
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {Activity,ArrowDownRight,ArrowRight,ArrowUpRight,Bookmark,BookmarkCheck,Check,ChevronDown,ChevronRight,Clock3,Compass,ExternalLink,EyeOff,Globe2,Info,LineChart,LoaderCircle,Moon,Newspaper,RefreshCcw,Search,Share2,ShieldCheck,SlidersHorizontal,Sun,TrendingUp,Wallet2,X, Zap} from 'lucide-react';
-import dynamic from 'next/dynamic';
-import type {Feed,Signal,Category} from '@/lib/types';
-import {eventKind,editorialPriority,getEditorialContext,isMajorEvent} from '@/lib/editorial';
-import {SignalLens} from '@/components/SignalLens';
-import {NewsroomNav} from '@/components/NewsroomNav';
-import {nowTopics,newsTopic,nowTopicCounts,withinNewsWindow} from '@/lib/now-topics';
+import {
+ Activity,ArrowLeft,ArrowRight,ArrowUpRight,Bookmark,BookmarkCheck,Building2,
+ Check,ChevronRight,Clock3,Compass,ExternalLink,Eye,Filter,Globe2,
+ Info,Layers3,MapPin,Menu,Network,Radio,RefreshCw,Search,ShieldCheck,
+ Star,TrendingUp,Users2,X
+} from 'lucide-react';
+import type {Feed,Signal} from '@/lib/types';
+import {nowTopics,newsTopic} from '@/lib/now-topics';
 import type {NowTopic} from '@/lib/now-topics';
-import type {MarketsPayload,MarketQuote} from '@/lib/markets';
-import type {Blindspot} from '@/lib/blindspots';
-import type {TrendsResult,Trend,TrendRegion} from '@/lib/trends';
-const WorldGlobe=dynamic(()=>import('@/components/WorldGlobe'),{ssr:false});
-type Tab='today'|'trends'|'markets'|'blindspots'|'saved';type Lang='el'|'en';type Theme='light'|'dark';type Translations=Record<string,{title:string;summary:string;translated:boolean}>;
-const allTabs:{key:Tab;el:string;en:string;icon:typeof Activity}[]=[{key:'today',el:'Σήμερα',en:'Today',icon:Newspaper},{key:'trends',el:'Τάσεις',en:'Trends',icon:TrendingUp},{key:'markets',el:'Αγορές',en:'Markets',icon:LineChart},{key:'blindspots',el:'Στη σκιά',en:'Overlooked',icon:EyeOff},{key:'saved',el:'Αποθηκευμένα',en:'Saved',icon:Bookmark}];
-const categories:{key:Category|string;el:string;en:string}[]=[{key:'all',el:'Όλα',en:'All'},{key:'world',el:'Κόσμος',en:'World'},{key:'economy',el:'Οικονομία',en:'Economy'},{key:'ai',el:'AI',en:'AI'},{key:'tech',el:'Τεχνολογία',en:'Tech'},{key:'science',el:'Επιστήμη',en:'Science'},{key:'earth',el:'Σεισμοί',en:'Earthquakes'},{key:'nature',el:'Φύση',en:'Nature'},{key:'space',el:'Διάστημα',en:'Space'},{key:'health',el:'Υγεία',en:'Health'},{key:'climate',el:'Κλίμα',en:'Climate'},{key:'energy',el:'Ενέργεια',en:'Energy'},{key:'culture',el:'Πολιτισμός',en:'Culture'},{key:'sports',el:'Αθλητικά',en:'Sports'}];
-const regions:{id:TrendRegion;el:string;en:string}[]=[{id:'WORLD',el:'Πολλές χώρες',en:'Multi-country'},{id:'GR',el:'Ελλάδα',en:'Greece'},{id:'US',el:'ΗΠΑ',en:'USA'},{id:'GB',el:'Βρετανία',en:'UK'},{id:'DE',el:'Γερμανία',en:'Germany'},{id:'FR',el:'Γαλλία',en:'France'},{id:'JP',el:'Ιαπωνία',en:'Japan'},{id:'IN',el:'Ινδία',en:'India'}];
-const isGreek=(v:string)=>/[\u0370-\u03ff\u1f00-\u1fff]/.test(v);
-const time=(v:string,lang:Lang)=>{const x=Date.parse(v);if(!Number.isFinite(x))return '—';return new Intl.DateTimeFormat(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}).format(x)};
-const since=(v:string,lang:Lang)=>{const diff=Date.now()-Date.parse(v);if(!Number.isFinite(diff)||diff<0)return '—';const mins=Math.floor(diff/60000),hours=Math.floor(diff/3600000);return mins<60?`${mins}${lang==='el'?'λ':'m'}`:hours<24?`${hours}${lang==='el'?'ω':'h'}`:`${Math.floor(hours/24)}${lang==='el'?'η':'d'}`};
-const percent=(v:number)=>`${Math.round(v*100)}%`;
-const compact=(v:number|null,lang:Lang)=>v===null?'—':new Intl.NumberFormat(lang==='el'?'el-GR':'en-US',{notation:'compact',maximumFractionDigits:1}).format(v);
-const fetchSafe=async<T,>(url:string,timeout=15000):Promise<T>=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(url,{signal:c.signal});if(!r.ok)throw Error('HTTP '+r.status);return await r.json() as T}finally{clearTimeout(t)}};
-function categoryName(k:string,l:Lang){const x=categories.find(x=>x.key===k);return x?(l==='el'?x.el:x.en):k}
-function localRead<T>(key:string,fallback:T):T{try{const v=localStorage.getItem(key);return v?JSON.parse(v) as T:fallback}catch{return fallback}}
-function Context({kind='note',children}:{kind?:'note'|'warning'|'good';children:React.ReactNode}){return <div className={`context ${kind}`}><Info size={17}/><div>{children}</div></div>}
-function Empty({title,description,action}:{title:string;description:string;action?:React.ReactNode}){return <div className="empty"><div className="empty-icon"><Compass size={25}/></div><h3>{title}</h3><p>{description}</p>{action}</div>}
-function Spinner({label}:{label:string}){return <div className="loading"><LoaderCircle className="spin" size={22}/>{label}</div>}
+import {
+ actorsMentioned,buildActorRadar,buildWorldCases,mentionedDomains,opposingSides
+} from '@/lib/world-pulse';
+import type {PulseActor,StoryCase} from '@/lib/world-pulse';
+
+type Lang='el'|'en';
+type Page='pulse'|'countries'|'companies'|'watchlist';
+type Translation={title:string;summary:string;translated:boolean};
+type TranslationMap=Record<string,Translation>;
+const ui={
+ el:{
+  pulse:'Παγκόσμιος παλμός',countries:'Χώρες & θεσμοί',companies:'Πολυεθνικές',watch:'Η παρακολούθησή μου',
+  eyebrow:'GLITCH / WORLD PULSE',title:'Δες τι',titleAccent:'αλλάζει.',
+  subtitle:'Όχι άλλη μια λίστα ειδήσεων. Γεγονότα, χώρες, εταιρείες και το χρονολόγιο της παγκόσμιας επικαιρότητας — από πρωτότυπες πηγές.',
+  tracked:'Παρακολουθείς',cases:'Φάκελοι γεγονότων',reports:'Δημοσιεύσεις',actors:'Δρώντες',
+  changes:'Από την τελευταία σου επίσκεψη',sources:'Πηγές που απάντησαν',updated:'Τελευταίος έλεγχος',
+  happening:'ΣΕ ΕΞΕΛΙΞΗ',feed:'Η ΠΑΓΚΟΣΜΙΑ ΕΙΚΟΝΑ',read:'Άνοιγμα φακέλου',
+  first:'Πρώτη αναφορά',latest:'Νεότερη αναφορά',coverage:'Αναφορές από μέσα',
+  mentioned:'Ρητές αναφορές',watchBtn:'Παρακολούθηση',unwatch:'Σταμάτα παρακολούθηση',
+  noCases:'Δεν υπάρχουν σχετικά γεγονότα στο τρέχον δείγμα.',again:'Επαναφόρτωση',
+  time:'ΧΡΟΝΙΚΟ ΠΑΡΑΘΥΡΟ',search:'Αναζήτηση γεγονότων, χωρών, εταιρειών…',
+  nations:'ΧΩΡΕΣ',firms:'ΕΤΑΙΡΕΙΕΣ',institutions:'ΘΕΣΜΟΙ',viewAll:'Περισσότερα γεγονότα',
+  findings:'Τι καταγράφεται',timeline:'Χρονικό δημοσιεύσεων',domains:'Θέματα που αναφέρονται',
+  affected:'Συνδεδεμένοι δρώντες',sides:'Αντιπαράθεση στον τίτλο',sidesCaveat:'Εντοπίστηκε ρητή αντιπαράθεση στον τίτλο. Δεν αποτελεί χαρτογράφηση στρατοπέδων ή επιβεβαίωση ευθύνης.',
+  impactCaveat:'Οι θεματικές ενδείξεις βασίζονται σε λέξεις του δημοσιεύματος. Δεν μετρούν πραγματικό οικονομικό ή γεωπολιτικό αντίκτυπο.',
+  actorCaveat:'Οι εμφανίσεις μετρούν αναφορές ονομάτων, όχι εμπλοκή, συμμαχία, εταιρική έκθεση ή στάση υπέρ/κατά.',
+  groupCaveat:'Τα άρθρα ομαδοποιούνται συντηρητικά από τίτλους και χρόνο. Ενδέχεται να υπάρχουν διαφορετικοί φάκελοι για το ίδιο γεγονός ή λανθασμένες συσχετίσεις.',
+  dataset:'Τα δεδομένα είναι ένα δείγμα δημόσιων ειδησεογραφικών ροών. Απουσία αναφοράς δεν σημαίνει απουσία γεγονότος.',
+  watchNone:'Διάλεξε χώρες ή πολυεθνικές για προσωπική παρακολούθηση. Δεν απαιτείται λογαριασμός.',
+  actorSection:'Αναφορές στον παγκόσμιο Τύπο',selectActor:'Δες σχετικά γεγονότα',
+  noTranslate:'Δεν ήταν διαθέσιμη η μετάφραση· εμφανίζεται ο πρωτότυπος τίτλος.',
+  loading:'Συγχρονίζονται οι διαθέσιμες πηγές…',source:'ΠΡΩΤΟΤΥΠΗ ΠΗΓΗ',back:'Επιστροφή',
+  newest:'ΝΕΟ ΑΠΟ ΤΗΝ ΤΕΛΕΥΤΑΙΑ ΕΠΙΣΚΕΨΗ',multi:'ΠΟΛΛΑΠΛΕΣ ΠΗΓΕΣ',single:'ΜΟΝΟ ΜΙΑ ΠΗΓΗ ΣΤΟ ΔΕΙΓΜΑ',
+  noSummary:'Η πηγή δεν παρέχει ουσιαστική περίληψη. Δες το αρχικό δημοσίευμα.',
+  press:'Άνοιξε την αρχική δημοσίευση',filtered:'ΦΙΛΤΡΟ',clear:'Καθαρισμός'
+ },
+ en:{
+  pulse:'World pulse',countries:'Countries & institutions',companies:'Global companies',watch:'My watchlist',
+  eyebrow:'GLITCH / WORLD PULSE',title:'See what is',titleAccent:'changing.',
+  subtitle:'Not another news feed. Events, countries, companies, and a timeline of global developments — linked to original reporting.',
+  tracked:'Watching',cases:'Event dossiers',reports:'Published reports',actors:'Actors',
+  changes:'Since your last visit',sources:'Responding sources',updated:'Last checked',
+  happening:'HAPPENING NOW',feed:'THE GLOBAL PICTURE',read:'Explore dossier',
+  first:'First report',latest:'Latest report',coverage:'Reports by publishers',
+  mentioned:'Explicit mentions',watchBtn:'Watch',unwatch:'Unwatch',
+  noCases:'No related cases in the current source sample.',again:'Refresh',
+  time:'TIME WINDOW',search:'Search events, countries, companies…',
+  nations:'COUNTRIES',firms:'COMPANIES',institutions:'INSTITUTIONS',viewAll:'More dossiers',
+  findings:'What is reported',timeline:'Publication timeline',domains:'Themes mentioned',
+  affected:'Actors mentioned',sides:'Opposition in the headline',sidesCaveat:'Explicit opposition was detected in the headline. This does not establish alliances, responsibility, or verified geopolitical blocs.',
+  impactCaveat:'These thematic signals reflect wording in reports, not measured economic or geopolitical consequences.',
+  actorCaveat:'Mentions count names appearing in text, not involvement, alliance, corporate exposure, or political allegiance.',
+  groupCaveat:'Stories are conservatively grouped by title and time. Related events may remain separate, and clustering errors are possible.',
+  dataset:'This is a sample of public news sources. Missing coverage does not mean an event did not happen.',
+  watchNone:'Choose countries or companies to follow. No account needed.',
+  actorSection:'Mentioned in the global news sample',selectActor:'View related events',
+  noTranslate:'Translation unavailable; the original headline is displayed.',
+  loading:'Checking available news sources…',source:'ORIGINAL SOURCE',back:'Back',
+  newest:'NEW SINCE LAST VISIT',multi:'MULTIPLE PUBLISHERS',single:'ONE PUBLISHER IN SAMPLE',
+  noSummary:'No substantive summary in the source feed. Open the original article.',
+  press:'Open original report',filtered:'FILTERED BY',clear:'Clear'
+ }
+};
+const tabs:{id:Page;icon:typeof Activity}[]=[
+ {id:'pulse',icon:Activity},{id:'countries',icon:Globe2},{id:'companies',icon:Building2},{id:'watchlist',icon:Star}
+];
+const displayTime=(s:string,lang:Lang)=>new Intl.DateTimeFormat(lang==='el'?'el-GR':'en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
+const relative=(date:string,lang:Lang)=>{const x=Date.now()-Date.parse(date);if(!Number.isFinite(x)||x<0)return '—';const h=Math.floor(x/3600000);const m=Math.floor(x/60000);return h<1?String(Math.max(0,m))+(lang==='el'?'λ':'m'):h<24?String(h)+(lang==='el'?'ω':'h'):String(Math.floor(h/24))+(lang==='el'?'η':'d')};
+const hasGreek=(s:string)=>/[\u0370-\u03ff\u1f00-\u1fff]/u.test(s);
+const safeRead=<T,>(k:string,initial:T):T=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v) as T:initial}catch{return initial}};
+const trim=(s:string,n:number)=>s.length>n?s.slice(0,n).replace(/\s+\S*$/,'')+'…':s;
+const summaryUseful=(s:string)=>!!s&&s.length>35&&!/^(?:Συγκεντρωτική αναφορά|Η πηγή δεν παρέχει|Δεν υπάρχει διαθέσιμη|Δεν διατίθεται|Η σύνοψη μεταφράζεται|No substantive|English summary unavailable)/iu.test(s);
+const toTopic=(id:NowTopic,lang:Lang)=>lang==='el'?nowTopics.find(t=>t.key===id)?.label||id:({
+ all:'All',conflict:'Conflict',protest:'Protests',politics:'Politics',economy:'Economy',disaster:'Disasters',energy:'Energy',technology:'Technology & AI',science:'Science',society:'Society',other:'Other'
+} as Record<NowTopic,string>)[id];
 
 export default function Home(){
- const [tab,setTab]=useState<Tab>('today'),[theme,setTheme]=useState<Theme>('dark'),[hydrated,setHydrated]=useState(false);
- const [lang]=useState<Lang>('el');
- const translationBusy=useRef(false);
- const [feed,setFeed]=useState<Feed|null>(null),[feedError,setFeedError]=useState(''),[isRefreshing,setRefreshing]=useState(false);
- const [markets,setMarkets]=useState<MarketsPayload|null>(null),[marketError,setMarketError]=useState(''),[marketLoading,setMarketLoading]=useState(false),[marketAttempted,setMarketAttempted]=useState(false);
- const [trends,setTrends]=useState<TrendsResult|null>(null),[trendError,setTrendError]=useState(''),[trendLoading,setTrendLoading]=useState(false);
- const [region,setRegion]=useState<TrendRegion>('WORLD'),[marketVenue,setMarketVenue]=useState<'all'|'polymarket'|'kalshi'>('all');
- const [selectedTopic,setSelectedTopic]=useState<NowTopic>('all'),[nowHours,setNowHours]=useState<24|72>(24);
- const [filter,setFilter]=useState<string>('all'),[query,setQuery]=useState(''),[selected,setSelected]=useState<Signal|null>(null),[saved,setSaved]=useState<Signal[]>([]),[lastVisit,setLastVisit]=useState<string|null>(null);
- const [translations,setTranslations]=useState<Translations>({}),[translating,setTranslating]=useState<Record<string,boolean>>({}),[showMap,setShowMap]=useState(false),[showAll,setShowAll]=useState(false),[showSources,setShowSources]=useState(false);
- const [coverageChecks,setCoverageChecks]=useState<Record<string,{checking?:boolean;articles?:number;message?:string;sourceUrl?:string}>>({});
- const t=(el:string,_en:string)=>el;
- useEffect(()=>{setTranslations(localRead<Translations>('glitch-v12-translations',{}));setTheme(localRead('glitch-v11-theme','dark'));setSaved(localRead('glitch-vnext-saved',[]));const last=localRead<string|null>('glitch-vnext-visit',null);setLastVisit(last);localStorage.setItem('glitch-vnext-visit',JSON.stringify(new Date().toISOString()));setHydrated(true);},[]);
- useEffect(()=>{if(hydrated){localStorage.setItem('glitch-v11-theme',JSON.stringify(theme));document.documentElement.dataset.theme=theme;document.documentElement.lang='el';}},[theme,hydrated]);
- useEffect(()=>{if(hydrated)localStorage.setItem('glitch-vnext-saved',JSON.stringify(saved));},[saved,hydrated]);
- useEffect(()=>{if(hydrated){const latest=Object.entries(translations).slice(-250);localStorage.setItem('glitch-v12-translations',JSON.stringify(Object.fromEntries(latest)));}},[translations,hydrated]);
- const loadFeed=useCallback(async()=>{setRefreshing(true);setFeedError('');try{setFeed(await fetchSafe<Feed>('/api/feed?refresh='+Date.now(),26000))}catch(e){setFeedError(e instanceof Error?e.message:'Source unavailable')}finally{setRefreshing(false)}},[]);
+ const [lang,setLang]=useState<Lang>('el');
+ const [page,setPage]=useState<Page>('pulse');
+ const [feed,setFeed]=useState<Feed|null>(null);
+ const [err,setErr]=useState('');
+ const [fetching,setFetching]=useState(false);
+ const [hours,setHours]=useState<24|72>(72);
+ const [topic,setTopic]=useState<NowTopic>('all');
+ const [query,setQuery]=useState('');
+ const [actorId,setActorId]=useState<string|null>(null);
+ const [selected,setSelected]=useState<StoryCase|null>(null);
+ const [watched,setWatched]=useState<string[]>([]);
+ const [lastVisit,setLastVisit]=useState<string|null>(null);
+ const [translations,setTranslations]=useState<TranslationMap>({});
+ const [showAll,setShowAll]=useState(false);
+ const [ready,setReady]=useState(false);
+ const busy=useRef(false);
+ const lastKey=useRef('');
+ const t=ui[lang];
  useEffect(()=>{
-  void loadFeed();
-  const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void loadFeed()},180000);
-  const recheck=()=>{if(document.visibilityState==='visible')void loadFeed()};
-  window.addEventListener('focus',recheck);
-  document.addEventListener('visibilitychange',recheck);
-  return()=>{window.clearInterval(timer);window.removeEventListener('focus',recheck);document.removeEventListener('visibilitychange',recheck)};
- },[loadFeed]);
- const loadMarkets=useCallback(async()=>{setMarketAttempted(true);setMarketLoading(true);setMarketError('');try{setMarkets(await fetchSafe<MarketsPayload>('/api/markets',28000))}catch(e){setMarketError(e instanceof Error?e.message:'Service unavailable')}finally{setMarketLoading(false)}},[]);
- useEffect(()=>{if(tab==='markets'&&!marketAttempted)void loadMarkets()},[tab,marketAttempted,loadMarkets]);
- useEffect(()=>{if(tab!=='trends')return;let active=true;setTrendLoading(true);setTrendError('');setTrends(null);fetchSafe<TrendsResult>(`/api/trends?region=${region}`,25000).then(d=>{if(active)setTrends(d)}).catch(e=>{if(active)setTrendError(e instanceof Error?e.message:'Source unavailable')}).finally(()=>{if(active)setTrendLoading(false)});return()=>{active=false}},[tab,region]);
+  setWatched(safeRead<string[]>('glitch-pulse-watch',[]));
+  setLang(safeRead<Lang>('glitch-pulse-lang','el'));
+  setTranslations(safeRead<TranslationMap>('glitch-pulse-translations',{}));
+  const old=safeRead<string|null>('glitch-pulse-visit',null);
+  setLastVisit(old);localStorage.setItem('glitch-pulse-visit',JSON.stringify(new Date().toISOString()));setReady(true);
+ },[]);
+ useEffect(()=>{if(ready){localStorage.setItem('glitch-pulse-watch',JSON.stringify(watched));localStorage.setItem('glitch-pulse-lang',JSON.stringify(lang));document.documentElement.lang=lang;}},[watched,lang,ready]);
+ useEffect(()=>{if(ready)localStorage.setItem('glitch-pulse-translations',JSON.stringify(Object.fromEntries(Object.entries(translations).slice(-260))))},[translations,ready]);
+ const load=useCallback(async()=>{
+  setFetching(true);setErr('');
+  const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),26000);
+  try{
+   const response=await fetch('/api/feed',{signal:ctl.signal,cache:'no-store'});
+   if(!response.ok)throw Error('HTTP '+response.status);
+   setFeed(await response.json() as Feed);
+  }catch(e){setErr(e instanceof Error?e.message:'Unknown error')}finally{clearTimeout(timeout);setFetching(false)}
+ },[]);
+ useEffect(()=>{
+  void load();const interval=setInterval(()=>{if(document.visibilityState==='visible')void load()},180000);
+  return()=>clearInterval(interval);
+ },[load]);
  const signals=useMemo(()=>feed?.signals||[],[feed]);
- const counts=useMemo(()=>nowTopicCounts(signals,nowHours),[signals,nowHours]);
- const entries=useMemo(()=>{
-  const all=signals.filter(v=>{
-   if(filter!=='all'&&v.category!==filter)return false;
-   if(!withinNewsWindow(v,nowHours))return false;
-   if(selectedTopic!=='all'&&newsTopic(v)!==selectedTopic)return false;
-   if(query.trim()&&!(''+v.title+' '+v.summary+' '+v.source).toLocaleLowerCase().includes(query.toLocaleLowerCase()))return false;
-   return true;
-  });
-  return all.sort((a,b)=>editorialPriority(b)-editorialPriority(a));
- },[signals,filter,selectedTopic,nowHours,query]);
- const featured=useMemo(()=>{
-  const result:Signal[]=[];
-  const counts=new Map<string,number>();
-  const urgent=entries.filter(isMajorEvent);
-  for(const v of [...urgent,...entries]){
-   if(result.length>=7)break;
-   if(result.some(x=>x.id===v.id))continue;
-   if((counts.get(v.source)||0)>=2)continue;
-   result.push(v);
-   counts.set(v.source,(counts.get(v.source)||0)+1);
+ const cases=useMemo(()=>buildWorldCases(signals,hours,150),[signals,hours]);
+ const actorRadar=useMemo(()=>buildActorRadar(cases),[cases]);
+ const totalReports=cases.reduce((sum,c)=>sum+c.reports.length,0);
+ const changeCount=lastVisit?cases.filter(c=>Date.parse(c.lastAt)>Date.parse(lastVisit)).length:0;
+ const filtered=useMemo(()=>cases.filter(c=>{
+  if(topic!=='all'&&c.topic!==topic)return false;
+  if(actorId&&!c.actorIds.includes(actorId))return false;
+  if(page==='watchlist'&&!c.actorIds.some(id=>watched.includes(id)))return false;
+  if(query.trim()){
+   const needle=query.trim().toLocaleLowerCase();
+   if(!c.reports.some(x=>(x.title+' '+x.source+' '+x.summary).toLocaleLowerCase().includes(needle)) &&
+      !c.actorIds.some(id=>actorRadar.some(a=>a.id===id&&a.name.toLocaleLowerCase().includes(needle))))return false;
   }
-  if(result.length<6)for(const v of entries)if(!result.some(x=>x.id===v.id)){result.push(v);if(result.length>=7)break}
-  return result;
- },[entries]);
- const lead=featured.find(isMajorEvent)||featured.find(v=>v.category==='world')||featured[0];
- const urgent=entries.filter(isMajorEvent).slice(0,10);
- const displayed=showAll?entries:featured.filter(v=>v.id!==lead?.id);
- const groupedNow=useMemo(()=>nowTopics.filter(x=>x.key!=='all').map(topic=>({
-  topic,items:entries.filter(s=>s.id!==lead?.id&&newsTopic(s)===topic.key).slice(0,3)
- })).filter(x=>x.items.length>0),[entries,lead]);
- const recent=useMemo(()=>lastVisit?signals.filter(s=>Date.parse(s.timestamp)>Date.parse(lastVisit)).length:null,[lastVisit,signals]);
- // Translate the actually visible source content. Keep originals and label failures explicitly.
+  return true;
+ }),[cases,topic,actorId,page,watched,query,actorRadar]);
+ const displayCases=showAll?filtered:filtered.slice(0,18);
+ const displayedForTranslation=useMemo(()=>{
+  const list=[...displayCases.slice(0,14).map(c=>c.headline),...(selected?.reports||[]).slice(0,6)];
+  return [...new Map(list.map(x=>[x.id,x])).values()];
+ },[displayCases,selected]);
  useEffect(()=>{
-  const targets:{id:string;title:string;summary:string}[]=[];
-  if(tab==='today'){if(lead)targets.push({id:lead.id,title:lead.title,summary:lead.summary.slice(0,550)});if(selectedTopic==='all'&&!showAll&&filter==='all'&&!query.trim())targets.push(...groupedNow.flatMap(g=>g.items).slice(0,18).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,350)})));else targets.push(...displayed.slice(0,12).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,400)})));}
-  if(tab==='saved')targets.push(...saved.slice(0,10).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,900)})));
-  if(tab==='blindspots')targets.push(...(feed?.blindspots?.candidates||[]).slice(0,10).map(s=>({id:s.signalId,title:s.title,summary:''})));
-  if(tab==='markets')targets.push(...(markets?.quotes||[]).filter(m=>marketVenue==='all'||m.venue===marketVenue).slice(0,14).map(m=>({id:'market:'+m.id,title:m.question,summary:''})));
-  if(tab==='trends')targets.push(...(trends?.trends||[]).slice(0,16).map(v=>({id:'trend:'+v.id,title:v.name,summary:''})));
-  if(selected)targets.push({id:selected.id,title:selected.title,summary:selected.summary.slice(0,1100)});
-  const pending=targets.filter((v,i)=>v.title&&targets.findIndex(x=>x.id===v.id)===i&&(!isGreek(v.title)||(!!v.summary&&!isGreek(v.summary)))&&!translations[v.id]&&!translating[v.id]).slice(0,4);
-  if(!pending.length||translationBusy.current)return;
-  translationBusy.current=true;
-  const keys=pending.map(v=>v.id);
-  setTranslating(old=>({...old,...Object.fromEntries(keys.map(id=>[id,true]))}));
-  void (async()=>{
-   try{const response=await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:pending})});
-    if(!response.ok)throw Error('Μη διαθέσιμη μετάφραση');
-    const parsed=await response.json() as {items:{id:string;title:string;summary:string;translated:boolean}[]};
-    setTranslations(old=>({...old,...Object.fromEntries((parsed.items||[]).map(v=>[v.id,v]))}));
-   }catch{setTranslations(old=>({...old,...Object.fromEntries(pending.map(v=>[v.id,{...v,translated:false}]))}));}
-   finally{translationBusy.current=false;setTranslating(old=>{const next={...old};keys.forEach(id=>delete next[id]);return next})}
+  if(!ready||busy.current)return;
+  const batch=displayedForTranslation.filter(s=>{
+   const key=lang+':'+s.id;
+   if(translations[key])return false;
+   return lang==='el'?!hasGreek(s.title):hasGreek(s.title);
+  }).slice(0,4);
+  if(!batch.length)return;
+  const cacheKey=lang+':'+batch.map(s=>s.id).join(',');
+  if(lastKey.current===cacheKey)return;
+  lastKey.current=cacheKey;busy.current=true;
+  void(async()=>{
+   try{
+    const response=await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({target:lang,items:batch.map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,450)}))})});
+    if(!response.ok)throw Error('Translation unavailable');
+    const payload=await response.json() as {items:Array<{id:string;title:string;summary:string;translated:boolean}>};
+    setTranslations(old=>({...old,...Object.fromEntries((payload.items||[]).map(x=>[lang+':'+x.id,x]))}));
+   }catch{setTranslations(old=>({...old,...Object.fromEntries(batch.map(s=>[lang+':'+s.id,{title:s.title,summary:s.summary,translated:false}]))}));}
+   finally{busy.current=false}
   })();
- },[tab,lead,selectedTopic,showAll,filter,query,groupedNow,displayed,saved,feed,markets,marketVenue,trends,selected,translations,translating]);
- const translatedFor=(id:string,original:string)=>translations[id]?.translated?translations[id].title:original;
- const originalNote=(id:string,title:string)=>!isGreek(title)&&translations[id]?.translated!==true;
- const textFor=(s:Signal,field:'title'|'summary')=>{
-  const translated=translations[s.id];
-  if(translated?.translated)return translated[field];
-  if(field==='summary'&&!isGreek(s.summary)&&!isGreek(s.title))return translated?.translated===false
-    ?'Δεν διατίθεται ελληνική μετάφραση της περίληψης. Δες το αρχικό άρθρο.'
-    :'Η σύνοψη μεταφράζεται στα ελληνικά…';
+ },[displayedForTranslation,lang,translations,ready]);
+ const word=(s:Signal,field:'title'|'summary')=>{
+  const tr=translations[lang+':'+s.id];
+  if(tr?.translated)return tr[field];
+  if(field==='summary'&&!summaryUseful(s.summary))return t.noSummary;
   return s[field];
  };
- const why=(s:Signal)=>lang==='en'?s.reason:({earth:'Καταγράφηκε σεισμικό γεγονός από το USGS. Το μέγεθος δεν τεκμηριώνει από μόνο του ζημιές ή επιπτώσεις.',nature:'Η NASA EONET έχει καταγράψει ενεργό φυσικό φαινόμενο. Η παρουσία στον κατάλογο δεν σημαίνει αυτόματα μεγάλη καταστροφή.',space:'Εντοπίστηκε νέα αναφορά σχετική με το διάστημα ή τον διαστημικό καιρό. Η πηγή εξηγεί τη φύση της καταγραφής.',economy:'Η είδηση σχετίζεται με οικονομικές εξελίξεις. Για συμπέρασμα σχετικά με τις επιπτώσεις απαιτούνται περισσότερα δεδομένα.',world:'Το θέμα καταγράφηκε σε ειδησεογραφική ή θεσμική πηγή. Ελέγχουμε το αρχικό δημοσίευμα πριν αποδώσουμε βαρύτητα ή αιτιότητα.',tech:'Πρόκειται για νεότερη τεχνολογική εξέλιξη ή ένδειξη ενδιαφέροντος. Η δημοτικότητα δεν αποδεικνύει αξιοπιστία.',ai:'Πρόκειται για εξέλιξη στην τεχνητή νοημοσύνη. Αξιολογούμε χωριστά ισχυρισμούς, αποτελέσματα και ανεξάρτητες δοκιμές.',health:'Πιθανή εξέλιξη στον χώρο της υγείας. Για προσωπικές αποφάσεις απαιτείται επαλήθευση από αρμόδιες πηγές.',climate:'Η εξέλιξη σχετίζεται με το κλίμα ή το περιβάλλον· χρειάζεται πλαίσιο και σύγκριση με μακροχρόνια δεδομένα.',science:'Το θέμα προέρχεται από ερευνητική ή ειδησεογραφική πηγή. Η καταχώριση εργασίας δεν ισοδυναμεί με επιστημονική επιβεβαίωση.',energy:'Σχετική εξέλιξη με ενέργεια ή υποδομές. Οι επιπτώσεις εξαρτώνται από το μέγεθος και την περιοχή.',sports:'Πρόσφατη εξέλιξη στον αθλητισμό, σύμφωνα με την αναφερόμενη πηγή.',culture:'Πρόσφατη πολιτιστική εξέλιξη, σύμφωνα με την αναφερόμενη πηγή.'} as Record<string,string>)[s.category]||'Εντοπίστηκε νέα εγγραφή από αναφερόμενη πηγή. Η σημασία της χρειάζεται περαιτέρω αξιολόγηση.';
- const bookmark=(s:Signal)=>setSaved(old=>old.some(x=>x.id===s.id)?old.filter(x=>x.id!==s.id):[s,...old].slice(0,100));
- const marked=(id:string)=>saved.some(s=>s.id===id);
- const openItem=(s:Signal)=>setSelected(s);
- const share=async(s:Signal)=>{const url=s.url;try{await navigator.clipboard.writeText(url)}catch{}};
- const checkCoverage=async(s:Blindspot)=>{setCoverageChecks(old=>({...old,[s.id]:{checking:true}}));try{const r=await fetchSafe<{matchedArticles:number;sourceUrl:string}>('/api/coverage?title='+encodeURIComponent(s.title),12000);setCoverageChecks(old=>({...old,[s.id]:{articles:r.matchedArticles,sourceUrl:r.sourceUrl}}))}catch{setCoverageChecks(old=>({...old,[s.id]:{message:t('Η GDELT δεν απάντησε.','GDELT did not respond.')}}))}};
- const visibleSaved=saved.filter(x=>!query.trim()||`${x.title} ${x.summary}`.toLowerCase().includes(query.toLowerCase()));
- const Story=({s,index,large=false}:{s:Signal;index?:number;large?:boolean})=><article className={`story ${large?'large':''}`}>
-  <div className="story-meta"><span className="eyebrow">{categoryName(s.category,lang)}</span><span className="meta-dot"/><span>{s.source}</span><span className="story-age">{since(s.timestamp,lang)}</span></div>
-  {s.imageUrl&&<button className="story-image" onClick={()=>openItem(s)} aria-label={'Φωτογραφία: '+s.title}><img src={s.imageUrl} alt={s.title} loading="lazy" decoding="async" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/></button>}
-  <button className="story-main" onClick={()=>openItem(s)}><h3>{textFor(s,'title')}</h3><p>{textFor(s,'summary')}</p>{originalNote(s.id,s.title)&&<small className="translation-note">{(translating[s.id]||!translations[s.id])?'Γίνεται μετάφραση στα ελληνικά…':'Πρωτότυπο σε άλλη γλώσσα · Η ελληνική μετάφραση δεν είναι διαθέσιμη'}</small>}</button>
-  {isMajorEvent(s)&&<SignalLens mode="card" signal={s} all={signals} title={textFor(s,'title')} summary={textFor(s,'summary')} onExpand={()=>openItem(s)}/>}
-  <div className="story-footer"><span className="source-detail"><ShieldCheck size={14}/>{t('Πηγή διαθέσιμη','Source cited')}</span><span className="footer-actions"><button title={t('Αποθήκευση','Save')} aria-label={t('Αποθήκευση','Save')} onClick={()=>bookmark(s)}>{marked(s.id)?<BookmarkCheck size={19}/>:<Bookmark size={19}/>}</button><button title={t('Λεπτομέρειες','Details')} aria-label={t('Λεπτομέρειες','Details')} onClick={()=>openItem(s)}><ArrowUpRight size={19}/></button></span></div>
- </article>;
- const SectionHeading=({kicker,title,description,aside}:{kicker?:string;title:string;description?:string;aside?:React.ReactNode})=><div className="section-head"><div>{kicker&&<span className="section-kicker">{kicker}</span>}<h2>{title}</h2>{description&&<p>{description}</p>}</div>{aside}</div>;
- return <div className="app-shell">
-  <aside className="sidebar"><button className="brand" onClick={()=>setTab('today')}><span className="brand-glyph"><Activity size={24}/></span><span><strong>GLITCH<span className="brand-period">.</span></strong><small>ΚΑΤΑΛΑΒΕ ΤΟΝ ΚΟΣΜΟ</small></span></button>
-   <div className="sidebar-label">{t('ΕΞΕΡΕΥΝΗΣΗ','EXPLORE')}</div><nav className="side-nav" aria-label={t('Πλοήγηση','Navigation')}>{allTabs.map(x=>{const Icon=x.icon;return <button key={x.key} className={tab===x.key?'active':''} onClick={()=>{setTab(x.key);setQuery('')}}><Icon size={19}/>{lang==='el'?x.el:x.en}{x.key==='saved'&&saved.length>0&&<span className="nav-count">{saved.length}</span>}</button>})}</nav>
-   <div className="sidebar-bottom"><div className="sidebar-note"><span className="tiny-indicator"/><strong>{t('Πραγματικές πηγές','Real sources')}</strong><p>{t('Όχι άλλοι βαθμοί-μυστήριο. Κάθε στοιχείο έχει προέλευση και εξήγηση.','No mystery scores. Every signal has its source and explanation.')}</p></div><button className="map-link" onClick={()=>setShowMap(true)}><Globe2 size={18}/>{t('Εξερεύνησε τον χάρτη','Explore the map')}<ArrowUpRight size={16}/></button></div>
-  </aside>
-  <div className="main-shell"><header className="topbar"><button className="mobile-brand" onClick={()=>setTab('today')}><span className="brand-glyph"><Activity size={21}/></span>GLITCH<span className="brand-period">.</span></button><div className="topbar-note"><span className="tiny-indicator"/>{t('Ο κόσμος, χωρίς τον θόρυβο','The world, without the noise')}</div><div className="top-actions"><button title={t('Χάρτης','Map')} onClick={()=>setShowMap(true)}><Globe2 size={19}/></button><button title={t('Αλλαγή θέματος','Theme')} onClick={()=>setTheme(x=>x==='light'?'dark':'light')}>{theme==='light'?<Moon size={18}/>:<Sun size={18}/>}</button></div></header>
-   <main className="main-content">
-    {tab==='today'&&<><section className="world-frontpage">
-      <div className="frontpage-top"><span className="news-live"><span className="news-pulse"/> ΖΩΝΤΑΝΗ ΠΑΓΚΟΣΜΙΑ ΕΝΗΜΕΡΩΣΗ</span><span>{new Intl.DateTimeFormat('el-GR',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span></div>
-      <h1>Ο ΚΟΣΜΟΣ <em>ΤΩΡΑ.</em></h1><p className="frontpage-subtitle">Πόλεμοι. Διαδηλώσεις. Πολιτικές κρίσεις. Όσα αλλάζουν πραγματικά τον κόσμο — με πηγή, αιτία και πιθανό αντίκτυπο.</p>
-      {lead&&<div className="frontpage-lead">{lead.imageUrl&&<div className="lead-visual"><img src={lead.imageUrl} alt={lead.title} decoding="async" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/><span className="lead-visual-caption">ΕΙΚΟΝΑ ΑΠΟ {lead.source.toUpperCase()}{lead.imageCredit?' · '+lead.imageCredit:''}</span></div>}<div className="lead-top"><span className="lead-urgent">{getEditorialContext(lead).label}</span><span>{lead.source} · {since(lead.timestamp,lang)}</span></div><button onClick={()=>openItem(lead)} className="lead-headline"><strong>{textFor(lead,'title')}</strong><ArrowUpRight size={26}/></button>
-        <p className="lead-summary">{textFor(lead,'summary')}</p>
-        {isMajorEvent(lead)&&<SignalLens mode="hero" signal={lead} all={signals} title={textFor(lead,'title')} summary={textFor(lead,'summary')}/>} 
-        <div className="lead-disclaimer">Πηγή: {lead.source}. Στο GLITCH LENS διαχωρίζουμε αναφορές, ανοιχτά ερωτήματα και συναφείς πηγές.</div>
-      </div>}
+ const toggle=(id:string)=>setWatched(old=>old.includes(id)?old.filter(v=>v!==id):[...old,id]);
+ const openCase=(c:StoryCase)=>{setSelected(c)};
+ const pickActor=(id:string|null)=>{setActorId(id);setTopic('all');setPage('pulse');setShowAll(true);setSelected(null)};
+ const current=selected?cases.find(c=>c.reports.some(v=>selected.reports.some(r=>r.id===v.id)))||selected:null;
+ const countryActors=actorRadar.filter(a=>a.type==='country'||a.type==='institution');
+ const companyActors=actorRadar.filter(a=>a.type==='company');
+ const topActors=actorRadar.slice(0,9);
+ const sourceOk=feed?.sources?.filter(s=>s.ok).length||0;
+ const reportSummary=(s:Signal)=>{const text=word(s,'summary');return summaryUseful(text)?trim(text,260):t.noSummary};
+ const ActorButton=({a,compact=false}:{a:PulseActor;compact?:boolean})=><button
+  className={'pulse-actor'+(compact?' pulse-actor-compact':'')} onClick={()=>pickActor(a.id)}>
+  <span className="pulse-actor-monogram">{a.type==='company'?<Building2 size={16}/>:a.type==='institution'?<Network size={16}/>:<Globe2 size={16}/>}</span>
+  <span className="pulse-actor-name"><strong>{a.name}</strong><small>{a.caseCount} {t.cases.toLocaleLowerCase()}</small></span>
+  <ChevronRight size={14}/></button>;
+ const Dossier=({c}:{c:StoryCase})=>{
+  const sides=opposingSides(c.headline);
+  const actors=c.actorIds.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a);
+  return <div className="pulse-dossier-underlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}>
+   <section className="pulse-dossier" role="dialog" aria-modal="true" aria-label={t.findings}>
+    <header className="pulse-dossier-header"><span>GLITCH / CASE FILE {c.id.slice(-7).toUpperCase()}</span><button onClick={()=>setSelected(null)} aria-label="Close"><X size={20}/></button></header>
+    <div className="pulse-dossier-scroll">
+     <div className="pulse-dossier-top"><span className="pulse-sector">{toTopic(c.topic,lang)}</span><span>{displayTime(c.lastAt,lang)}</span></div>
+     {c.headline.imageUrl&&<img className="pulse-dossier-photo" src={c.headline.imageUrl} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>}
+     <h2>{word(c.headline,'title')}</h2>
+     <div className="pulse-dossier-facts"><span>{c.reports.length} {t.reports.toLowerCase()}</span><span>{c.sources.length} {t.coverage.toLowerCase()}</span><span>{t.first}: {displayTime(c.firstAt,lang)}</span></div>
+     <section className="pulse-dossier-text"><span className="pulse-overline">{t.findings}</span><p>{reportSummary(c.headline)}</p><a href={c.headline.url} target="_blank" rel="noopener noreferrer">{t.press} <ExternalLink size={14}/></a></section>
+     {sides&&<section className="pulse-opposition"><span className="pulse-overline">{t.sides}</span><div><strong>{sides[0].name}</strong><span>VS</span><strong>{sides[1].name}</strong></div><p>{t.sidesCaveat}</p></section>}
+     {actors.length>0&&<section className="pulse-dossier-entities"><span className="pulse-overline">{t.affected}</span><div>{actors.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}<ArrowUpRight size={13}/></button>)}</div><p>{t.actorCaveat}</p></section>}
+     {c.domains.length>0&&<section className="pulse-dossier-domains"><span className="pulse-overline">{t.domains}</span><div>{c.domains.map(d=><span key={d}>{d}</span>)}</div><p>{t.impactCaveat}</p></section>}
+     <section className="pulse-timeline"><div className="pulse-timeline-head"><span className="pulse-overline">{t.timeline}</span><strong>{c.sources.length} {t.coverage.toLowerCase()}</strong></div>
+      <div className="pulse-timeline-items">{[...c.reports].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp)).map((report,i)=><a
+       href={report.url} target="_blank" rel="noopener noreferrer" key={report.id} className="pulse-timeline-item">
+       <div className="pulse-timeline-dot"/><span>{displayTime(report.timestamp,lang)} <b>{i===0?t.first:i===c.reports.length-1?t.latest:''}</b></span>
+       <strong>{word(report,'title')}</strong><small>{report.source} <ArrowUpRight size={12}/></small></a>)}</div>
      </section>
-     <NewsroomNav active={selectedTopic} counts={counts} hours={nowHours} onChoose={x=>{setSelectedTopic(x);setFilter('all');setQuery('');setShowAll(false)}} onHours={x=>{setNowHours(x);setShowAll(false)}}/>
-     <div className="status-strip"><div><span className="label-muted">{t('Νέα από την τελευταία επίσκεψη','Since your last visit')}</span><strong>{recent===null?t('Πρώτη επίσκεψη','First visit'):`${recent} ${t('εγγραφές','items')}`}</strong></div><div><span className="label-muted">{t('Ενεργές πηγές','Available sources')}</span><strong>{feed?`${feed.sources.filter(s=>s.ok).length}/${feed.sources.length}`:'—'}</strong></div><div><span className="label-muted">{t('Τελευταίος έλεγχος','Last checked')}</span><strong>{feed?time(feed.generatedAt,lang):'—'}</strong></div><button className="refresh-btn" disabled={isRefreshing} onClick={()=>void loadFeed()} title={t('Ανανέωση','Refresh')}><RefreshCcw size={19} className={isRefreshing?'spin':''}/></button></div>
-     {urgent.length>0&&<div className="world-ticker" aria-label="Έκτακτη διεθνής ειδησεογραφία"><span className="world-ticker-label">ΝΕΑ</span><div className="world-ticker-items">{urgent.map(v=><button key={v.id} onClick={()=>openItem(v)}><b>{getEditorialContext(v).label}</b> {textFor(v,'title')} <span>· {since(v.timestamp,lang)}</span></button>)}</div></div>}
-     <div className="section-divider"/><SectionHeading kicker="ΠΑΓΚΟΣΜΙΑ ΡΟΗ" title={t('Μεγάλες ειδήσεις τώρα','Major headlines now')} description={t('Αυτόματη ανανέωση κάθε 3 λεπτά όσο η εφαρμογή είναι ανοικτή. Οι πηγές ανανεώνονται κατά διαστήματα και οι εκτιμήσεις δεν είναι γεγονότα.','Auto-refresh every 3 minutes while open.')} aside={<button className="text-action" onClick={()=>setShowSources(x=>!x)}>{t('Κατάσταση πηγών','Source status')}<ChevronRight size={17}/></button>}/>
-     {showSources&&<div className="sources-panel"><h3>{t('Τι λειτουργεί αυτή τη στιγμή','Sources responding now')}</h3><div className="source-grid">{(feed?.sources||[]).map((s,i)=><div key={i} className="source-line"><span className={s.ok?'dot-good':'dot-bad'}/><span>{s.source}</span><small>{s.ok?`${s.count} ${t('εγγραφές','items')}`:t('Μη διαθέσιμη','Unavailable')}</small></div>)}</div><p>{t('Κάθε αποτυχία πηγής δηλώνεται. Δεν δημιουργούμε εικονικές ειδήσεις.','Source failures are explicit. No fabricated headline fallbacks.')}</p></div>}
-     {feedError&&<Context kind="warning">{t('Η ροή δεδομένων δεν απάντησε.','The feed could not load.')} {feedError} <button className="inline-link" onClick={()=>void loadFeed()}>{t('Ξανά','Retry')}</button></Context>}
-     {isRefreshing&&!feed&&<Spinner label={t('Διαβάζουμε τις πηγές…','Loading sources…')}/>}
-     {feed&&<>
-     <div className="search-box"><Search size={20}/><input placeholder={t('Αναζήτηση μέσα σε ειδήσεις και πηγές','Search headlines and sources')} value={query} onChange={e=>{setQuery(e.target.value);setShowAll(true)}} aria-label={t('Αναζήτηση','Search')}/>{query&&<button onClick={()=>setQuery('')} aria-label="Καθαρισμός"><X size={17}/></button>}</div>
-     {displayed.length?<div className="story-grid">{displayed.map((s,i)=><Story key={s.id} s={s} index={i} large={!showAll&&i===0}/>)}</div>:<Empty title={t('Δεν υπάρχουν αποτελέσματα','No matching stories')} description={t('Δοκίμασε μια άλλη θεματική ή αναζήτηση.','Try a different topic or query.')}/>}
-     {entries.length>displayed.length&&<button className="show-all" onClick={()=>setShowAll(true)}>{t(`Όλες οι ${entries.length} εγγραφές`,`All ${entries.length} items`)}<ArrowRight size={17}/></button>}
-     </>}
-     <div className="home-explain"><div className="explain-icon"><Zap size={25}/></div><div><strong>{t('Τι ξεχωρίζει το GLITCH;','What makes GLITCH different?')}</strong><p>{t('Οι πραγματικές πληροφορίες εμφανίζονται δίπλα στην εξήγησή τους. Οι τάσεις δεν είναι αποδείξεις και οι τιμές αγορών δεν είναι βεβαιότητες.','Evidence sits next to its explanation. Trends are not proof, and market prices are not certainties.')}</p></div><button onClick={()=>setTab('blindspots')}>{t('Δες τι περνά στα ψιλά','See overlooked stories')}<ArrowUpRight size={16}/></button></div>
-    </>}
-    {tab==='trends'&&<><section className="page-intro"><span className="section-kicker">ΤΙ ΑΝΑΖΗΤΕΙ Ο ΚΟΣΜΟΣ</span><h1>{t('Τι τραβά την προσοχή','What is gaining attention')}<span className="accent">.</span></h1><p>{t('Οι τάσεις δείχνουν τι αναζητείται ή συζητιέται. Δεν αποδεικνύουν ότι κάτι είναι σημαντικό ή αληθινό.','Trends measure searching or discussion. They do not establish importance or truth.')}</p></section><Context>Οι τάσεις προέρχονται αποκλειστικά από δημόσιες ροές αναζητήσεων Google. Η «Παγκόσμια» προβολή είναι δείγμα χωρών, όχι πλήρης παγκόσμια κατάταξη.</Context><div className="control-bar"><label>{t('Περιοχή','Region')}<ChevronDown size={15}/></label><select value={region} onChange={e=>setRegion(e.target.value as TrendRegion)}>{regions.map(r=><option key={r.id} value={r.id}>{lang==='el'?r.el:r.en}</option>)}</select></div>
-      {trendLoading&&<Spinner label={t('Διαβάζουμε τις τάσεις…','Loading trends…')}/>}{trendError&&<Context kind="warning">{trendError}</Context>}
-      {trends&&<><div className="result-meta"><span className={trends.status==='ok'?'dot-good':'dot-bad'}/>Google Trends · {trends.trends.length} {t('θέματα','topics')} · {trends.status==='ok'?t('Απάντησε','Available'):t('Περιορισμένη ή μη διαθέσιμη σύνδεση','Limited or unavailable') }</div>
-      {trends.status==='unavailable'&&<Context kind="warning">{trends.message}</Context>}
-      {trends.trends.length?<div className="rank-list">{trends.trends.slice(0,40).map((v:Trend,i:number)=><a className="rank-item" key={v.id} href={v.url} target="_blank" rel="noopener noreferrer"><span className="rank-number">{String(i+1).padStart(2,'0')}</span><div><h3>{translatedFor('trend:'+v.id,v.name)}</h3>{originalNote('trend:'+v.id,v.name)&&<small className="translation-note">{(translating['trend:'+v.id]||!translations['trend:'+v.id])?'Μετάφραση στα ελληνικά…':'Αρχικός όρος αναζήτησης (χωρίς διαθέσιμη μετάφραση)'}</small>}<small>{`${t('Περιοχές','Regions')}: ${v.regions.map(id=>regions.find(r=>r.id===id)?.el||id).join(', ')}${v.traffic?' · '+v.traffic:''}`}</small>{v.relatedHeadlines?.[0]&&<p>Σχετική αναφορά από την πρωτότυπη πηγή. Δες τον σύνδεσμο για το πλήρες περιεχόμενο.</p>}</div><ArrowUpRight size={18}/></a>)}</div>:!trendLoading&&<Empty title={t('Δεν υπάρχουν τάσεις από αυτή την πηγή','No trends returned by this provider')} description={t('Δοκίμασε άλλη χώρα ή το Google Trends.','Try another region or Google Trends.')} />}
-      <p className="method-note">Δεδομένα: Google Trends. Οι δημοφιλείς αναζητήσεις δεν αποδεικνύουν τη σημασία ή την αξιοπιστία ενός θέματος.</p></>}
-    </>}
-    {tab==='markets'&&<><section className="page-intro"><span className="section-kicker">ΑΓΟΡΕΣ ΠΡΟΒΛΕΨΕΩΝ</span><h1>{t('Τι τιμολογούν οι αγορές','What markets are pricing')}<span className="accent">.</span></h1><p>{t('Ερωτήσεις με συμβόλαια ΝΑΙ/ΟΧΙ. Η τιμή δείχνει πόσο πληρώνουν οι συμμετέχοντες — όχι πόσο βέβαιο είναι το μέλλον.','YES/NO contract prices reflect market trading, not certainty about the future.')}</p></section>
-       <div className="market-help"><div className="market-example"><span>{t('Παράδειγμα','Example')}</span><strong>64%</strong></div><p>{t('Τιμή 0,64$ για το ΝΑΙ ≈ 64% ενδεικτικά. Δεν είναι εγγυημένη, επιστημονικά ελεγμένη πιθανότητα. Κοίτα πάντα τον όγκο και τους όρους επίλυσης.','A $0.64 YES price ≈ 64% indicative. Not a guaranteed or scientifically calibrated probability. Check volume and resolution terms.')}</p></div>
-       <div className="section-head compact-head"><div><h2>{t('Ανοιχτές αγορές','Open contracts')}</h2><p>{t('Μόνο πραγματικές τιμές από τα δημόσια APIs.','Only real quotes returned by public APIs.')}</p></div><button className="outline-btn" onClick={()=>void loadMarkets()} disabled={marketLoading}><RefreshCcw size={17} className={marketLoading?'spin':''}/>{t('Ανανέωση','Refresh')}</button></div>
-       <div className="venue-status">{(['polymarket','kalshi'] as const).map(v=>{const o=markets?.venues.find(x=>x.venue===v);return <div key={v}><span className={o?.status==='ok'?'dot-good':'dot-bad'}/><strong>{v==='kalshi'?'Kalshi':'Polymarket'}</strong><small>{o?o.status==='ok'?`${o.count} ${t('αγορές','markets')}`:t('Μη διαθέσιμο','Unavailable'):t('Αναμονή','Pending')}</small></div>})}</div>
-       <div className="switch-row"><button className={marketVenue==='all'?'selected':''} onClick={()=>setMarketVenue('all')}>{t('Όλες','All')}</button><button className={marketVenue==='polymarket'?'selected':''} onClick={()=>setMarketVenue('polymarket')}>Polymarket</button><button className={marketVenue==='kalshi'?'selected':''} onClick={()=>setMarketVenue('kalshi')}>Kalshi</button></div>
-       {marketLoading&&!markets&&<Spinner label={t('Ελέγχουμε τις πραγματικές τιμές…','Checking real quotes…')}/>}
-       {marketError&&<Context kind="warning">{t('Δεν ήταν δυνατή η ανάκτηση αγορών.','Failed to retrieve markets.')} {marketError}</Context>}
-       {markets?.venues.filter(v=>v.status==='unavailable').map(v=><Context kind="warning" key={v.venue}><strong>{v.venue==='kalshi'?'Kalshi':'Polymarket'}:</strong> {v.error||t('Η πηγή δεν επέστρεψε έγκυρες τιμές.','The provider returned no valid prices.')} {t('Δεν εμφανίζουμε παλιές ή εικονικές τιμές.','No stale or fabricated prices.')}</Context>)}
-       {markets&&<>{markets.quotes.filter(x=>marketVenue==='all'||x.venue===marketVenue).length?<div className="market-grid">{markets.quotes.filter(x=>marketVenue==='all'||x.venue===marketVenue).slice(0,48).map((q:MarketQuote)=><article className="market-card" key={q.id}><div className="market-label"><span className="venue-name">{q.venue==='kalshi'?'KALSHI':'POLYMARKET'}</span><span>{q.priceKind==='midpoint'?t('Μέση τιμή αγοράς/πώλησης','Bid/ask midpoint'):q.priceKind==='last'?t('Τελευταία τιμή','Last traded price'):t('Τιμή ΝΑΙ','YES quote')}</span></div><h3>{translatedFor('market:'+q.id,q.question)}</h3>{originalNote('market:'+q.id,q.question)&&<small className="translation-note">{(translating['market:'+q.id]||!translations['market:'+q.id])?'Μετάφραση στα ελληνικά…':'Μη διαθέσιμη ελληνική μετάφραση · Πρωτότυπο κείμενο αγοράς'}</small>}<div className="market-quote"><strong>{percent(q.probability)}</strong><span>{t('ενδεικτική τιμή ΝΑΙ','indicative YES price')}</span></div><div className="bar"><div style={{width:`${100*q.probability}%`}}/></div><div className="market-data"><span>{t('Όγκος 24ώρου','24h volume')} <strong>{compact(q.volume24h,lang)}</strong></span><span>{q.changeReferencePP!==null?`${q.changeReferencePP>0?'+':''}${q.changeReferencePP} μον. ποσοστού` :t('Μεταβολή: —','Change: —')}</span></div><a target="_blank" rel="noopener noreferrer" href={q.sourceUrl}>{t('Πρωτότυπη αγορά','View source market')}<ArrowUpRight size={16}/></a></article>)}</div>:!marketLoading&&<Empty title={t('Δεν ήρθαν έγκυρες τιμές','No valid quotes available')} description={t('Οι εξωτερικές υπηρεσίες μπορεί να έχουν σφάλμα ή το τρέχον δείγμα να είναι χωρίς ρευστότητα. Δες την κατάσταση παραπάνω.','Upstream APIs may be failing or sampled contracts may lack prices. See status above.')}/>}
-       <p className="method-note">{markets.methodology.el} · {t('Ενημέρωση','Updated')} {time(markets.updatedAt,lang)}</p></>}
-     </>}
-    {tab==='blindspots'&&<><section className="page-intro"><span className="section-kicker">ΠΕΡΙΟΡΙΣΜΕΝΗ ΚΑΛΥΨΗ</span><h1>{t('Τι περνά στα ψιλά','What might be overlooked')}<span className="accent">.</span></h1><p>{t('Σημαντικές πρωτογενείς αναφορές που βρίσκουμε σε περιορισμένο δείγμα μεγάλων ειδησεογραφικών ροών. Όχι απόδειξη ότι κάποιος τις αποκρύπτει.','Important primary-source items with limited matching coverage in a defined sample of major publisher feeds. Not evidence of censorship.')}</p></section>
-      <Context>{t('Μετράμε μόνο συναφείς τίτλους στις διαθέσιμες πηγές και δείχνουμε ακριβώς το δείγμα. Απουσία αντιστοίχισης δεν σημαίνει παγκόσμια σιωπή.','We count related headlines in the available sample and show the methodology. Missing matches do not mean global silence.')}</Context>
-      {isRefreshing&&!feed&&<Spinner label={t('Σαρώνουμε πρωτογενείς πηγές…','Scanning source records…')}/>}
-      {!feed?.blindspots?.candidates?.length&&<Empty title={t('Δεν προέκυψαν τεκμηριωμένα υποψήφια θέματα','No qualifying candidates right now')} description={t('Μπορεί να μην υπάρχουν πρόσφατες ισχυρές αναφορές ή να λείπουν πηγές. Δεν γεμίζουμε τις κάρτες με κατασκευασμένα δεδομένα.','There may be no recent qualifying reports or sources may be offline. We do not fabricate candidates.')}/>}
-      <div className="blind-list">{feed?.blindspots?.candidates.map(s=><article className="blind-card" key={s.id}><div className="blind-top"><span className="eyebrow"><EyeOff size={14}/>{s.coverage.status==='limited'?t('ΠΙΘΑΝΟ ΚΕΝΟ ΚΑΛΥΨΗΣ','POSSIBLE COVERAGE GAP'):s.coverage.status==='insufficient'?t('ΑΝΕΠΑΡΚΗ ΔΕΔΟΜΕΝΑ','INSUFFICIENT DATA'):t('ΚΑΛΥΨΗ ΥΠΑΡΧΕΙ','COVERAGE FOUND')}</span><small>{categoryName(s.category,lang)}</small></div><h3>{translatedFor(s.signalId,s.title)}</h3>{originalNote(s.signalId,s.title)&&<small className="translation-note">{(translating[s.signalId]||!translations[s.signalId])?"Μετάφραση στα ελληνικά…":"Ο πρωτότυπος τίτλος δεν μεταφράστηκε αυτόματα"}</small>}<p>{lang==='el'?s.importanceRationale.el:s.importanceRationale.en}</p><div className="coverage-explainer"><strong>{s.coverage.matches} <span>/ {s.coverage.available}</span></strong><p>{t('διαθέσιμες μεγάλες πηγές με συναφείς τίτλους','available publishers with related headlines')}</p></div><div className="blind-evidence"><ShieldCheck size={15}/>{s.source} · {time(s.timestamp,lang)}</div><div className="blind-actions"><a href={s.url} target="_blank" rel="noopener noreferrer">{t('Πρωτογενής αναφορά','Primary source')}<ArrowUpRight size={15}/></a><button onClick={()=>void checkCoverage(s)} disabled={coverageChecks[s.id]?.checking}>{coverageChecks[s.id]?.checking?<LoaderCircle className="spin" size={16}/>:<Globe2 size={16}/>} GDELT</button></div>{coverageChecks[s.id]&&!coverageChecks[s.id].checking&&<div className="coverage-result">{coverageChecks[s.id].articles!==undefined?`${compact(coverageChecks[s.id].articles||0,lang)} ${t('αντιστοιχίσεις στο δείγμα GDELT (48ωρο)','matches in GDELT (48h)')}`:coverageChecks[s.id].message}{coverageChecks[s.id].sourceUrl&&<a href={coverageChecks[s.id].sourceUrl} target="_blank" rel="noopener noreferrer">{t('Αρχική μέτρηση','Source query')}</a>}</div>}<div className="blind-footnote">{lang==='el'?s.caveat.el:s.caveat.en}</div></article>)}</div>
-     </>}
-    {tab==='saved'&&<><section className="page-intro"><span className="section-kicker">Η ΒΙΒΛΙΟΘΗΚΗ ΣΟΥ</span><h1>{t('Όσα αξίζει να κρατήσεις','Worth keeping')}<span className="accent">.</span></h1><p>{t('Τα αποθηκευμένα άρθρα μένουν σε αυτή τη συσκευή. Άνοιξέ τα ξανά από την αρχική πηγή.','Bookmarks stay on this device. Open original sources when you return.')}</p></section><div className="search-box"><Search size={19}/><input placeholder={t('Αναζήτηση αποθηκευμένων','Search saved')} value={query} onChange={e=>setQuery(e.target.value)}/></div>{visibleSaved.length?<div className="story-grid">{visibleSaved.map(s=><Story key={s.id} s={s}/>)}</div>:<Empty title={t('Δεν υπάρχουν αποθηκευμένες ιστορίες','Nothing saved yet')} description={t('Πάτησε το εικονίδιο σελιδοδείκτη σε μια ιστορία της αρχικής.','Use the bookmark icon on a story from Today.')} action={<button className="primary-btn" onClick={()=>setTab('today')}>{t('Πήγαινε στις ειδήσεις','Explore stories')}<ArrowRight size={17}/></button>}/>}
-    </>}
-   </main>
-   <footer className="footer"><strong>GLITCH<span className="accent">.</span></strong><p>{t('Πηγές, πλαίσιο και αβεβαιότητα. Χωρίς ψευδείς βεβαιότητες.','Sources, context and uncertainty. No false certainty.')}</p><span>© 2026 · Ανοικτά δεδομένα · Αρχικές πηγές</span></footer>
-  </div>
-  <nav className="bottom-nav" aria-label="Mobile navigation">{allTabs.map(x=>{const Icon=x.icon;return <button key={x.key} className={tab===x.key?'active':''} onClick={()=>{setTab(x.key);setQuery('');window.scrollTo({top:0,behavior:'smooth'})}}><Icon size={20}/><span>{lang==='el'?x.el:x.en}</span></button>})}</nav>
-  {selected&&<div className="overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="drawer" role="dialog" aria-modal="true" aria-label={t('Ανάλυση ιστορίας','Story detail')}><div className="drawer-header"><span className="section-kicker">GLITCH / ΑΝΑΛΥΣΗ</span><button onClick={()=>setSelected(null)} aria-label="Κλείσιμο"><X size={22}/></button></div><div className="drawer-content">{selected.imageUrl&&<figure className="drawer-photo"><img src={selected.imageUrl} alt={selected.title} loading="lazy" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/><figcaption>Εικόνα από {selected.source}{selected.imageCredit?' · '+selected.imageCredit:''} · <a href={selected.url} target="_blank" rel="noopener noreferrer">Αρχικό άρθρο</a></figcaption></figure>}<div className="story-meta"><span className="eyebrow">{categoryName(selected.category,lang)}</span><span>{selected.source}</span></div><h2>{textFor(selected,'title')}</h2>{originalNote(selected.id,selected.title)&&<small className="translation-note">{(translating[selected.id]||!translations[selected.id])?'Μετάφραση στα ελληνικά…':'Ο αρχικός τίτλος είναι σε άλλη γλώσσα. Η αυτόματη μετάφραση δεν ήταν διαθέσιμη.'}</small>}<div className="detail-time"><Clock3 size={16}/>{time(selected.timestamp,lang)} · {t('Πρωτογενής αναφορά','Original reporting')}</div><SignalLens key={selected.id} mode="detail" signal={selected} all={signals} title={textFor(selected,'title')} summary={textFor(selected,'summary')} onOpen={openItem}/><div className="detail-section"><span className="section-kicker">{t('ΔΕΔΟΜΕΝΑ ΠΗΓΗΣ','SOURCE FACTS')}</span><p>Τα αναλυτικά στοιχεία διατηρούνται στην πρωτότυπη πηγή για να αποφευχθεί η παραπλανητική απόδοση τεχνικών όρων.</p><a href={selected.url} target="_blank" rel="noopener noreferrer" className="detail-original">Προβολή αναλυτικών στοιχείων στην πηγή <ArrowUpRight size={15}/></a></div><div className="detail-section"><span className="section-kicker">{t('ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ','INTERPRETATION')}</span><p>{selected.confidence==='publisher'?t('Πρόκειται για δημοσιογραφική αναφορά. Για ολόκληρο το περιεχόμενο και τυχόν διορθώσεις δες τον εκδότη.','This is a publisher report. Visit the publisher for full coverage and corrections.'):t('Οι μετρήσεις και οι καταγραφές έχουν όρια. Ο δείκτης GLITCH δεν είναι επίσημη εκτίμηση κινδύνου.','Observations have limitations. GLITCH scoring is not an official risk assessment.')}</p></div></div><div className="drawer-actions"><button className="outline-btn" onClick={()=>bookmark(selected)}>{marked(selected.id)?<BookmarkCheck size={18}/>:<Bookmark size={18}/>} {marked(selected.id)?t('Αποθηκεύτηκε','Saved'):t('Αποθήκευση','Save')}</button><button className="outline-btn" onClick={()=>void share(selected)}><Share2 size={18}/>{t('Αντιγραφή link','Copy link')}</button><a className="primary-btn" href={selected.url} target="_blank" rel="noopener noreferrer">{t('Άνοιγμα πηγής','Read source')}<ArrowUpRight size={18}/></a></div></section></div>}
-  {showMap&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setShowMap(false)}}><section className="map-dialog" role="dialog" aria-modal="true"><header><div><span className="section-kicker">ΕΞΕΡΕΥΝΗΣΗ / ΧΑΡΤΗΣ</span><h2>{t('Ο κόσμος σε μία υδρόγειο','Explore events on the globe')}</h2></div><button onClick={()=>setShowMap(false)} aria-label="Κλείσιμο"><X size={24}/></button></header><div className="map-stage"><WorldGlobe signals={signals} onChoose={s=>{setShowMap(false);openItem(s)}} language={lang}/></div><p>{t('Οι καρφίτσες αντιστοιχούν μόνο σε εγγραφές με πραγματικές συντεταγμένες. Τα υπόλοιπα άρθρα δεν τοποθετούνται αυθαίρετα.','Pins represent records with genuine coordinates only. Other news stories are not arbitrarily geolocated.')}</p></section></div>}
- </div>
+     <p className="pulse-dossier-disclaimer">{t.groupCaveat} {t.dataset}</p>
+    </div>
+   </section></div>;
+ };
+ const CaseCard=({c,lead=false}:{c:StoryCase;lead?:boolean})=>{
+  const related=c.actorIds.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a).slice(0,3);
+  return <article className={'pulse-case'+(lead?' pulse-case-lead':'')}>
+   {c.headline.imageUrl&&<div className="pulse-case-photo"><img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.parentElement?.classList.add('pulse-img-error')}}/></div>}
+   <div className="pulse-case-body">
+    <div className="pulse-case-meta"><span className="pulse-sector">{toTopic(c.topic,lang)}</span><span><Clock3 size={12}/>{relative(c.lastAt,lang)}</span></div>
+    <button className="pulse-case-title" onClick={()=>openCase(c)}><strong>{word(c.headline,'title')}</strong><ArrowUpRight size={17}/></button>
+    <p>{reportSummary(c.headline)}</p>
+    <div className="pulse-case-tags">{related.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}</button>)}</div>
+    <div className="pulse-case-foot">
+      <span>{c.sources.length>1?t.multi:t.single}</span>
+      <strong>{c.reports.length} {t.reports.toLowerCase()}</strong>
+      <button onClick={()=>openCase(c)} aria-label={t.read}><ArrowRight size={19}/></button>
+    </div>
+   </div>
+  </article>;
+ };
+ return <div className="pulse-shell">
+   <aside className="pulse-sidebar">
+    <button className="pulse-logo" onClick={()=>{setPage('pulse');setActorId(null);setTopic('all')}}><span>G<span>.</span></span><div><strong>GLITCH</strong><small>WORLD INTELLIGENCE</small></div></button>
+    <span className="pulse-nav-label">EXPLORE</span>
+    <nav aria-label="Main navigation">{tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setActorId(null);setTopic('all');setQuery('');setShowAll(false)}}><Icon size={17}/>{t[x.id==='pulse'?'pulse':x.id==='countries'?'countries':x.id==='companies'?'companies':'watch']}{x.id==='watchlist'&&watched.length>0&&<span>{watched.length}</span>}</button>})}</nav>
+    <div className="pulse-sidebar-footer"><span className="pulse-live-dot"/> {lang==='el'?'ΔΗΜΟΣΙΕΣ ΠΗΓΕΣ':'PUBLIC SOURCES'}<p>{t.dataset}</p></div>
+   </aside>
+   <div className="pulse-main">
+    <header className="pulse-topbar">
+     <button className="pulse-mobile-brand" onClick={()=>setPage('pulse')}>GLITCH<span>.</span></button>
+     <div className="pulse-top-state"><span className="pulse-live-dot"/>{t.eyebrow}</div>
+     <div className="pulse-actions"><div className="pulse-language"><button aria-pressed={lang==='el'} className={lang==='el'?'active':''} onClick={()=>setLang('el')}>EL</button><button aria-pressed={lang==='en'} className={lang==='en'?'active':''} onClick={()=>setLang('en')}>EN</button></div><button className="pulse-refresh" onClick={()=>void load()} aria-label={t.again} disabled={fetching}><RefreshCw size={16} className={fetching?'pulse-spin':''}/></button></div>
+    </header>
+    <div className="pulse-mobile-tabs">{tabs.map(x=><button className={page===x.id?'active':''} key={x.id} onClick={()=>{setPage(x.id);setActorId(null);setQuery('');setTopic('all')}}>{t[x.id==='pulse'?'pulse':x.id==='countries'?'countries':x.id==='companies'?'companies':'watch']}</button>)}</div>
+    <main className="pulse-content">
+     <section className="pulse-hero"><div className="pulse-kicker"><Radio size={14}/> {t.eyebrow} <span> / 2026</span></div><h1>{t.title}<br/><em>{t.titleAccent}</em></h1><p>{t.subtitle}</p><div className="pulse-stats">
+       <div><strong>{cases.length}</strong><span>{t.cases}</span></div>
+       <div><strong>{totalReports}</strong><span>{t.reports}</span></div>
+       <div><strong>{actorRadar.length}</strong><span>{t.actors}</span></div>
+       <div><strong>{lastVisit?changeCount:'—'}</strong><span>{t.changes}</span></div>
+     </div></section>
+     {err&&<div className="pulse-error">{err} <button onClick={()=>void load()}>{t.again}</button></div>}
+     {!feed&&fetching&&<div className="pulse-loading"><Activity size={20}/>{t.loading}</div>}
+     <div className="pulse-body">
+      {page==='pulse'&&<>
+       <div className="pulse-head-row"><div><span className="pulse-overline">{t.happening}</span><h2>{t.feed}<b>.</b></h2></div><div className="pulse-window"><button className={hours===24?'active':''} onClick={()=>{setHours(24);setShowAll(false)}}>24H</button><button className={hours===72?'active':''} onClick={()=>{setHours(72);setShowAll(false)}}>72H</button></div></div>
+       <div className="pulse-controls">
+        <div className="pulse-topicrail">{nowTopics.map(tp=><button key={tp.key} className={topic===tp.key?'active':''} onClick={()=>{setTopic(tp.key);setShowAll(false)}}>{toTopic(tp.key,lang)}</button>)}</div>
+        <div className="pulse-search"><Search size={16}/><input value={query} onChange={e=>{setQuery(e.target.value);setShowAll(true)}} placeholder={t.search}/>{query&&<button onClick={()=>setQuery('')}><X size={15}/></button>}</div>
+       </div>
+       {actorId&&<div className="pulse-selected-actor"><span>{t.filtered}: {actorRadar.find(a=>a.id===actorId)?.name}</span><button onClick={()=>{setActorId(null);setShowAll(false)}}>{t.clear}<X size={14}/></button></div>}
+       <div className="pulse-workspace">
+        <div className="pulse-feed"><div className="pulse-cases">{displayCases.length?displayCases.map((c,i)=><CaseCard key={c.id} c={c} lead={i===0&&!showAll&&!actorId&&!query}/>):<div className="pulse-empty">{t.noCases}</div>}</div>
+         {!showAll&&filtered.length>displayCases.length&&<button className="pulse-more" onClick={()=>setShowAll(true)}>{t.viewAll}<ArrowRight size={17}/></button>}
+        </div>
+        <aside className="pulse-radar"><div className="pulse-radar-heading"><span className="pulse-overline">ACTOR RADAR</span><h3>{t.actorSection}</h3><small>{t.actorCaveat}</small></div>
+         {topActors.map(a=><ActorButton key={a.id} a={a} compact/>)}
+         <div className="pulse-radar-bottom"><strong>{t.updated}</strong><span>{feed?displayTime(feed.generatedAt,lang):'—'}</span><strong>{t.sources}</strong><span>{sourceOk}/{feed?.sources?.length||0}</span></div>
+        </aside>
+       </div>
+      </>}
+      {(page==='countries'||page==='companies')&&<section className="pulse-actor-screen">
+       <div className="pulse-head-row"><div><span className="pulse-overline">{page==='countries'?'GLOBAL ACTORS':'CORPORATE RADAR'}</span><h2>{page==='countries'?t.countries:t.companies}<b>.</b></h2></div><span className="pulse-count">{page==='countries'?countryActors.length:companyActors.length} {t.actors}</span></div>
+       <p className="pulse-muted-intro">{t.actorCaveat}</p>
+       <div className="pulse-actor-directory">{(page==='countries'?countryActors:companyActors).map(a=><div key={a.id} className="pulse-actor-directory-item"><ActorButton a={a}/><button className={'pulse-actor-star'+(watched.includes(a.id)?' active':'')} onClick={()=>toggle(a.id)} title={watched.includes(a.id)?t.unwatch:t.watchBtn}>{watched.includes(a.id)?<BookmarkCheck size={17}/>:<Bookmark size={17}/>}</button></div>)}</div>
+      </section>}
+      {page==='watchlist'&&<section className="pulse-watch-screen">
+       <div className="pulse-head-row"><div><span className="pulse-overline">PERSONAL WORLD MONITOR</span><h2>{t.watch}<b>.</b></h2></div><span className="pulse-count">{watched.length} {t.tracked.toLowerCase()}</span></div>
+       {watched.length===0?<p className="pulse-empty">{t.watchNone}</p>:<><div className="pulse-watch-actors">{watched.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a).map(a=><button key={a.id} onClick={()=>toggle(a.id)}>{a.name}<X size={14}/></button>)}</div><div className="pulse-cases">{cases.filter(c=>c.actorIds.some(id=>watched.includes(id))).slice(0,25).map(c=><CaseCard key={c.id} c={c}/>)}</div></>}
+      </section>}
+      <footer className="pulse-footer"><span>GLITCH / WORLD PULSE</span><p>{t.groupCaveat} {t.dataset}</p></footer>
+     </div>
+    </main>
+   </div>
+   {current&&<Dossier c={current}/>}
+ </div>;
 }
