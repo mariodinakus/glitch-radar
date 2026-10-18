@@ -44,7 +44,7 @@ const countries:Lex[]=[
  ['sa','Σαουδική Αραβία',/\b(saudi arabia|saudi|riyadh)\b|σαουδικ/iu],
  ['ae','ΗΑΕ',/\b(uae|emirates|abu dhabi)\b|εμιράτ/iu],
  ['eg','Αίγυπτος',/\b(egypt|egyptian|cairo)\b|αίγυπτ|κάιρο/iu]
-].map(([id,name,pattern])=>({id:'c:'+id,name,type:'country' as const,pattern:pattern as RegExp}));
+].map(([id,name,pattern])=>({id:'c:'+id,name:String(name),type:'country' as const,pattern:pattern as RegExp}));
 const companies:Lex[]=[
  ['apple','Apple',/\bapple\b(?!\s+(?:pie|tree))/i],['microsoft','Microsoft',/\bmicrosoft\b/i],
  ['google','Google',/\bgoogle\b/i],['meta','Meta',/\bmeta\b(?=\s+(?:platforms|ai|announc|reports?|shares?|stock|employees?|ceo|revenue|profits?))|\bfacebook\b/i],
@@ -63,7 +63,7 @@ const companies:Lex[]=[
  ['airbus','Airbus',/\bairbus\b/i],['maersk','Maersk',/\bmaersk\b/i],
  ['cma','CMA CGM',/\bcma cgm\b/i],['novo','Novo Nordisk',/\bnovo nordisk\b/i],
  ['pfizer','Pfizer',/\bpfizer\b/i],['eli','Eli Lilly',/\beli lilly\b/i]
-].map(([id,name,pattern])=>({id:'m:'+id,name,type:'company' as const,pattern:pattern as RegExp}));
+].map(([id,name,pattern])=>({id:'m:'+id,name:String(name),type:'company' as const,pattern:pattern as RegExp}));
 const institutions:Lex[]=[
  ['eu','Ευρωπαϊκή Ένωση',/\b(european union|eu commission|european commission|eu leaders|eu council)\b|ευρωπαϊκ[ήής] ένωση|ευρωπαϊκ[ήής] επιτροπ/iu],
  ['nato','ΝΑΤΟ',/\bnato\b|νατο/iu],['un','ΟΗΕ',/\b(united nations|un security council|un general assembly)\b|οηε|ηνωμέν[αων] έθνη/iu],
@@ -72,7 +72,7 @@ const institutions:Lex[]=[
  ['fed','Federal Reserve',/\b(federal reserve|fed chair|fed officials)\b/i],
  ['who','ΠΟΥ',/\b(world health organization|who director|who chief)\b|παγκόσμι[οου] οργανισμ[οού] υγεί/iu],
  ['opec','OPEC',/\bopec\b/i]
-].map(([id,name,pattern])=>({id:'i:'+id,name,type:'institution' as const,pattern:pattern as RegExp}));
+].map(([id,name,pattern])=>({id:'i:'+id,name:String(name),type:'institution' as const,pattern:pattern as RegExp}));
 export const actorLexicon=[...countries,...companies,...institutions];
 export function actorsMentioned(story:Pick<Signal,'title'|'summary'>):PulseTrack[]{
  // Prefer title, then source-supplied excerpt; count as a mention only.
