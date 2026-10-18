@@ -219,3 +219,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--pulse-red);outline-
  .pulse-dossier h2{font-size:25px}
 }
 @media(prefers-reduced-motion:reduce){.pulse-spin{animation:none}}
+
+
+/* Personalized delta strip: new and followed cases when returning. */
+.pulse-changes{border:1px solid #42343e;background:linear-gradient(110deg,#1c171f,#161820);border-radius:10px;margin:18px 0 0;padding:17px 19px}
+.pulse-changes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.pulse-changes-head h2{font-size:17px;line-height:1.3;letter-spacing:-.04em;font-weight:920;margin:4px 0 0}
+.pulse-changes-head>span{font-size:10px;color:#f3acb8;font-weight:850}
+.pulse-change-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pulse-change-list>button{display:flex;align-items:flex-start;text-align:left;gap:9px;border:1px solid #3d353f;background:#201c25;border-radius:7px;padding:11px;color:#f0edf1;min-width:0}
+.pulse-change-list>button:hover{border-color:#c34560}
+.pulse-change-mark{color:#fa6781;flex:none;margin-top:2px}
+.pulse-change-copy{min-width:0;flex:1}
+.pulse-change-copy strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:11px;font-weight:850;line-height:1.5}
+.pulse-change-copy small{display:block;color:#9b96a0;font-size:9px;margin-top:8px}
+.pulse-change-list>button>svg{color:#ed657c;flex:none}
+.pulse-changes>p{font-size:9px;color:#8c8792;line-height:1.5;margin:11px 0 0}
+@media(max-width:1100px){.pulse-change-list{grid-template-columns:1fr}.pulse-change-list>button{padding:10px 12px}}
+@media(max-width:760px){.pulse-changes{padding:13px 12px}.pulse-changes-head h2{font-size:16px}}
