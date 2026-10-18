@@ -1,1 +1,31 @@
-{"name":"GLITCH — Τι αλλάζει στον κόσμο","short_name":"GLITCH","description":"Ειδήσεις, αγορές και τάσεις με ελληνική διεπαφή και εμφανείς πηγές.","lang":"el","start_url":"/","display":"standalone","background_color":"#f7f8f6","theme_color":"#f7f8f6","icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "GLITCH — Παγκόσμια ενημέρωση",
+  "short_name": "GLITCH",
+  "description": "Σημαντικές διεθνείς εξελίξεις, έρευνα πηγών και τεκμηριωμένη ανάλυση.",
+  "lang": "el",
+  "start_url": "/?app=v2",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090C14",
+  "theme_color": "#090C14",
+  "icons": [
+    {
+      "src": "/api/icon-v2/192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon-v2/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon-v2/512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
