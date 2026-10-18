@@ -15,6 +15,7 @@ import {
 } from '@/lib/world-pulse';
 import type {PulseActor,StoryCase} from '@/lib/world-pulse';
 import {getStoryCommentary} from '@/lib/story-commentary';
+import {ActorArena,RippleEngine,WorldSystems} from '@/components/WorldSystems';
 
 type Lang='el'|'en';
 type Page='pulse'|'countries'|'companies'|'watchlist';
@@ -227,6 +228,16 @@ export default function Home(){
      {sides&&<section className="pulse-opposition"><span className="pulse-overline">{t.sides}</span><div><strong>{sides[0].name}</strong><span>VS</span><strong>{sides[1].name}</strong></div><p>{t.sidesCaveat}</p></section>}
      {actors.length>0&&<section className="pulse-dossier-entities"><span className="pulse-overline">{t.affected}</span><div>{actors.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}<ArrowUpRight size={13}/></button>)}</div><p>{t.actorCaveat}</p></section>}
      {c.domains.length>0&&<section className="pulse-dossier-domains"><span className="pulse-overline">{t.domains}</span><div>{c.domains.map(d=><span key={d}>{d}</span>)}</div><p>{t.impactCaveat}</p></section>}
+     <section className="engine-dossier">
+      <h3>{lang==='el'?'Από το γεγονός στον πιθανό αντίκτυπο':'From event to potential consequences'}</h3>
+      <p>{lang==='el'?'Κάθε βήμα είναι ενδεχόμενος μηχανισμός, όχι γεγονός. Πάτησέ το για να δεις ποιο στοιχείο θα χρειαζόταν.':'Each step is a potential mechanism, not an observed outcome. Select it to see what evidence would be needed.'}</p>
+      <RippleEngine key={c.id} caseFile={c} lang={lang} titleFor={v=>word(v,'title')}/>
+     </section>
+     <section className="engine-dossier">
+      <h3>{lang==='el'?'ACTOR ARENA · Σχέσεις σε τίτλους':'ACTOR ARENA · Headline relationships'}</h3>
+      <p>{lang==='el'?'Μόνο επώνυμες αναφορές από τις πηγές του φακέλου, όχι υποτιθέμενες συμμαχίες.':'Source-linked actor mentions, not assumed alliances.'}</p>
+      <ActorArena cases={[c]} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>
+     </section>
      <section className="pulse-timeline"><div className="pulse-timeline-head"><span className="pulse-overline">{t.timeline}</span><strong>{c.sources.length} {t.coverage.toLowerCase()}</strong></div>
       <div className="pulse-wave-summary">{waves.map(w=><div key={w.label}><strong>{w.count}</strong><span>{w.label}</span></div>)}</div>
       <div className="pulse-timeline-items">{[...c.reports].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp)).map((report,i)=><a
@@ -294,6 +305,7 @@ export default function Home(){
       </section>}
      {err&&<div className="pulse-error">{err} <button onClick={()=>void load()}>{t.again}</button></div>}
      {!feed&&fetching&&<div className="pulse-loading"><Activity size={20}/>{t.loading}</div>}
+     {page==='pulse'&&cases.length>0&&<WorldSystems cases={cases} lastVisit={lastVisit} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>}
      <div className="pulse-body">
       {page==='pulse'&&<>
        <div className="pulse-head-row"><div><span className="pulse-overline">{t.happening}</span><h2>{t.feed}<b>.</b></h2></div><div className="pulse-window"><button className={hours===24?'active':''} onClick={()=>{setHours(24);setShowAll(false)}}>24H</button><button className={hours===72?'active':''} onClick={()=>{setHours(72);setShowAll(false)}}>72H</button></div></div>
