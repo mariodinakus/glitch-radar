@@ -10,6 +10,10 @@ const feeds:NewsSource[]=[
  {name:'BBC Middle East',url:'https://feeds.bbci.co.uk/news/world/middle_east/rss.xml',category:'world',limit:26},
  {name:'BBC Business',url:'https://feeds.bbci.co.uk/news/business/rss.xml',category:'economy',limit:22},
  {name:'BBC Technology',url:'https://feeds.bbci.co.uk/news/technology/rss.xml',category:'tech',limit:22},
+ {name:'Google News / AI Labs',url:'https://news.google.com/rss/search?q=%28OpenAI%20OR%20Anthropic%20OR%20DeepMind%20OR%20%22AI%20model%22%20OR%20%22AI%20agents%22%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen',category:'ai',limit:40},
+ {name:'Google News / Global Tech Companies',url:'https://news.google.com/rss/search?q=%28Nvidia%20OR%20Microsoft%20OR%20Meta%20OR%20Apple%20OR%20Google%20OR%20TSMC%20OR%20Amazon%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen',category:'tech',limit:45},
+ {name:'Google News / Enterprise and AI',url:'https://news.google.com/rss/search?q=%28%22AI%20investment%22%20OR%20%22AI%20data%20center%22%20OR%20%22chip%20exports%22%20OR%20%22AI%20regulation%22%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen',category:'ai',limit:34},
+ {name:'Google News / Multinationals',url:'https://news.google.com/rss/search?q=%28%22multinational%22%20OR%20%22earnings%22%20OR%20%22merger%22%20OR%20%22supply%20chain%22%29%20when%3A2d&hl=en-US&gl=US&ceid=US%3Aen',category:'economy',limit:35},
  {name:'BBC Science',url:'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',category:'science',limit:20},
  {name:'BBC Health',url:'https://feeds.bbci.co.uk/news/health/rss.xml',category:'health',limit:18},
  {name:'BBC Culture',url:'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',category:'culture',limit:18},
@@ -105,8 +109,10 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
   const description=src.name.startsWith('Google News /')?googleNewsPreview(rawDescription):readableExcerpt(rawDescription);
   const link=safeUrl(field(t,'link'));const dateRaw=field(t,'pubDate')||field(t,'dc:date');const timestamp=Date.parse(dateRaw);
   if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff()||!matchesGoogleSearch(src.name,title))return null;
+  const publisher=src.name.startsWith('Google News /')?field(t,'source'):''; 
+  const attribution=publisher?publisher.slice(0,95):src.name;
   const cat=classify(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
-  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'Η πηγή δεν παρέχει αναλυτική περίληψη. Άνοιξε το αρχικό άρθρο για πλήρες ρεπορτάζ.',score,level,timestamp:new Date(timestamp).toISOString(),source:src.name,url:link,...media,details:[`Published by: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
+  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'Η πηγή δεν παρέχει αναλυτική περίληψη. Άνοιξε το αρχικό άρθρο για πλήρες ρεπορτάζ.',score,level,timestamp:new Date(timestamp).toISOString(),source:attribution,url:link,...media,details:[`Published by: ${attribution}`,`Discovered via: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
  }).filter((x):x is Signal=>x!==null).slice(0,src.limit)
  }finally{clearTimeout(timer)}}
 
