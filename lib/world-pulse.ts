@@ -1,5 +1,5 @@
 import type {Signal} from './types';
-import {newsTopic} from './now-topics';
+import {newsTopic,withinNewsWindow} from './now-topics';
 import type {NowTopic} from './now-topics';
 
 /**
