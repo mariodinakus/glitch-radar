@@ -26,6 +26,7 @@ export function TopStoriesCarousel({cases,lang,titleFor,onOpen}:NewsProps){
    <div className="deck-slide-info"><div className="deck-slide-top"><span>{String(i+1).padStart(2,'0')} / 09</span><span>{TIME(c.lastAt,lang)}</span></div>
     <span className="deck-slide-topic">{c.topic.toUpperCase()}</span>
     <button className="deck-slide-title" onClick={()=>onOpen(c)}>{short(titleFor(c.headline),170)}<ArrowUpRight size={18}/></button>
+    <div className="deck-slide-publishers">{c.sources.slice(0,3).map(name=><span key={name}>{name}</span>)}{c.sources.length>3&&<span>+{c.sources.length-3}</span>}</div>
     <div className="deck-slide-bottom"><span>{c.sources.length} {w(lang,'διαφορετικοί εκδότες','publishers')} · {c.reports.length} {w(lang,'αναφορές','reports')}</span><button onClick={()=>onOpen(c)}>{w(lang,'ΔΕΣ ΠΟΙΟΙ ΤΟ ΚΑΛΥΠΤΟΥΝ','SEE WHO COVERED IT')} <ArrowRight size={14}/></button></div>
    </div>
   </article>)}</div>
@@ -57,7 +58,7 @@ export function CorporateDesk({cases,lang,titleFor,onOpen}:NewsProps){
   <div className="desk-grid">
    {filtered.slice(0,6).map((c,i)=><button key={c.id} className={'desk-story'+(i===0?' featured':'')} onClick={()=>onOpen(c)}>
     <div className="desk-story-visual">{c.headline.imageUrl?<img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>:<BrainCircuit size={35} strokeWidth={1}/>}</div>
-    <div className="desk-story-body"><span><span className="desk-bullet"/> {c.headline.category.toUpperCase()} · {TIME(c.lastAt,lang)}</span><strong>{short(titleFor(c.headline),190)}</strong><small>{c.sources.length} {w(lang,'πηγές','publishers')} <ArrowUpRight size={14}/></small></div>
+    <div className="desk-story-body"><span><span className="desk-bullet"/> {c.headline.category.toUpperCase()} · {TIME(c.lastAt,lang)}</span><strong>{short(titleFor(c.headline),190)}</strong><small>{c.sources.slice(0,2).join(' · ')||w(lang,'Άγνωστος εκδότης','Publisher unknown')}{c.sources.length>2?' +'+(c.sources.length-2):''} <ArrowUpRight size={14}/></small></div>
    </button>)}
    {filtered.length===0&&<div className="engine-empty">{w(lang,'Δεν εντοπίστηκαν σχετικές δημοσιεύσεις στο τρέχον χρονικό δείγμα.','No matching published reports in this time window.')}</div>}
   </div>
