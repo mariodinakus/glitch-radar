@@ -1,0 +1,18 @@
+# GLITCH World Consequence Engine — full Next.js app including live API routes.
+# Alternative to Vercel. Selecting this Blueprint requires explicit user approval
+# in Render; it does not change the existing Vercel deployment.
+services:
+  - type: web
+    name: glitch-world-pulse
+    runtime: node
+    plan: free
+    region: frankfurt
+    repo: https://github.com/mariodinakus/glitch-radar
+    branch: main
+    buildCommand: npm install --no-audit --no-fund && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeployTrigger: off
+    envVars:
+      - key: NODE_VERSION
+        value: "22.16.0"
