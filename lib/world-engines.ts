@@ -16,7 +16,7 @@ export function worldDiff(cases:StoryCase[],lastVisit:string|null,limit=7):World
   return {caseId:c.id,headline:c.headline,kind,
    previous:before.length?before[before.length-1]:ordered.length>1?ordered[0]:undefined,
    reportsSince:later.length,distinctSources:c.sources.length,firstAt:c.firstAt,lastAt:c.lastAt};
- }).filter((d):d is WorldDelta=>!!d).sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)).slice(0,limit);
+ }).filter((d):d is NonNullable<typeof d>=>d!==null).sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)).slice(0,limit);
 }
 
 export type RippleStep={id:string;el:string;en:string;mechanismEl:string;mechanismEn:string;verifyEl:string;verifyEn:string};
