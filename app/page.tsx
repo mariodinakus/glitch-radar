@@ -100,6 +100,7 @@ export default function Home(){
  const [watched,setWatched]=useState<string[]>([]);
  const [lastVisit,setLastVisit]=useState<string|null>(null);
  const [translations,setTranslations]=useState<TranslationMap>({});
+ const [translationCycle,setTranslationCycle]=useState(0);
  const [showAll,setShowAll]=useState(false);
  const [ready,setReady]=useState(false);
  const busy=useRef(false);
@@ -167,9 +168,9 @@ export default function Home(){
     const payload=await response.json() as {items:Array<{id:string;title:string;summary:string;translated:boolean}>};
     setTranslations(old=>({...old,...Object.fromEntries((payload.items||[]).map(x=>[lang+':'+x.id,x]))}));
    }catch{setTranslations(old=>({...old,...Object.fromEntries(batch.map(s=>[lang+':'+s.id,{title:s.title,summary:s.summary,translated:false}]))}));}
-   finally{busy.current=false}
+   finally{busy.current=false;setTranslationCycle(x=>x+1)}
   })();
- },[displayedForTranslation,lang,translations,ready]);
+ },[displayedForTranslation,lang,translations,ready,translationCycle]);
  const word=(s:Signal,field:'title'|'summary')=>{
   const tr=translations[lang+':'+s.id];
   if(tr?.translated)return tr[field];
