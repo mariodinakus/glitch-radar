@@ -33,6 +33,24 @@ const media:{test:RegExp;profile:MediaProfile}[]=[
   notesEl:'Η ίδια η Al Jazeera αναφέρει κρατική χρηματοδότηση εν μέρει. Δεν ταυτίζουμε χρηματοδότηση και πολιτική στάση ανά είδηση.',
   notesEn:'Al Jazeera publicly states partial government funding. Funding does not determine the stance of each report.'
  }},
+ {test:/^associated press\b|^ap news\b|^the associated press\b/i,profile:{
+  name:'Associated Press',ownerEl:'Ανεξάρτητος μη κερδοσκοπικός ειδησεογραφικός συνεταιρισμός',ownerEn:'Independent not-for-profit news cooperative',
+  ownershipSource:'https://www.ap.org/about/our-people/',
+  notesEl:'Ο συνεταιρισμός διοικείται από συμβούλιο που εκλέγεται από τα αμερικανικά μέλη του. Δεν αποδίδεται πολιτική βαθμολόγηση εδώ.',
+  notesEn:'A cooperative governed by a board elected by U.S. news members; no political rating is assigned here.'
+ }},
+ {test:/^new york times\b|^the new york times\b|^nyt\b/i,profile:{
+  name:'The New York Times',ownerEl:'The New York Times Company / έλεγχος από τον Ochs-Sulzberger Trust',ownerEn:'The New York Times Company / Ochs-Sulzberger Trust control',
+  ownershipSource:'https://www.sec.gov/Archives/edgar/data/71691/000007169126000016/nyt-20260313.htm',
+  notesEl:'Η οικογενειακή δομή ελέγχου τεκμηριώνεται στην ανακοίνωση προς την SEC το 2026. Δεν συναγάγουμε πολιτική ταύτιση.',
+  notesEn:'Family control is documented in the company’s 2026 SEC proxy filing; no government alignment is inferred.'
+ }},
+ {test:/^france ?24\b/i,profile:{
+  name:'France 24',ownerEl:'France Médias Monde / γαλλικός δημόσιος διεθνής ραδιοτηλεοπτικός όμιλος',ownerEn:'France Médias Monde / French public international broadcaster',
+  ownershipSource:'https://www.francemediasmonde.com/fr/le-groupe/financement/',
+  notesEl:'Δημόσια χρηματοδότηση, χωρίς αυτοματοποιημένη κρίση για πολιτική στάση ανά γεγονός.',
+  notesEn:'Publicly funded; no automated inference about its stance on any story.'
+ }},
  {test:/^un news\b/i,profile:{
   name:'UN News',ownerEl:'Οργανισμός Ηνωμένων Εθνών',ownerEn:'United Nations',
   ownershipSource:'https://news.un.org/en/',
