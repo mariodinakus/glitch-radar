@@ -16,6 +16,9 @@ import {
 import type {PulseActor,StoryCase} from '@/lib/world-pulse';
 import {getStoryCommentary} from '@/lib/story-commentary';
 import {ActorArena,RippleEngine,WorldSystems} from '@/components/WorldSystems';
+import {TopStoriesCarousel,CorporateDesk,PredictionRadar} from '@/components/IntelligenceDeck';
+import {CoverageLens} from '@/components/CoverageLens';
+import {GlitchMark} from '@/components/GlitchMark';
 
 type Lang='el'|'en';
 type Page='pulse'|'countries'|'companies'|'watchlist';
@@ -245,6 +248,7 @@ export default function Home(){
        <div className="pulse-timeline-dot"/><span>{displayTime(report.timestamp,lang)} <b>{i===0?t.first:i===c.reports.length-1?t.latest:''}</b></span>
        <strong>{word(report,'title')}</strong><small>{report.source} <ArrowUpRight size={12}/></small></a>)}</div>
      </section>
+     <CoverageLens key={c.id} story={c} lang={lang}/>
      <p className="pulse-dossier-disclaimer">{t.groupCaveat} {t.dataset}</p>
     </div>
    </section></div>;
@@ -275,14 +279,14 @@ export default function Home(){
  };
  return <div className="pulse-shell">
    <aside className="pulse-sidebar">
-    <button className="pulse-logo" onClick={()=>{setPage('pulse');setActorId(null);setTopic('all')}}><span>G<span>.</span></span><div><strong>GLITCH</strong><small>WORLD INTELLIGENCE</small></div></button>
+    <button className="pulse-logo" onClick={()=>{setPage('pulse');setActorId(null);setTopic('all')}}><GlitchMark size={43}/><div><strong>GLITCH</strong><small>WORLD INTELLIGENCE</small></div></button>
     <span className="pulse-nav-label">EXPLORE</span>
     <nav aria-label="Main navigation">{tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setActorId(null);setTopic('all');setQuery('');setShowAll(false)}}><Icon size={17}/>{t[x.id==='pulse'?'pulse':x.id==='countries'?'countries':x.id==='companies'?'companies':'watch']}{x.id==='watchlist'&&watched.length>0&&<span>{watched.length}</span>}</button>})}</nav>
     <div className="pulse-sidebar-footer"><span className="pulse-live-dot"/> {lang==='el'?'ΔΗΜΟΣΙΕΣ ΠΗΓΕΣ':'PUBLIC SOURCES'}<p>{t.dataset}</p></div>
    </aside>
    <div className="pulse-main">
     <header className="pulse-topbar">
-     <button className="pulse-mobile-brand" onClick={()=>setPage('pulse')}>GLITCH<span>.</span></button>
+     <button className="pulse-mobile-brand" onClick={()=>setPage('pulse')}><GlitchMark size={31}/><span>GLITCH</span></button>
      <div className="pulse-top-state"><span className="pulse-live-dot"/>{t.eyebrow}</div>
      <div className="pulse-actions"><div className="pulse-language"><button aria-pressed={lang==='el'} className={lang==='el'?'active':''} onClick={()=>setLang('el')}>EL</button><button aria-pressed={lang==='en'} className={lang==='en'?'active':''} onClick={()=>setLang('en')}>EN</button></div><button className="pulse-refresh" onClick={()=>void load()} aria-label={t.again} disabled={fetching}><RefreshCw size={16} className={fetching?'pulse-spin':''}/></button></div>
     </header>
@@ -305,6 +309,9 @@ export default function Home(){
       </section>}
      {err&&<div className="pulse-error">{err} <button onClick={()=>void load()}>{t.again}</button></div>}
      {!feed&&fetching&&<div className="pulse-loading"><Activity size={20}/>{t.loading}</div>}
+     {page==='pulse'&&cases.length>0&&<TopStoriesCarousel cases={cases} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>}
+     {page==='pulse'&&cases.length>0&&<CorporateDesk cases={cases} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>}
+     {(page==='pulse'||page==='companies')&&<PredictionRadar lang={lang}/>}
      {page==='pulse'&&cases.length>0&&<WorldSystems cases={cases} lastVisit={lastVisit} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>}
      <div className="pulse-body">
       {page==='pulse'&&<>
@@ -324,6 +331,7 @@ export default function Home(){
         </aside>
        </div>
       </>}
+      {page==='companies'&&cases.length>0&&<CorporateDesk cases={cases} lang={lang} titleFor={v=>word(v,'title')} onOpen={openCase}/>}
       {(page==='countries'||page==='companies')&&<section className="pulse-actor-screen">
        <div className="pulse-head-row"><div><span className="pulse-overline">{page==='countries'?'GLOBAL ACTORS':'CORPORATE RADAR'}</span><h2>{page==='countries'?t.countries:t.companies}<b>.</b></h2></div><span className="pulse-count">{page==='countries'?countryActors.length:companyActors.length} {t.actors}</span></div>
        <p className="pulse-muted-intro">{t.actorCaveat}</p>
