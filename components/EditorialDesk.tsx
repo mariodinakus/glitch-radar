@@ -7,6 +7,8 @@ import {buildWorldCases} from '@/lib/world-pulse';
 import type {StoryCase} from '@/lib/world-pulse';
 import {mediaProfile} from '@/lib/media-profiles';
 import {GlitchMark} from '@/components/GlitchMark';
+import {PulseFront} from '@/components/PulseFront';
+import {StoryImmersion} from '@/components/StoryImmersion';
 
 type Lang='el'|'en';
 type Page='today'|'companies'|'markets'|'sources';
@@ -195,19 +197,7 @@ export default function EditorialDesk(){
    <small>{meta?.biasSource?(lang==='el'?meta.biasEl:meta.biasEn):t.notRated}</small>{meta&&<p className="ed-source-note">{lang==='el'?meta.notesEl:meta.notesEn}</p>}</div>
    <div className="ed-source-links">{meta&&<a href={meta.ownershipSource} target="_blank" rel="noopener noreferrer" title={t.ownership}><Landmark size={16}/></a>}{meta?.biasSource&&<a href={meta.biasSource} target="_blank" rel="noopener noreferrer" title={t.orientation}><Info size={16}/></a>}{articleUrl&&<a href={articleUrl} target="_blank" rel="noopener noreferrer" title={t.readSource}><ExternalLink size={16}/></a>}</div></div>;
  };
- const modal=selected&&<div className="ed-modal-back" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="ed-modal" role="dialog" aria-modal="true" aria-label={titleFor(selected.headline)}>
-  <header><span><GlitchMark size={27}/> {t.read}</span><button onClick={()=>setSelected(null)} aria-label={t.close}><X size={20}/></button></header>
-  <div className="ed-modal-body"><span className="ed-eyebrow">{t.published} · {when(selected.lastAt,lang)}</span><h2>{titleFor(selected.headline)}</h2>
-   <section className="ed-evidence"><div className="ed-block-heading"><CheckCircle2 size={17}/><h3>{t.report}</h3></div><p>{sourceText(selected.headline)}</p><a href={selected.headline.url} target="_blank" rel="noopener noreferrer">{t.readSource}<ExternalLink size={14}/></a></section>
-   <section className="ed-coverage"><div className="ed-block-heading"><BookOpen size={17}/><h3>{t.coverage} · {uniqueSources(selected).length}</h3></div><p className="ed-disclaimer">{t.sourceCaveat}</p>{uniqueSources(selected).map(r=>sourceRow(r.source,r.url))}</section>
-   <section className="ed-analysis"><div className="ed-block-heading"><Sparkles size={18}/><h3>{t.analysis}</h3></div>
-    {analysisBusy&&<p className="ed-ai-status"><Activity size={16}/>{t.analysisLoading}</p>}
-    {analysis&&<div className="ed-analysis-text"><p>{analysis.analysis}</p><h4>{t.importance}</h4><p>{analysis.importance}</p><h4>{t.next}</h4><p>{analysis.next}</p><h4>{t.unknown}</h4><p>{analysis.uncertainty}</p><small>{t.opinionDisclaimer}</small></div>}
-    {(!aiEnabled||!!analysisError)&&<div className="ed-analysis-unavailable"><strong>{t.analysisSoon}</strong><p>{t.analysisExplanation}</p>{analysisError&&<small>{analysisError}</small>}</div>}
-   </section>
-   <p className="ed-footnote">{t.sourceCaveat} {t.ownershipNote}</p>
-  </div>
- </section></div>;
+ const modal=selected&&<StoryImmersion key={selected.id} story={selected} lang={lang} titleFor={titleFor} summaryFor={sourceText} onClose={()=>setSelected(null)} aiEnabled={aiEnabled} analysis={analysis} analysisBusy={analysisBusy} analysisError={analysisError}/>;
  return <div className="ed-shell">
   <header className="ed-header"><button onClick={()=>{setPage('today');setSelected(null)}} className="ed-logo"><GlitchMark size={40}/><span>GLITCH<small>{lang==='el'?'ΚΟΣΜΟΣ & ΑΝΑΛΥΣΗ':'WORLD & ANALYSIS'}</small></span></button>
    <div className="ed-lang" role="group" aria-label={lang==='el'?'Γλώσσα':'Language'}><button className={lang==='el'?'active':''} onClick={()=>setLang('el')}>Ελληνικά</button><button className={lang==='en'?'active':''} onClick={()=>setLang('en')}>English</button></div>
@@ -215,11 +205,15 @@ export default function EditorialDesk(){
   <div className="ed-frame"><nav className="ed-navigation">{tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setQuery('');setTopic('all');setMore(false);setSelected(null)}}><Icon size={17}/>{x.label}</button>})}</nav>
   <main><section className="ed-hero"><div className="ed-eyebrow"><span className="ed-live"/> {t.time}</div><h1>{t.intro}</h1><p>{t.introText}</p><div className="ed-mini-stats"><span>{cases.length} {t.events.toLowerCase()}</span><span>{feed?.sources?.filter(s=>s.ok).length||0} {t.sourcesLabel.toLowerCase()}</span><button onClick={()=>void load()}><RefreshCw size={14}/>{t.tryAgain}</button></div></section>
    {error&&<div className="ed-empty">{error}</div>}{loading&&!feed&&<p className="ed-empty">{t.loading}</p>}
-   {page==='today'&&<>{cases.length>0&&Top()}{storyPane()}</>}
+   {page==='today'&&<>{cases.length>0&&<PulseFront cases={cases} lang={lang} titleFor={titleFor} open={open}/>} {storyPane()}</>}
    {page==='companies'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.companies}</span><h2>{t.corpTitle}</h2><p>{t.corpDesc}</p></div></header>{storyPane()}</section>}
    {page==='markets'&&marketsPane()}
    {page==='sources'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.sourcesLabel}</span><h2>{t.mediaTitle}</h2><p>{t.mediaDesc}</p></div></header><div className="ed-media-list">{knownMedia.slice(0,35).map(name=>sourceRow(name))}</div><p className="ed-footnote">{t.ownershipNote} {t.crossBorder}</p></section>}
    <footer className="ed-footer"><GlitchMark size={24}/> GLITCH <span>{t.sourceCaveat}</span></footer>
-  </main></div>{modal}
+  </main></div>
+  <nav className="ed-mobile-dock" aria-label={lang==='el'?'Κύρια πλοήγηση':'Main navigation'}>
+   {tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setQuery('');setTopic('all');setMore(false);setSelected(null)}}><Icon size={20}/><span>{x.label}</span></button>})}
+  </nav>
+  {modal}
  </div>;
 }
