@@ -6,6 +6,8 @@ import dynamic from 'next/dynamic';
 import type {Feed,Signal,Category} from '@/lib/types';
 import {eventKind,editorialPriority,getEditorialContext,isMajorEvent} from '@/lib/editorial';
 import {StackedBrief} from '@/components/StackedBrief';
+import {nowTopics,newsTopic,nowTopicCounts,withinNewsWindow} from '@/lib/now-topics';
+import type {NowTopic} from '@/lib/now-topics';
 import type {MarketsPayload,MarketQuote} from '@/lib/markets';
 import type {Blindspot} from '@/lib/blindspots';
 import type {TrendsResult,Trend,TrendRegion} from '@/lib/trends';
@@ -34,7 +36,7 @@ export default function Home(){
  const [markets,setMarkets]=useState<MarketsPayload|null>(null),[marketError,setMarketError]=useState(''),[marketLoading,setMarketLoading]=useState(false),[marketAttempted,setMarketAttempted]=useState(false);
  const [trends,setTrends]=useState<TrendsResult|null>(null),[trendError,setTrendError]=useState(''),[trendLoading,setTrendLoading]=useState(false);
  const [region,setRegion]=useState<TrendRegion>('WORLD'),[marketVenue,setMarketVenue]=useState<'all'|'polymarket'|'kalshi'>('all');
- const [alertFilter,setAlertFilter]=useState<'all'|'conflict'|'protest'|'politics'>('all');
+ const [selectedTopic,setSelectedTopic]=useState<NowTopic>('all'),[nowHours,setNowHours]=useState<24|72>(24);
  const [filter,setFilter]=useState<string>('all'),[query,setQuery]=useState(''),[selected,setSelected]=useState<Signal|null>(null),[saved,setSaved]=useState<Signal[]>([]),[lastVisit,setLastVisit]=useState<string|null>(null);
  const [translations,setTranslations]=useState<Translations>({}),[translating,setTranslating]=useState<Record<string,boolean>>({}),[showMap,setShowMap]=useState(false),[showAll,setShowAll]=useState(false),[showSources,setShowSources]=useState(false);
  const [coverageChecks,setCoverageChecks]=useState<Record<string,{checking?:boolean;articles?:number;message?:string;sourceUrl?:string}>>({});
@@ -56,15 +58,17 @@ export default function Home(){
  useEffect(()=>{if(tab==='markets'&&!marketAttempted)void loadMarkets()},[tab,marketAttempted,loadMarkets]);
  useEffect(()=>{if(tab!=='trends')return;let active=true;setTrendLoading(true);setTrendError('');setTrends(null);fetchSafe<TrendsResult>(`/api/trends?region=${region}`,25000).then(d=>{if(active)setTrends(d)}).catch(e=>{if(active)setTrendError(e instanceof Error?e.message:'Source unavailable')}).finally(()=>{if(active)setTrendLoading(false)});return()=>{active=false}},[tab,region]);
  const signals=useMemo(()=>feed?.signals||[],[feed]);
+ const counts=useMemo(()=>nowTopicCounts(signals,nowHours),[signals,nowHours]);
  const entries=useMemo(()=>{
   const all=signals.filter(v=>{
    if(filter!=='all'&&v.category!==filter)return false;
-   if(alertFilter!=='all'&&eventKind(v)!==alertFilter)return false;
+   if(!withinNewsWindow(v,nowHours))return false;
+   if(selectedTopic!=='all'&&newsTopic(v)!==selectedTopic)return false;
    if(query.trim()&&!(''+v.title+' '+v.summary+' '+v.source).toLocaleLowerCase().includes(query.toLocaleLowerCase()))return false;
    return true;
   });
   return all.sort((a,b)=>editorialPriority(b)-editorialPriority(a));
- },[signals,filter,alertFilter,query]);
+ },[signals,filter,selectedTopic,nowHours,query]);
  const featured=useMemo(()=>{
   const result:Signal[]=[];
   const counts=new Map<string,number>();
@@ -82,11 +86,14 @@ export default function Home(){
  const lead=featured.find(isMajorEvent)||featured.find(v=>v.category==='world')||featured[0];
  const urgent=entries.filter(isMajorEvent).slice(0,10);
  const displayed=showAll?entries:featured.filter(v=>v.id!==lead?.id);
+ const groupedNow=useMemo(()=>nowTopics.filter(x=>x.key!=='all').map(topic=>({
+  topic,items:entries.filter(s=>s.id!==lead?.id&&newsTopic(s)===topic.key).slice(0,3)
+ })).filter(x=>x.items.length>0),[entries,lead]);
  const recent=useMemo(()=>lastVisit?signals.filter(s=>Date.parse(s.timestamp)>Date.parse(lastVisit)).length:null,[lastVisit,signals]);
  // Translate the actually visible source content. Keep originals and label failures explicitly.
  useEffect(()=>{
   const targets:{id:string;title:string;summary:string}[]=[];
-  if(tab==='today'){if(lead)targets.push({id:lead.id,title:lead.title,summary:lead.summary.slice(0,550)});targets.push(...displayed.slice(0,12).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,400)})));}
+  if(tab==='today'){if(lead)targets.push({id:lead.id,title:lead.title,summary:lead.summary.slice(0,550)});if(selectedTopic==='all'&&!showAll&&filter==='all'&&!query.trim())targets.push(...groupedNow.flatMap(g=>g.items).slice(0,18).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,350)})));else targets.push(...displayed.slice(0,12).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,400)})));}
   if(tab==='saved')targets.push(...saved.slice(0,10).map(s=>({id:s.id,title:s.title,summary:s.summary.slice(0,900)})));
   if(tab==='blindspots')targets.push(...(feed?.blindspots?.candidates||[]).slice(0,10).map(s=>({id:s.signalId,title:s.title,summary:''})));
   if(tab==='markets')targets.push(...(markets?.quotes||[]).filter(m=>marketVenue==='all'||m.venue===marketVenue).slice(0,14).map(m=>({id:'market:'+m.id,title:m.question,summary:''})));
@@ -105,7 +112,7 @@ export default function Home(){
    }catch{setTranslations(old=>({...old,...Object.fromEntries(pending.map(v=>[v.id,{...v,translated:false}]))}));}
    finally{translationBusy.current=false;setTranslating(old=>{const next={...old};keys.forEach(id=>delete next[id]);return next})}
   })();
- },[tab,lead,displayed,saved,feed,markets,marketVenue,trends,selected,translations,translating]);
+ },[tab,lead,selectedTopic,showAll,filter,query,groupedNow,displayed,saved,feed,markets,marketVenue,trends,selected,translations,translating]);
  const translatedFor=(id:string,original:string)=>translations[id]?.translated?translations[id].title:original;
  const originalNote=(id:string,title:string)=>!isGreek(title)&&translations[id]?.translated!==true;
  const textFor=(s:Signal,field:'title'|'summary')=>{
@@ -127,7 +134,7 @@ export default function Home(){
   <div className="story-meta"><span className="eyebrow">{categoryName(s.category,lang)}</span><span className="meta-dot"/><span>{s.source}</span><span className="story-age">{since(s.timestamp,lang)}</span></div>
   {s.imageUrl&&<button className="story-image" onClick={()=>openItem(s)} aria-label={'Φωτογραφία: '+s.title}><img src={s.imageUrl} alt={s.title} loading="lazy" decoding="async" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/></button>}
   <button className="story-main" onClick={()=>openItem(s)}><h3>{textFor(s,'title')}</h3><p>{textFor(s,'summary')}</p>{originalNote(s.id,s.title)&&<small className="translation-note">{(translating[s.id]||!translations[s.id])?'Γίνεται μετάφραση στα ελληνικά…':'Πρωτότυπο σε άλλη γλώσσα · Η ελληνική μετάφραση δεν είναι διαθέσιμη'}</small>}</button>
-  {isMajorEvent(s)&&<StackedBrief mode="card" signal={s} summary={textFor(s,'summary')} onExpand={()=>openItem(s)}/>}
+  {isMajorEvent(s)&&<StackedBrief mode="card" signal={s} summary={textFor(s,'summary')} title={textFor(s,'title')} onExpand={()=>openItem(s)}/>}
   <div className="story-footer"><span className="source-detail"><ShieldCheck size={14}/>{t('Πηγή διαθέσιμη','Source cited')}</span><span className="footer-actions"><button title={t('Αποθήκευση','Save')} aria-label={t('Αποθήκευση','Save')} onClick={()=>bookmark(s)}>{marked(s.id)?<BookmarkCheck size={19}/>:<Bookmark size={19}/>}</button><button title={t('Λεπτομέρειες','Details')} aria-label={t('Λεπτομέρειες','Details')} onClick={()=>openItem(s)}><ArrowUpRight size={19}/></button></span></div>
  </article>;
  const SectionHeading=({kicker,title,description,aside}:{kicker?:string;title:string;description?:string;aside?:React.ReactNode})=><div className="section-head"><div>{kicker&&<span className="section-kicker">{kicker}</span>}<h2>{title}</h2>{description&&<p>{description}</p>}</div>{aside}</div>;
@@ -143,7 +150,7 @@ export default function Home(){
       <h1>Ο ΚΟΣΜΟΣ <em>ΤΩΡΑ.</em></h1><p className="frontpage-subtitle">Πόλεμοι. Διαδηλώσεις. Πολιτικές κρίσεις. Όσα αλλάζουν πραγματικά τον κόσμο — με πηγή, αιτία και πιθανό αντίκτυπο.</p>
       {lead&&<div className="frontpage-lead">{lead.imageUrl&&<div className="lead-visual"><img src={lead.imageUrl} alt={lead.title} decoding="async" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/><span className="lead-visual-caption">ΕΙΚΟΝΑ ΑΠΟ {lead.source.toUpperCase()}{lead.imageCredit?' · '+lead.imageCredit:''}</span></div>}<div className="lead-top"><span className="lead-urgent">{getEditorialContext(lead).label}</span><span>{lead.source} · {since(lead.timestamp,lang)}</span></div><button onClick={()=>openItem(lead)} className="lead-headline"><strong>{textFor(lead,'title')}</strong><ArrowUpRight size={26}/></button>
         <p className="lead-summary">{textFor(lead,'summary')}</p>
-        {isMajorEvent(lead)&&<StackedBrief mode="hero" signal={lead} summary={textFor(lead,'summary')}/>} 
+        {isMajorEvent(lead)&&<StackedBrief mode="hero" signal={lead} summary={textFor(lead,'summary')} title={textFor(lead,'title')}/>} 
         <div className="lead-disclaimer">Πηγή: {lead.source}. Η αιτιολόγηση απαιτεί πλήρες ρεπορτάζ· οι επιπτώσεις είναι σενάρια, όχι προβλέψεις.</div>
       </div>}
      </section>
@@ -191,7 +198,7 @@ export default function Home(){
    <footer className="footer"><strong>GLITCH<span className="accent">.</span></strong><p>{t('Πηγές, πλαίσιο και αβεβαιότητα. Χωρίς ψευδείς βεβαιότητες.','Sources, context and uncertainty. No false certainty.')}</p><span>© 2026 · Ανοικτά δεδομένα · Αρχικές πηγές</span></footer>
   </div>
   <nav className="bottom-nav" aria-label="Mobile navigation">{allTabs.map(x=>{const Icon=x.icon;return <button key={x.key} className={tab===x.key?'active':''} onClick={()=>{setTab(x.key);setQuery('');window.scrollTo({top:0,behavior:'smooth'})}}><Icon size={20}/><span>{lang==='el'?x.el:x.en}</span></button>})}</nav>
-  {selected&&<div className="overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="drawer" role="dialog" aria-modal="true" aria-label={t('Ανάλυση ιστορίας','Story detail')}><div className="drawer-header"><span className="section-kicker">GLITCH / ΑΝΑΛΥΣΗ</span><button onClick={()=>setSelected(null)} aria-label="Κλείσιμο"><X size={22}/></button></div><div className="drawer-content">{selected.imageUrl&&<figure className="drawer-photo"><img src={selected.imageUrl} alt={selected.title} loading="lazy" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/><figcaption>Εικόνα από {selected.source}{selected.imageCredit?' · '+selected.imageCredit:''} · <a href={selected.url} target="_blank" rel="noopener noreferrer">Αρχικό άρθρο</a></figcaption></figure>}<div className="story-meta"><span className="eyebrow">{categoryName(selected.category,lang)}</span><span>{selected.source}</span></div><h2>{textFor(selected,'title')}</h2>{originalNote(selected.id,selected.title)&&<small className="translation-note">{(translating[selected.id]||!translations[selected.id])?'Μετάφραση στα ελληνικά…':'Ο αρχικός τίτλος είναι σε άλλη γλώσσα. Η αυτόματη μετάφραση δεν ήταν διαθέσιμη.'}</small>}<div className="detail-time"><Clock3 size={16}/>{time(selected.timestamp,lang)} · {t('Πρωτογενής αναφορά','Original reporting')}</div><StackedBrief mode="detail" signal={selected} summary={textFor(selected,'summary')}/><div className="detail-section"><span className="section-kicker">{t('ΓΙΑΤΙ ΕΙΝΑΙ ΣΤΟ GLITCH','WHY WE FLAGGED IT')}</span><p>{why(selected)}</p><p className="muted-small">{t('Αυτό είναι κριτήριο επιλογής, όχι επαλήθευση ή πρόβλεψη.','This is a selection heuristic, not verification or a forecast.')}</p></div><div className="detail-section"><span className="section-kicker">{t('ΔΕΔΟΜΕΝΑ ΠΗΓΗΣ','SOURCE FACTS')}</span><p>Τα αναλυτικά στοιχεία διατηρούνται στην πρωτότυπη πηγή για να αποφευχθεί η παραπλανητική απόδοση τεχνικών όρων.</p><a href={selected.url} target="_blank" rel="noopener noreferrer" className="detail-original">Προβολή αναλυτικών στοιχείων στην πηγή <ArrowUpRight size={15}/></a></div><div className="detail-section"><span className="section-kicker">{t('ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ','INTERPRETATION')}</span><p>{selected.confidence==='publisher'?t('Πρόκειται για δημοσιογραφική αναφορά. Για ολόκληρο το περιεχόμενο και τυχόν διορθώσεις δες τον εκδότη.','This is a publisher report. Visit the publisher for full coverage and corrections.'):t('Οι μετρήσεις και οι καταγραφές έχουν όρια. Ο δείκτης GLITCH δεν είναι επίσημη εκτίμηση κινδύνου.','Observations have limitations. GLITCH scoring is not an official risk assessment.')}</p></div></div><div className="drawer-actions"><button className="outline-btn" onClick={()=>bookmark(selected)}>{marked(selected.id)?<BookmarkCheck size={18}/>:<Bookmark size={18}/>} {marked(selected.id)?t('Αποθηκεύτηκε','Saved'):t('Αποθήκευση','Save')}</button><button className="outline-btn" onClick={()=>void share(selected)}><Share2 size={18}/>{t('Αντιγραφή link','Copy link')}</button><a className="primary-btn" href={selected.url} target="_blank" rel="noopener noreferrer">{t('Άνοιγμα πηγής','Read source')}<ArrowUpRight size={18}/></a></div></section></div>}
+  {selected&&<div className="overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}><section className="drawer" role="dialog" aria-modal="true" aria-label={t('Ανάλυση ιστορίας','Story detail')}><div className="drawer-header"><span className="section-kicker">GLITCH / ΑΝΑΛΥΣΗ</span><button onClick={()=>setSelected(null)} aria-label="Κλείσιμο"><X size={22}/></button></div><div className="drawer-content">{selected.imageUrl&&<figure className="drawer-photo"><img src={selected.imageUrl} alt={selected.title} loading="lazy" onError={e=>{e.currentTarget.parentElement?.classList.add('image-unavailable')}}/><figcaption>Εικόνα από {selected.source}{selected.imageCredit?' · '+selected.imageCredit:''} · <a href={selected.url} target="_blank" rel="noopener noreferrer">Αρχικό άρθρο</a></figcaption></figure>}<div className="story-meta"><span className="eyebrow">{categoryName(selected.category,lang)}</span><span>{selected.source}</span></div><h2>{textFor(selected,'title')}</h2>{originalNote(selected.id,selected.title)&&<small className="translation-note">{(translating[selected.id]||!translations[selected.id])?'Μετάφραση στα ελληνικά…':'Ο αρχικός τίτλος είναι σε άλλη γλώσσα. Η αυτόματη μετάφραση δεν ήταν διαθέσιμη.'}</small>}<div className="detail-time"><Clock3 size={16}/>{time(selected.timestamp,lang)} · {t('Πρωτογενής αναφορά','Original reporting')}</div><StackedBrief mode="detail" signal={selected} summary={textFor(selected,'summary')} title={textFor(selected,'title')}/><div className="detail-section"><span className="section-kicker">{t('ΓΙΑΤΙ ΕΙΝΑΙ ΣΤΟ GLITCH','WHY WE FLAGGED IT')}</span><p>{why(selected)}</p><p className="muted-small">{t('Αυτό είναι κριτήριο επιλογής, όχι επαλήθευση ή πρόβλεψη.','This is a selection heuristic, not verification or a forecast.')}</p></div><div className="detail-section"><span className="section-kicker">{t('ΔΕΔΟΜΕΝΑ ΠΗΓΗΣ','SOURCE FACTS')}</span><p>Τα αναλυτικά στοιχεία διατηρούνται στην πρωτότυπη πηγή για να αποφευχθεί η παραπλανητική απόδοση τεχνικών όρων.</p><a href={selected.url} target="_blank" rel="noopener noreferrer" className="detail-original">Προβολή αναλυτικών στοιχείων στην πηγή <ArrowUpRight size={15}/></a></div><div className="detail-section"><span className="section-kicker">{t('ΤΙ ΝΑ ΠΡΟΣΕΞΕΙΣ','INTERPRETATION')}</span><p>{selected.confidence==='publisher'?t('Πρόκειται για δημοσιογραφική αναφορά. Για ολόκληρο το περιεχόμενο και τυχόν διορθώσεις δες τον εκδότη.','This is a publisher report. Visit the publisher for full coverage and corrections.'):t('Οι μετρήσεις και οι καταγραφές έχουν όρια. Ο δείκτης GLITCH δεν είναι επίσημη εκτίμηση κινδύνου.','Observations have limitations. GLITCH scoring is not an official risk assessment.')}</p></div></div><div className="drawer-actions"><button className="outline-btn" onClick={()=>bookmark(selected)}>{marked(selected.id)?<BookmarkCheck size={18}/>:<Bookmark size={18}/>} {marked(selected.id)?t('Αποθηκεύτηκε','Saved'):t('Αποθήκευση','Save')}</button><button className="outline-btn" onClick={()=>void share(selected)}><Share2 size={18}/>{t('Αντιγραφή link','Copy link')}</button><a className="primary-btn" href={selected.url} target="_blank" rel="noopener noreferrer">{t('Άνοιγμα πηγής','Read source')}<ArrowUpRight size={18}/></a></div></section></div>}
   {showMap&&<div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setShowMap(false)}}><section className="map-dialog" role="dialog" aria-modal="true"><header><div><span className="section-kicker">ΕΞΕΡΕΥΝΗΣΗ / ΧΑΡΤΗΣ</span><h2>{t('Ο κόσμος σε μία υδρόγειο','Explore events on the globe')}</h2></div><button onClick={()=>setShowMap(false)} aria-label="Κλείσιμο"><X size={24}/></button></header><div className="map-stage"><WorldGlobe signals={signals} onChoose={s=>{setShowMap(false);openItem(s)}} language={lang}/></div><p>{t('Οι καρφίτσες αντιστοιχούν μόνο σε εγγραφές με πραγματικές συντεταγμένες. Τα υπόλοιπα άρθρα δεν τοποθετούνται αυθαίρετα.','Pins represent records with genuine coordinates only. Other news stories are not arbitrarily geolocated.')}</p></section></div>}
  </div>
 }
