@@ -27,7 +27,7 @@ const ui={
   tracked:'Παρακολουθείς',cases:'Φάκελοι γεγονότων',reports:'Δημοσιεύσεις',actors:'Δρώντες',
   changes:'Από την τελευταία σου επίσκεψη',sources:'Πηγές που απάντησαν',updated:'Τελευταίος έλεγχος',
   happening:'ΣΕ ΕΞΕΛΙΞΗ',feed:'Η ΠΑΓΚΟΣΜΙΑ ΕΙΚΟΝΑ',read:'Άνοιγμα φακέλου',
-  first:'Πρώτη αναφορά',latest:'Νεότερη αναφορά',coverage:'Αναφορές από μέσα',
+  first:'Πρώτη στο δείγμα',latest:'Νεότερη στο δείγμα',coverage:'Αναφορές από μέσα',
   mentioned:'Ρητές αναφορές',watchBtn:'Παρακολούθηση',unwatch:'Σταμάτα παρακολούθηση',
   noCases:'Δεν υπάρχουν σχετικά γεγονότα στο τρέχον δείγμα.',again:'Επαναφόρτωση',
   time:'ΧΡΟΝΙΚΟ ΠΑΡΑΘΥΡΟ',search:'Αναζήτηση γεγονότων, χωρών, εταιρειών…',
@@ -53,7 +53,7 @@ const ui={
   tracked:'Watching',cases:'Event dossiers',reports:'Published reports',actors:'Actors',
   changes:'Since your last visit',sources:'Responding sources',updated:'Last checked',
   happening:'HAPPENING NOW',feed:'THE GLOBAL PICTURE',read:'Explore dossier',
-  first:'First report',latest:'Latest report',coverage:'Reports by publishers',
+  first:'Earliest in sample',latest:'Latest in sample',coverage:'Reports by publishers',
   mentioned:'Explicit mentions',watchBtn:'Watch',unwatch:'Unwatch',
   noCases:'No related cases in the current source sample.',again:'Refresh',
   time:'TIME WINDOW',search:'Search events, countries, companies…',
@@ -197,6 +197,13 @@ export default function Home(){
  const Dossier=({c}:{c:StoryCase})=>{
   const sides=opposingSides(c.headline);
   const actors=c.actorIds.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a);
+  const referenceTime=Date.parse(c.firstAt);
+  const hoursSince=(report:Signal)=>(Date.parse(report.timestamp)-referenceTime)/3600000;
+  const waves=[
+   {label:lang==='el'?'ΠΡΩΤΟ 3ΩΡΟ':'FIRST 3 HOURS',count:c.reports.filter(r=>hoursSince(r)<=3).length},
+   {label:lang==='el'?'ΕΠΟΜΕΝΕΣ 9 ΩΡΕΣ':'FOLLOWING 9 HOURS',count:c.reports.filter(r=>hoursSince(r)>3&&hoursSince(r)<=12).length},
+   {label:lang==='el'?'ΜΕΤΑ ΤΙΣ 12Ω':'AFTER 12 HOURS',count:c.reports.filter(r=>hoursSince(r)>12).length}
+  ];
   return <div className="pulse-dossier-underlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}>
    <section className="pulse-dossier" role="dialog" aria-modal="true" aria-label={t.findings}>
     <header className="pulse-dossier-header"><span>GLITCH / CASE FILE {c.id.slice(-7).toUpperCase()}</span><button onClick={()=>setSelected(null)} aria-label="Close"><X size={20}/></button></header>
@@ -210,6 +217,7 @@ export default function Home(){
      {actors.length>0&&<section className="pulse-dossier-entities"><span className="pulse-overline">{t.affected}</span><div>{actors.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}<ArrowUpRight size={13}/></button>)}</div><p>{t.actorCaveat}</p></section>}
      {c.domains.length>0&&<section className="pulse-dossier-domains"><span className="pulse-overline">{t.domains}</span><div>{c.domains.map(d=><span key={d}>{d}</span>)}</div><p>{t.impactCaveat}</p></section>}
      <section className="pulse-timeline"><div className="pulse-timeline-head"><span className="pulse-overline">{t.timeline}</span><strong>{c.sources.length} {t.coverage.toLowerCase()}</strong></div>
+      <div className="pulse-wave-summary">{waves.map(w=><div key={w.label}><strong>{w.count}</strong><span>{w.label}</span></div>)}</div>
       <div className="pulse-timeline-items">{[...c.reports].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp)).map((report,i)=><a
        href={report.url} target="_blank" rel="noopener noreferrer" key={report.id} className="pulse-timeline-item">
        <div className="pulse-timeline-dot"/><span>{displayTime(report.timestamp,lang)} <b>{i===0?t.first:i===c.reports.length-1?t.latest:''}</b></span>
@@ -226,6 +234,7 @@ export default function Home(){
    <div className="pulse-case-body">
     <div className="pulse-case-meta"><span className="pulse-sector">{toTopic(c.topic,lang)}</span><span><Clock3 size={12}/>{relative(c.lastAt,lang)}</span></div>
     <button className="pulse-case-title" onClick={()=>openCase(c)}><strong>{word(c.headline,'title')}</strong><ArrowUpRight size={17}/></button>
+    {translations[lang+':'+c.headline.id]?.translated===false&&(lang==='el'?!hasGreek(c.headline.title):hasGreek(c.headline.title))&&<span className="pulse-original-note">{t.noTranslate}</span>}
     <p>{reportSummary(c.headline)}</p>
     <div className="pulse-case-tags">{related.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}</button>)}</div>
     <div className="pulse-case-foot">
