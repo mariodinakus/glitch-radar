@@ -60,7 +60,7 @@ function frameFor(s:Signal):Frame|undefined{
  return frames.find(f=>f.pattern.test(source));
 }
 function actorNote(c:StoryCase,lang:Lang):string{
- const actorNames=[...new Map(c.reports.flatMap(actorsMentioned).map(x=>[x.id,x.name])).values()].slice(0,3);
+ const actorNames=[...new Set(c.reports.flatMap(story=>actorsMentioned(story).map(actor=>actor.name)))].slice(0,3);
  if(!actorNames.length)return '';
  const names=actorNames.join(' · ');
  return lang==='el'?' Στις αναφορές κατονομάζονται '+names+'· αυτό δεν αποτελεί απόδειξη ευθύνης ή εμπλοκής.':' Named actors include '+names+'; a mention is not evidence of responsibility.';
