@@ -133,6 +133,9 @@ export default function Home(){
  const actorRadar=useMemo(()=>buildActorRadar(cases),[cases]);
  const totalReports=cases.reduce((sum,c)=>sum+c.reports.length,0);
  const changeCount=lastVisit?cases.filter(c=>Date.parse(c.lastAt)>Date.parse(lastVisit)).length:0;
+ const recentlyChanged=lastVisit?cases.filter(c=>Date.parse(c.lastAt)>Date.parse(lastVisit)):cases;
+ const watchChanges=recentlyChanged.filter(c=>c.actorIds.some(id=>watched.includes(id)));
+ const signalUpdates=[...watchChanges,...recentlyChanged.filter(c=>!watchChanges.includes(c))].slice(0,3);
  const filtered=useMemo(()=>cases.filter(c=>{
   if(topic!=='all'&&c.topic!==topic)return false;
   if(actorId&&!c.actorIds.includes(actorId))return false;
@@ -254,6 +257,15 @@ export default function Home(){
        <div><strong>{actorRadar.length}</strong><span>{t.actors}</span></div>
        <div><strong>{lastVisit?changeCount:'—'}</strong><span>{t.changes}</span></div>
      </div></section>
+     {page==='pulse'&&signalUpdates.length>0&&<section className="pulse-changes" aria-label={t.changes}>
+       <div className="pulse-changes-head"><div><span className="pulse-overline">YOUR WORLD / UPDATE CHECK</span><h2>{lastVisit? t.changes : (lang==='el'?'Νεότερες εξελίξεις':'Latest developments')}</h2></div><span>{signalUpdates.length} {lang==='el'?'εξελίξεις':'updates'}</span></div>
+       <div className="pulse-change-list">{signalUpdates.map(c=><button key={c.id} onClick={()=>openCase(c)}>
+        <span className="pulse-change-mark">{c.actorIds.some(id=>watched.includes(id))?<Star size={15}/>:<Activity size={15}/>}</span>
+        <span className="pulse-change-copy"><strong>{word(c.headline,'title')}</strong><small>{c.sources.length} {lang==='el'?'πηγές στο δείγμα':'sampled publishers'} · {relative(c.lastAt,lang)}</small></span>
+        <ArrowUpRight size={17}/>
+       </button>)}</div>
+       <p>{lang==='el'?'Εμφανίζονται πρόσφατες δημοσιεύσεις ή νέες αναφορές από την τελευταία επίσκεψη, με προτεραιότητα σε όσα παρακολουθείς.':'Recent reports or newly published updates since your last visit, prioritizing watched actors.'}</p>
+      </section>}
      {err&&<div className="pulse-error">{err} <button onClick={()=>void load()}>{t.again}</button></div>}
      {!feed&&fetching&&<div className="pulse-loading"><Activity size={20}/>{t.loading}</div>}
      <div className="pulse-body">
