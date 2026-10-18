@@ -14,6 +14,7 @@ import {
  actorsMentioned,buildActorRadar,buildWorldCases,mentionedDomains,opposingSides
 } from '@/lib/world-pulse';
 import type {PulseActor,StoryCase} from '@/lib/world-pulse';
+import {getStoryCommentary} from '@/lib/story-commentary';
 
 type Lang='el'|'en';
 type Page='pulse'|'countries'|'companies'|'watchlist';
@@ -195,6 +196,7 @@ export default function Home(){
   <span className="pulse-actor-name"><strong>{a.name}</strong><small>{a.caseCount} {t.cases.toLocaleLowerCase()}</small></span>
   <ChevronRight size={14}/></button>;
  const Dossier=({c}:{c:StoryCase})=>{
+  const commentary=getStoryCommentary(c,lang);
   const sides=opposingSides(c.headline);
   const actors=c.actorIds.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a);
   const referenceTime=Date.parse(c.firstAt);
@@ -213,6 +215,15 @@ export default function Home(){
      <h2>{word(c.headline,'title')}</h2>
      <div className="pulse-dossier-facts"><span>{c.reports.length} {t.reports.toLowerCase()}</span><span>{c.sources.length} {t.coverage.toLowerCase()}</span><span>{t.first}: {displayTime(c.firstAt,lang)}</span></div>
      <section className="pulse-dossier-text"><span className="pulse-overline">{t.findings}</span><p>{reportSummary(c.headline)}</p><a href={c.headline.url} target="_blank" rel="noopener noreferrer">{t.press} <ExternalLink size={14}/></a></section>
+     <section className="pulse-opinion" aria-label={lang==='el'?'Αναλυτικός σχολιασμός GLITCH':'GLITCH editorial commentary'}>
+      <div className="pulse-opinion-header"><span>GLITCH / VIEW</span><small>{lang==='el'?'ΑΝΑΛΥΣΗ · ΟΧΙ ΠΙΣΤΟΠΟΙΗΣΗ':'ANALYSIS · NOT VERIFICATION'}</small></div>
+      <div className="pulse-opinion-main"><span className="pulse-overline">{commentary.angle}</span><p>{commentary.take}</p></div>
+      <div className="pulse-opinion-bottom">
+       <div><strong>{lang==='el'?'ΤΙ ΘΑ ΑΛΛΑΖΕ ΤΗΝ ΕΙΚΟΝΑ':'WHAT WOULD CHANGE THE PICTURE'}</strong><p>{commentary.watch}</p></div>
+       <div><strong>{lang==='el'?'ΠΩΣ ΚΑΛΥΠΤΕΤΑΙ':'COVERAGE CONTEXT'}</strong><p>{commentary.coverage}</p></div>
+      </div>
+      <p className="pulse-opinion-disclaimer">{lang==='el'?'Σχολιασμός με βάση τίτλους, δημόσιες περιλήψεις και χρονικά στοιχεία πηγών — όχι ανεξάρτητη έρευνα ή βεβαιωμένη πρόβλεψη.':'Commentary derived from headlines, public excerpts and publication timestamps — not independent reporting or a verified forecast.'}</p>
+     </section>
      {sides&&<section className="pulse-opposition"><span className="pulse-overline">{t.sides}</span><div><strong>{sides[0].name}</strong><span>VS</span><strong>{sides[1].name}</strong></div><p>{t.sidesCaveat}</p></section>}
      {actors.length>0&&<section className="pulse-dossier-entities"><span className="pulse-overline">{t.affected}</span><div>{actors.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}<ArrowUpRight size={13}/></button>)}</div><p>{t.actorCaveat}</p></section>}
      {c.domains.length>0&&<section className="pulse-dossier-domains"><span className="pulse-overline">{t.domains}</span><div>{c.domains.map(d=><span key={d}>{d}</span>)}</div><p>{t.impactCaveat}</p></section>}
@@ -228,6 +239,7 @@ export default function Home(){
    </section></div>;
  };
  const CaseCard=({c,lead=false}:{c:StoryCase;lead?:boolean})=>{
+  const commentary=getStoryCommentary(c,lang);
   const related=c.actorIds.map(id=>actorRadar.find(a=>a.id===id)).filter((a):a is PulseActor=>!!a).slice(0,3);
   return <article className={'pulse-case'+(lead?' pulse-case-lead':'')}>
    {c.headline.imageUrl&&<div className="pulse-case-photo"><img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.parentElement?.classList.add('pulse-img-error')}}/></div>}
@@ -236,6 +248,11 @@ export default function Home(){
     <button className="pulse-case-title" onClick={()=>openCase(c)}><strong>{word(c.headline,'title')}</strong><ArrowUpRight size={17}/></button>
     {translations[lang+':'+c.headline.id]?.translated===false&&(lang==='el'?!hasGreek(c.headline.title):hasGreek(c.headline.title))&&<span className="pulse-original-note">{t.noTranslate}</span>}
     <p>{reportSummary(c.headline)}</p>
+    <button className="pulse-case-opinion" onClick={()=>openCase(c)} aria-label={lang==='el'?'Άνοιξε τον σχολιασμό του γεγονότος':'Open event commentary'}>
+     <span>G<span className="pulse-commentary-dot">.</span> / VIEW <b>{commentary.angle}</b></span>
+     <strong>{trim(commentary.take,lead?275:186)}</strong>
+     <small>{lang==='el'?'ΤΙ ΑΛΛΑΖΕΙ ΤΗΝ ΕΙΚΟΝΑ':'WHAT TO WATCH'} <ArrowUpRight size={13}/></small>
+    </button>
     <div className="pulse-case-tags">{related.map(a=><button key={a.id} onClick={()=>pickActor(a.id)}>{a.name}</button>)}</div>
     <div className="pulse-case-foot">
       <span>{c.sources.length>1?t.multi:t.single}</span>
