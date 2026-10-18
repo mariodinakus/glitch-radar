@@ -119,7 +119,11 @@ export default function EditorialDesk(){
  const allVisible=useMemo(()=>page==='companies'?cases.filter(companyStory):cases.filter(c=>matches(c,topic)),[cases,page,topic]);
  const filtered=useMemo(()=>allVisible.filter(c=>!query||c.reports.some(r=>(r.title+' '+r.source).toLocaleLowerCase().includes(query.toLocaleLowerCase()))),[allVisible,query]);
  const shown=more?filtered.slice(0,24):filtered.slice(0,8);
- const lookup=useMemo(()=>[...new Map([...shown.map(c=>c.headline),...(selected?.reports||[]).slice(0,6)].map(r=>[r.id,r])).values()],[shown,selected]);
+ const lookup=useMemo(()=>{
+  const stories=[...shown.map(c=>c.headline),...(selected?.reports||[]).slice(0,6)];
+  const contracts=(page==='markets'?(markets?.quotes||[]).slice(0,14):[]).map(q=>({id:'market:'+q.id,title:q.question,summary:''}));
+  return [...new Map([...stories,...contracts].map(r=>[r.id,r])).values()];
+ },[shown,selected,markets,page]);
  useEffect(()=>{
   if(!ready||translating.current)return;
   const batch=lookup.filter(s=>!translations[lang+':'+s.id]&&(lang==='el'?!greek(s.title):greek(s.title))).slice(0,4);
@@ -136,7 +140,18 @@ export default function EditorialDesk(){
   if(tr?.translated)return tr.title;
   return mismatch&&!tr?t.translating:s.title;
  };
- const sourceText=(s:Signal)=>{const tr=translations[lang+':'+s.id];return tr?.translated&&tr.summary?tr.summary:s.summary};
+ const sourceText=(s:Signal)=>{
+  const tr=translations[lang+':'+s.id];
+  if(tr?.translated&&tr.summary)return tr.summary;
+  if(lang==='el'&&!greek(s.summary))return 'Η πρωτότυπη περίληψη είναι στα αγγλικά. Χρησιμοποίησε τον σύνδεσμο του εκδότη όταν η μετάφραση δεν είναι διαθέσιμη.';
+  if(lang==='en'&&greek(s.summary))return 'The source excerpt is in Greek. Open the original article if translation is unavailable.';
+  return s.summary;
+ };
+ const marketTitle=(q:MarketQuote)=>{
+  const tr=translations[lang+':market:'+q.id];
+  if(tr?.translated)return tr.title;
+  return lang==='el'?tr?.title||t.translating:q.question;
+ };
  const open=(c:StoryCase)=>{setSelected(c);setAnalysis(null);setAnalysisError('');setAnalysisBusy(false)};
  useEffect(()=>{
   if(!selected||!aiEnabled)return;
@@ -172,7 +187,7 @@ export default function EditorialDesk(){
   {!more&&filtered.length>shown.length&&<button className="ed-more" onClick={()=>setMore(true)}>{t.more}<ArrowRight size={15}/></button>}
  </div>;
  const marketsPane=()=> <section className="ed-pane"><header className="ed-section-title"><div><span>Kalshi · Polymarket</span><h2>{t.marketTitle}</h2><p>{t.marketDesc}</p></div><span className="ed-smallpill">{t.noSports}</span></header>{marketError&&<p className="ed-empty">{marketError}</p>}{marketBusy&&!markets&&<p className="ed-empty">{t.loading}</p>}<div className="ed-markets">
-  {(markets?.quotes||[]).slice(0,16).map(q=><a key={q.id} className="ed-market" href={q.sourceUrl} target="_blank" rel="noopener noreferrer"><div><small>{q.venue.toUpperCase()} · {t.volume}: {q.volume24h===null?'—':new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(q.volume24h)}</small><strong>{q.question}</strong></div><span>{(q.probability*100).toFixed(1)}%<small>{t.marketPrice}</small></span><ExternalLink size={15}/></a>)}
+  {(markets?.quotes||[]).slice(0,16).map(q=><a key={q.id} className="ed-market" href={q.sourceUrl} target="_blank" rel="noopener noreferrer"><div><small>{q.venue.toUpperCase()} · {t.volume}: {q.volume24h===null?'—':new Intl.NumberFormat('en',{notation:'compact',maximumFractionDigits:1}).format(q.volume24h)}</small><strong>{marketTitle(q)}</strong></div><span>{(q.probability*100).toFixed(1)}%<small>{t.marketPrice}</small></span><ExternalLink size={15}/></a>)}
  </div>{markets&&markets.quotes.length===0&&<p className="ed-empty">{t.empty}</p>}<p className="ed-footnote">{t.marketCaveat}</p></section>;
  const sourceRow=(name:string,articleUrl?:string)=>{
   const meta=mediaProfile(name);
@@ -200,7 +215,7 @@ export default function EditorialDesk(){
   <div className="ed-frame"><nav className="ed-navigation">{tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setQuery('');setTopic('all');setMore(false);setSelected(null)}}><Icon size={17}/>{x.label}</button>})}</nav>
   <main><section className="ed-hero"><div className="ed-eyebrow"><span className="ed-live"/> {t.time}</div><h1>{t.intro}</h1><p>{t.introText}</p><div className="ed-mini-stats"><span>{cases.length} {t.events.toLowerCase()}</span><span>{feed?.sources?.filter(s=>s.ok).length||0} {t.sourcesLabel.toLowerCase()}</span><button onClick={()=>void load()}><RefreshCw size={14}/>{t.tryAgain}</button></div></section>
    {error&&<div className="ed-empty">{error}</div>}{loading&&!feed&&<p className="ed-empty">{t.loading}</p>}
-   {page==='today'&&<>{cases.length>0&&<Top/>}{storyPane()}</>}
+   {page==='today'&&<>{cases.length>0&&Top()}{storyPane()}</>}
    {page==='companies'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.companies}</span><h2>{t.corpTitle}</h2><p>{t.corpDesc}</p></div></header>{storyPane()}</section>}
    {page==='markets'&&marketsPane()}
    {page==='sources'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.sourcesLabel}</span><h2>{t.mediaTitle}</h2><p>{t.mediaDesc}</p></div></header><div className="ed-media-list">{knownMedia.slice(0,35).map(name=>sourceRow(name))}</div><p className="ed-footnote">{t.ownershipNote} {t.crossBorder}</p></section>}
