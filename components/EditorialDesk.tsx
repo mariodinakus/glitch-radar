@@ -15,7 +15,7 @@ type Analysis={analysis:string;importance:string;next:string;uncertainty:string}
 type MarketsData={updatedAt:string;quotes:MarketQuote[];venues:VenueState[]};
 const copy={
  el:{
-  today:'Σήμερα',companies:'AI & εταιρείες',markets:'Αγορές προβλέψεων',sources:'Τα μέσα ενημέρωσης',
+  today:'Σήμερα',companies:'Τεχνητή νοημοσύνη & εταιρείες',markets:'Αγορές προβλέψεων',sources:'Τα μέσα ενημέρωσης',
   intro:'Τα σημαντικά, με ουσία.',introText:'Όχι εκατοντάδες τίτλοι. Επιλεγμένα γεγονότα, τα στοιχεία που γνωρίζουμε, ποιοι τα καλύπτουν και τι αξίζει να εξετάσουμε.',
   todayTitle:'Η εικόνα του κόσμου',read:'Διάβασε την ανάλυση',all:'Όλα',world:'Διεθνή',economy:'Οικονομία',tech:'Τεχνολογία',science:'Επιστήμη',
   sourcesLabel:'Εκδότες',events:'Γεγονότα',time:'Τελευταίες 72 ώρες',more:'Περισσότερα γεγονότα',
