@@ -219,6 +219,7 @@ export default function Home(){
      <h2>{word(c.headline,'title')}</h2>
      <div className="pulse-dossier-facts"><span>{c.reports.length} {t.reports.toLowerCase()}</span><span>{c.sources.length} {t.coverage.toLowerCase()}</span><span>{t.first}: {displayTime(c.firstAt,lang)}</span></div>
      <section className="pulse-dossier-text"><span className="pulse-overline">{t.findings}</span><p>{reportSummary(c.headline)}</p><a href={c.headline.url} target="_blank" rel="noopener noreferrer">{t.press} <ExternalLink size={14}/></a></section>
+     <CoverageLens key={c.id} story={c} lang={lang}/>
      <section className="pulse-opinion" aria-label={lang==='el'?'Αναλυτικός σχολιασμός GLITCH':'GLITCH editorial commentary'}>
       <div className="pulse-opinion-header"><span>GLITCH / VIEW</span><small>{lang==='el'?'ΑΝΑΛΥΣΗ · ΟΧΙ ΠΙΣΤΟΠΟΙΗΣΗ':'ANALYSIS · NOT VERIFICATION'}</small></div>
       <div className="pulse-opinion-main"><span className="pulse-overline">{commentary.angle}</span><p>{commentary.take}</p></div>
@@ -248,7 +249,6 @@ export default function Home(){
        <div className="pulse-timeline-dot"/><span>{displayTime(report.timestamp,lang)} <b>{i===0?t.first:i===c.reports.length-1?t.latest:''}</b></span>
        <strong>{word(report,'title')}</strong><small>{report.source} <ArrowUpRight size={12}/></small></a>)}</div>
      </section>
-     <CoverageLens key={c.id} story={c} lang={lang}/>
      <p className="pulse-dossier-disclaimer">{t.groupCaveat} {t.dataset}</p>
     </div>
    </section></div>;
