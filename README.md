@@ -1,58 +1,37 @@
-# GLITCH 10 — Ελληνική έκδοση χωρίς X
+# GLITCH — World Pulse / Consequence Engine
 
-Η διεπαφή είναι αποκλειστικά ελληνική. Οι διεθνείς τίτλοι και οι περιγραφές μεταφράζονται αυτόματα όπου ο πάροχος μετάφρασης ανταποκρίνεται. Το πρωτότυπο διατηρείται με εμφανή ένδειξη εάν η μετάφραση αποτύχει. Δεν υπάρχουν X/Twitter integrations, κλειδιά ή χρεώσιμες X κλήσεις.
+**EL / EN** · Next.js 15 · React 19 · Server-side RSS news API
 
-## New experience
+Not another headline aggregator. A source-linked monitor of world events, countries, organizations and multinational companies.
 
-- **Σήμερα:** a source-linked briefing with six initially visible prioritized, diverse stories, reader-friendly full titles and available excerpts, topic filters, search, visit counts, and detailed original-source drawer.
-- **Τάσεις:** δημόσιες τάσεις αναζήτησης Google ανά χώρα.
-- **Αγορές:** Polymarket Gamma **events** and Kalshi **open events with nested markets**, falling back to its non-combination markets endpoint if needed. YES price shows alongside price type, volume, provider health and methodology. No trading, odds comparison, synthetic quotes, or inferred missing values.
-- **Στη σκιά:** transparent source-to-news coverage matching against four monitored general publisher feeds. Includes primary evidence and a *user-triggered* GDELT broader check. Limited coverage in the monitored sample does **not** imply censorship.
-- **Αποθηκευμένα:** bookmarks persisted per-device in browser local storage.
-- **Map:** secondary, optional interactive globe of actually geolocated source events.
-- **Accessibility:** full natural titles and previews, responsive mobile bottom navigation, desktop left nav, light/dark palette, readable detail drawer, informative offline/error/empty states.
+## Three intelligence instruments
 
-## Local setup
+1. **WORLD DIFF** — recently published or changed coverage since your previous visit, based on the source sample. Does not pretend every new headline represents a changed real-world situation.
+2. **RIPPLE ENGINE** — click through conditional mechanisms by domain (energy, trade, transportation, finance, technology, conflict) and see what evidence would be needed to verify each step. A scenario is *not a prediction*.
+3. **ACTOR ARENA** — discover headline-based mentions and explicit relations between named countries, institutions and companies. Co-mentions do not establish alliances, responsibility or corporate exposure.
+
+Each event has a source timeline, a distinct GLITCH VIEW commentary, named-actor references and original publisher links. Content comes from RSS excerpts and publicly available metadata, not unrestricted full publisher articles.
+
+## Deploy: Vercel or Render
+
+- **Current Vercel:** https://glitch-radar-github.vercel.app
+- **Alternative full-stack Render deployment:** [Deploy GLITCH to Render](https://render.com/deploy?repo=https://github.com/mariodinakus/glitch-radar)
+
+The repository includes a validated Next.js web-service configuration in [render.yaml](./render.yaml). **Render must run this as a Node web service, not a static site**, so that `/api/feed` and `/api/translate` continue to work. The Blueprint uses a free plan and disables automatic deploys; review and approve the new service in your Render account before creating it. Free services may sleep when idle and have usage restrictions. It is a *separate* URL; setting it up does not reassign the original Vercel domain.
+
+### Local development
+
+Requires Node.js 20.9+ (22 recommended):
 
 ```bash
 npm install
-npm run dev
-npm test
 npm run typecheck
 npm run build
+npm run dev
 ```
 
-Requires Node 20.9+; deploy to Vercel by importing this GitHub repo. Do not set a root subdirectory. The deployment does **not** require credentials for Polymarket, Kalshi, RSS, NASA, NOAA or USGS.
+Public-source coverage depends on upstream feed availability. Optional Google Cloud Translation needs the server-side `GOOGLE_TRANSLATE_API_KEY`; the free translation fallback can have availability or quality limits. Never commit credentials or place secrets in `NEXT_PUBLIC_*`.
 
-### Optional environment variables
+## Trust model
 
-```
-GOOGLE_TRANSLATE_API_KEY=
-CRON_SECRET=
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-```
-
-The default public MyMemory translation fallback has rate/quality limitations. Set `GOOGLE_TRANSLATE_API_KEY` for more reliable English→Greek translations and review quota/billing before enabling it. Never put secrets in GitHub or client-side `NEXT_PUBLIC_*` variables.
-
-### Reliable operation
-
-`/api/feed`, `/api/markets`, `/api/trends` and `/api/coverage` return data/provider statuses independently. Missing values are null, and failures are never quietly converted to numbers, '0%' or invented source items. A provider may fail due to geo/network/API restrictions; Vercel build success is **not** end-to-end upstream proof. Source APIs cache approximately 10 minutes to 1 hour. Google Cloud Translation may cost money if configured.
-
-### Why not full publisher articles?
-
-Only the available RSS excerpt is shown; full copyrighted articles open on the publisher's site. This is intentional.
-
-## Sources
-
-- [Polymarket Gamma API](https://docs.polymarket.com/)
-- [Kalshi API](https://docs.kalshi.com/)
-- [USGS Earthquake GeoJSON](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php)
-- [NASA EONET](https://eonet.gsfc.nasa.gov/docs/v3)
-- [NOAA SWPC](https://www.swpc.noaa.gov/)
-- [GDELT DOC 2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/)
-- [Google Trends](https://trends.google.com/trending)
-
-No financial advice. Market prices are not calibrated probabilities, confidence intervals, or recommendations to trade.
+The editorial interpretation, relationships and conditional ripples are heuristics based on source headlines and excerpts. They are **not** independently verified journalism, claims of confirmed economic effects, actual probabilities, or financial advice. See the original story and compare primary sources before drawing conclusions.
