@@ -245,3 +245,28 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--pulse-red);outline-
 .pulse-wave-summary strong{font-size:23px;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.05em}
 .pulse-wave-summary span{color:#aaa5b1;font-size:9px;font-weight:850;line-height:1.4;letter-spacing:.015em}
 .pulse-original-note{display:block;color:#e3aab9;font-size:9px;line-height:1.5;margin-top:7px}
+
+
+/* GLITCH VIEW: unique editorial read on every incident, not a duplicated RSS preview. */
+.pulse-case-opinion{display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;padding:12px 12px 11px;margin:2px 0 12px;border:1px solid #42343c;border-left:3px solid #f04460;border-radius:7px;background:#201b23;color:#f9eefa;text-align:left;transition:border-color .18s,background .18s}
+.pulse-case-opinion:hover{background:#2a1c28;border-color:#be4964}
+.pulse-case-opinion>span{display:flex;align-items:center;flex-wrap:wrap;gap:7px;color:#f75b78;font-weight:950;font-size:9px;letter-spacing:.07em;line-height:1.5}
+.pulse-commentary-dot{color:#fff}
+.pulse-case-opinion>span b{color:#d3a8b4;letter-spacing:.025em;font-weight:750;font-size:9px}
+.pulse-case-opinion>strong{font-weight:660;line-height:1.57;font-size:11px;color:#ddd3dd;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere}
+.pulse-case-opinion>small{align-self:flex-start;display:flex;align-items:center;gap:5px;color:#ff869a;font-weight:900;font-size:9px;letter-spacing:.02em}
+.pulse-case-lead .pulse-case-opinion{padding:15px 16px;margin:5px 0 11px}
+.pulse-case-lead .pulse-case-opinion>strong{font-size:12px;-webkit-line-clamp:4}
+.pulse-opinion{border:1px solid #664050;border-radius:12px;overflow:hidden;margin:26px 0;background:linear-gradient(135deg,#281923,#1b1a23 77%);box-shadow:0 10px 25px rgba(0,0,0,.08)}
+.pulse-opinion-header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:13px 17px;background:rgba(10,9,14,.34);border-bottom:1px solid #583541}
+.pulse-opinion-header>span{font-size:12px;font-weight:950;letter-spacing:.045em;color:#ff6882}
+.pulse-opinion-header>small{font-size:9px;font-weight:760;color:#c4a7b5;letter-spacing:.03em}
+.pulse-opinion-main{padding:22px 20px 19px}
+.pulse-opinion-main>.pulse-overline{color:#ff8a9d;font-size:10px}
+.pulse-opinion-main>p{color:#f4eaf0;font-size:clamp(15px,1.85vw,19px);line-height:1.66;letter-spacing:-.018em;font-weight:670;margin:11px 0 0;overflow-wrap:anywhere}
+.pulse-opinion-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border-top:1px solid #49323c;background:#49323c}
+.pulse-opinion-bottom>div{background:#211c26;padding:17px 17px 18px}
+.pulse-opinion-bottom strong{display:block;font-size:10px;line-height:1.5;color:#fa7890;letter-spacing:.035em}
+.pulse-opinion-bottom p{font-size:12px;line-height:1.75;color:#c7bac6;margin:9px 0 0;overflow-wrap:anywhere}
+.pulse-opinion-disclaimer{font-size:10px;color:#a29ba8;line-height:1.6;padding:13px 18px;margin:0;border-top:1px solid #49323c}
+@media(max-width:620px){.pulse-opinion-bottom{grid-template-columns:1fr}.pulse-opinion-main{padding:17px 15px}.pulse-opinion-main>p{font-size:16px}.pulse-opinion-bottom>div{padding:13px 15px}.pulse-case-opinion{padding:11px 12px}.pulse-case-lead .pulse-case-opinion{padding:11px 12px}}
