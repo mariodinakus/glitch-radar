@@ -16,7 +16,7 @@ export function PulseFront({cases,lang,titleFor,open}:Props){
  const sources=sourceEdition(current);
  const frames=coverageFrames(current);
  return <section className="shiftboard" aria-label="GLITCH newsroom">
-  <div className="shiftboard-head"><div><span><Radio size={14}/> {tx(lang,'Ο ΚΟΣΜΟΣ ΤΩΡΑ','THE WORLD NOW')}</span><h2>{tx(lang,'Έξι εξελίξεις. Όχι εξήντα τίτλοι.','Six developments. Not sixty headlines.')}</h2></div><small>GLITCH / LIVE EDITION</small></div>
+  <div className="shiftboard-head"><div><span><Radio size={14}/> {tx(lang,'Ο ΚΟΣΜΟΣ ΤΩΡΑ','THE WORLD NOW')}</span><h2>{tx(lang,'Έξι εξελίξεις. Όχι εξήντα τίτλοι.','Six developments. Not sixty headlines.')}</h2></div><small>{tx(lang,'GLITCH / ΣΗΜΕΡΙΝΗ ΕΚΔΟΣΗ','GLITCH / LIVE EDITION')}</small></div>
   <div className="shiftboard-stage">
    <div className="shiftboard-feature">
     {current.headline.imageUrl?<img src={current.headline.imageUrl} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>:<div className="shiftboard-graphic"><Globe2 size={110} strokeWidth={.55}/></div>}
