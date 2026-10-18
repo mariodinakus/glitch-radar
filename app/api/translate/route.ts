@@ -20,11 +20,11 @@ async function withTimeout(url:string,options:RequestInit,ms:number){
  try{return await fetch(url,{...options,signal:controller.signal})}finally{clearTimeout(timer)}
 }
 
-async function googleTranslate(texts:string[]):Promise<string[]>{
+async function googleTranslate(texts:string[],target:'el'|'en'):Promise<string[]>{
  const key=process.env.GOOGLE_TRANSLATE_API_KEY;
  if(!key)throw new Error('No Google Cloud key');
  const response=await withTimeout('https://translation.googleapis.com/language/translate/v2?key='+encodeURIComponent(key),{
-  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:texts,source:'en',target:'el',format:'text'}),cache:'no-store'
+  method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:texts,target,format:'text'}),cache:'no-store'
  },7000);
  if(!response.ok)throw new Error('Google Cloud service '+response.status);
  const data=await response.json() as {data?:{translations?:Array<{translatedText?:string}>}};
@@ -33,11 +33,11 @@ async function googleTranslate(texts:string[]):Promise<string[]>{
  return output;
 }
 
-async function myMemoryTranslate(text:string):Promise<string>{
- const key='el:'+text;
+async function myMemoryTranslate(text:string,target:'el'|'en'):Promise<string>{
+ const key=target+':'+text;
  const hit=cache.get(key);if(hit)return hit;
  const url=new URL('https://api.mymemory.translated.net/get');
- url.searchParams.set('q',text.slice(0,450));url.searchParams.set('langpair','en|el');
+ url.searchParams.set('q',text.slice(0,450));url.searchParams.set('langpair',target==='el'?'en|el':'el|en');
  const response=await withTimeout(url.toString(),{headers:{Accept:'application/json'},next:{revalidate:604800}},7000);
  if(!response.ok)throw new Error('MyMemory HTTP '+response.status);
  const data=await response.json() as {responseStatus?:number;responseData?:{translatedText?:string}};
@@ -47,20 +47,21 @@ async function myMemoryTranslate(text:string):Promise<string>{
  return translated;
 }
 
-async function one(item:TranslationItem):Promise<Translated>{
- const titleGreek=hasGreek(item.title),summaryGreek=!item.summary||hasGreek(item.summary);
+async function one(item:TranslationItem,target:'el'|'en'):Promise<Translated>{
+ const already=(s:string)=>target==='el'?hasGreek(s):!hasGreek(s);
+ const titleGreek=already(item.title),summaryGreek=!item.summary||already(item.summary);
  if(titleGreek&&summaryGreek)return {...item,translated:true,provider:'original'};
  // Headline comes first: a failed, long RSS description must never discard a good title.
  const translate=(text:string)=>process.env.GOOGLE_TRANSLATE_API_KEY
-   ?googleTranslate([text]).then(x=>x[0]).catch(()=>myMemoryTranslate(text))
-   :myMemoryTranslate(text);
+   ?googleTranslate([text],target).then(x=>x[0]).catch(()=>myMemoryTranslate(text,target))
+   :myMemoryTranslate(text,target);
  let title=item.title,summary=item.summary;
  let titleOk=titleGreek,summaryOk=summaryGreek;
  let provider:'google-cloud'|'mymemory'|'original'='original';
  try {
   if(!titleGreek&&title){
    const result=await translate(title.slice(0,420));
-   if(!hasGreek(result))throw new Error('Headline provider did not return Greek');
+   if(!already(result))throw new Error('Translation language not available');
    title=result;
    titleOk=true;
    provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
@@ -73,14 +74,14 @@ async function one(item:TranslationItem):Promise<Translated>{
    const limit=raw.length<summary.length?raw.lastIndexOf(' '):-1;
    const snippet=limit>190?raw.slice(0,limit):raw;
    const result=await translate(snippet);
-   if(hasGreek(result)){
+   if(already(result)){
     summary=result+(snippet.length<summary.length?'…':'');
     summaryOk=true;
     provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
    }
   }catch{}
  }
- if(!summaryOk)summary='Δεν υπάρχει διαθέσιμη ελληνική μετάφραση της περίληψης. Διάβασε το αρχικό δημοσίευμα για πλήρες πλαίσιο.';
+ if(!summaryOk)summary=target==='el'?'Δεν υπάρχει διαθέσιμη ελληνική μετάφραση της περίληψης. Διάβασε το αρχικό δημοσίευμα για πλήρες πλαίσιο.':'English summary unavailable. Open the original source for details.';
  return {id:item.id,title,summary,translated:titleOk,provider,
    ...(titleOk?{}:{error:'Η μετάφραση τίτλου δεν είναι διαθέσιμη από τον πάροχο'})};
 }
@@ -89,7 +90,8 @@ export async function POST(request:NextRequest){
  try{
   if(Number(request.headers.get('content-length')||'0')>MAX_BODY)return NextResponse.json({error:'Request too large'},{status:413});
   const body=await request.text();if(body.length>MAX_BODY)return NextResponse.json({error:'Request too large'},{status:413});
-  const value=JSON.parse(body) as {items?:unknown;title?:unknown;summary?:unknown};
+  const value=JSON.parse(body) as {items?:unknown;title?:unknown;summary?:unknown;target?:unknown};
+  const target=value.target==='en'?'en':'el';
   const legacy=!Array.isArray(value.items);
   const raw=legacy?[{id:'legacy',title:value.title,summary:value.summary}]:value.items;
   if(!Array.isArray(raw)||raw.length<1||raw.length>MAX_ITEMS)return NextResponse.json({error:'Invalid batch'},{status:400});
@@ -100,7 +102,7 @@ export async function POST(request:NextRequest){
   if(items.some(x=>!x.id||(!x.title&&!x.summary)))return NextResponse.json({error:'Invalid translation item'},{status:400});
   // Bound parallelism to avoid hammering public translation services.
   const result:Translated[]=[];
-  for(let i=0;i<items.length;i+=2)result.push(...await Promise.all(items.slice(i,i+2).map(one)));
+  for(let i=0;i<items.length;i+=2)result.push(...await Promise.all(items.slice(i,i+2).map(item=>one(item,target))));
   if(legacy){const a=result[0];return NextResponse.json({title:a.title,summary:a.summary,translated:a.translated,provider:a.provider,error:a.error},{headers:{'Cache-Control':'private, no-store'}})}
   return NextResponse.json({items:result},{headers:{'Cache-Control':'private, no-store'}});
  }catch{return NextResponse.json({error:'Invalid translation request'},{status:400})}
