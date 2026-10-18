@@ -56,7 +56,7 @@ export function SignalLens({signal,title,summary,all,mode,onExpand,onOpen}:{
    </div>
    {view==='insight'&&<div className="lens-insight">
     <div className="lens-primary"><span>ΤΟ ΔΗΜΟΣΙΕΥΜΑ ΣΕ ΜΙΑ ΜΑΤΙΑ</span><p>{short(steps[0]?.text||title,480)}</p><small>ΑΝΑΦΟΡΑ ΠΗΓΗΣ · ΟΧΙ ΑΝΕΞΑΡΤΗΤΗ ΕΠΑΛΗΘΕΥΣΗ</small></div>
-    {evidence.length?<div className="lens-evidence-list">{evidence.map(item=><div key={item.id} className="lens-evidence">
+    {evidence.length?<div className="lens-evidence-list">{evidence.filter(item=>item.id!=='watch').map(item=><div key={item.id} className="lens-evidence">
      <span className="lens-evidence-mark">{item.id==='cause'?'↳':item.id==='impact'?'↗':item.id==='watch'?'◎':'•'}</span>
      <div><strong>{item.title}</strong><p>{item.text}</p><small>{item.evidenceLabel}</small></div>
     </div>)}</div>:<div className="lens-empty"><ScanSearch size={21}/><p>Η είδηση διαθέτει μόνο τίτλο ή πολύ σύντομη αναφορά. Δεν υπάρχει ασφαλές έδαφος για ξεχωριστή ανάλυση αιτίων ή συνεπειών.</p></div>}
