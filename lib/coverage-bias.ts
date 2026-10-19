@@ -7,9 +7,9 @@ export function mediaOrientation(name:string):Orientation{
  const p=mediaProfile(name);
  if(!p?.biasSource||!p.biasEn)return 'unrated';
  const s=p.biasEn.trim().toLowerCase();
- if(s.startsWith('left'))return 'left';
+ if(s.startsWith('left')||s.startsWith('lean left'))return 'left';
  if(s.startsWith('center'))return 'center';
- if(s.startsWith('right'))return 'right';
+ if(s.startsWith('right')||s.startsWith('lean right'))return 'right';
  return 'unrated';
 }
 export function coverageBreakdown(c:StoryCase):CoverageBreakdown{
