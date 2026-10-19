@@ -6,6 +6,8 @@ import type {StoryCase} from '@/lib/world-pulse';
 import {mediaProfile} from '@/lib/media-profiles';
 import {coverageFrames,axisTitle,sourceEdition,sourcesChronologically} from '@/lib/coverage-signals';
 import {GlitchMark} from '@/components/GlitchMark';
+import {ReaderToolkit} from '@/components/ReaderToolkit';
+import {CoverageSpectrum} from '@/components/CoverageSpectrum';
 
 type Lang='el'|'en';
 type Editorial={analysis:string;importance:string;next:string;uncertainty:string};
@@ -66,13 +68,14 @@ export function StoryImmersion({story,lang,titleFor,summaryFor,onClose,aiEnabled
     <div className="orbit-reader-inner">
      {mode==='story'&&<section className="orbit-brief">
       <div className="orbit-section-heading"><span>01 / {tx(lang,'Η ΟΥΣΙΑ','THE ESSENTIALS')}</span><h2>{tx(lang,'Τι έχει αναφερθεί','What was reported')}</h2><p>{tx(lang,'Στοιχεία από το διαθέσιμο απόσπασμα, όχι από ολόκληρο το άρθρο.','Information from the available excerpt, not a claim to have read the full article.')}</p></div>
-      <div className="orbit-brief-text"><CheckCircle2 size={19}/><p>{summaryFor(story.headline)}</p></div>
+      <ReaderToolkit story={story} lang={lang} titleFor={titleFor} summaryFor={summaryFor} aiEnabled={aiEnabled}/>
       <div className="orbit-brief-grid"><div><small>{tx(lang,'ΠΡΩΤΗ ΣΤΟ ΔΕΙΓΜΑ','EARLIEST IN SAMPLE')}</small><strong>{date(story.firstAt,lang)}</strong></div><div><small>{tx(lang,'ΝΕΟΤΕΡΗ ΑΝΑΦΟΡΑ','LATEST REPORT')}</small><strong>{date(story.lastAt,lang)}</strong></div></div>
       <a className="orbit-primary-link" href={story.headline.url} target="_blank" rel="noopener noreferrer">{tx(lang,'Άνοιξε το πρωτότυπο άρθρο','Open original article')}<ArrowUpRight size={16}/></a>
       <div className="orbit-next-mode"><div><strong>{tx(lang,'Η ενδιαφέρουσα ερώτηση: ποιος το παρουσιάζει πώς;','The interesting question: who frames it how?')}</strong><p>{tx(lang,'Σύγκρινε τίτλους διαφορετικών εκδοτών χωρίς κατασκευασμένα στρατόπεδα.','Compare publishers without invented opposing camps.')}</p></div><button onClick={()=>setMode('perspectives')}>{tx(lang,'Σύγκριση','Compare')}<ArrowRight size={16}/></button></div>
      </section>}
      {mode==='perspectives'&&<section className="orbit-angles">
       <div className="orbit-section-heading"><span>02 / {tx(lang,'ΑΠΟΤΥΠΩΜΑ ΚΑΛΥΨΗΣ','COVERAGE DNA')}</span><h2>{tx(lang,'Διαφορετικές γωνίες στην ίδια είδηση','Different angles on one story')}</h2><p>{tx(lang,'Ο χάρτης βασίζεται στις λέξεις των τίτλων — όχι σε συμπεράσματα περί πολιτικής στάσης.','The map is based on headline wording, not judgments about political allegiance.')}</p></div>
+      <CoverageSpectrum story={story} lang={lang}/>
       <div className="orbit-frame-list">{frames.map((f,i)=><div key={f.key}><span className="orbit-frame-count" style={{background:['#ec876d','#75b7b0','#b7a7df','#e3b871','#a6b4e5','#bac8d1'][i%6]}}>{f.count}</span><div><strong>{axisTitle(f.key,lang)}</strong><small>{f.sources.join(' · ')}</small></div></div>)}</div>
       {editions.length>=2?<div className="orbit-headline-compare"><div><label htmlFor="orbit-source-a">{tx(lang,'ΕΚΔΟΤΗΣ Α','PUBLISHER A')}</label><select id="orbit-source-a" value={a.id} onChange={e=>setLeft(e.target.value)}>{editions.map(r=><option key={r.id} value={r.id}>{r.source}</option>)}</select><blockquote>{titleFor(a)}</blockquote><a href={a.url} target="_blank" rel="noopener noreferrer">{tx(lang,'Άρθρο','Article')}<ExternalLink size={14}/></a></div>
       <div><label htmlFor="orbit-source-b">{tx(lang,'ΕΚΔΟΤΗΣ Β','PUBLISHER B')}</label><select id="orbit-source-b" value={b.id} onChange={e=>setRight(e.target.value)}>{editions.map(r=><option key={r.id} value={r.id}>{r.source}</option>)}</select><blockquote>{titleFor(b)}</blockquote><a href={b.url} target="_blank" rel="noopener noreferrer">{tx(lang,'Άρθρο','Article')}<ExternalLink size={14}/></a></div></div>
