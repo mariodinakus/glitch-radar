@@ -53,7 +53,9 @@ export function discoverScore(c:StoryCase,mode:DiscoverMode,interest:string[],se
   const subjects=interest.includes(groups(c))?1:0;
   return freshness*40+sources*9+actors*22+subjects*27+(seen[eventSignature(c)]?0:18)+score*.12;
  }
- return sources*25+Math.min(c.reports.length,12)*4+freshness*35+score*.16;
+ const viewedAt=seen[eventSignature(c)]||0;
+ const recentlyViewed=viewedAt>0&&(now-viewedAt)<24*3600000;
+ return sources*24+Math.min(c.reports.length,8)*3+Math.max(0,1-age/48)*38-age*1.05+score*.13-(recentlyViewed?42:0);
 }
 export function discoverRank(cases:StoryCase[],mode:DiscoverMode,interest:string[],seen:Record<string,number>,now=Date.now()):StoryCase[]{
  const ranked=dedupeCases([...cases].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)))
