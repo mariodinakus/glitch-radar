@@ -25,7 +25,7 @@ export function ReaderToolkit({story,lang,titleFor,summaryFor,aiEnabled}:{story:
   try{
    const data=JSON.parse(localStorage.getItem(cacheKey)||'[]') as string[];
    const next=saved?data.filter(x=>x!==story.id):[story.id,...data.filter(x=>x!==story.id)].slice(0,80);
-   localStorage.setItem(cacheKey,JSON.stringify(next));setSaved(!saved);
+   localStorage.setItem(cacheKey,JSON.stringify(next));setSaved(!saved);window.dispatchEvent(new Event('glitch-readlist-changed'));
   }catch{setError(T(lang,'Δεν ήταν δυνατή η τοπική αποθήκευση.','Local saving is unavailable.'))}
  };
  const listen=()=>{
