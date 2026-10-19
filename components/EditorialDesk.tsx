@@ -7,8 +7,9 @@ import {buildWorldCases} from '@/lib/world-pulse';
 import type {StoryCase} from '@/lib/world-pulse';
 import {mediaProfile} from '@/lib/media-profiles';
 import {GlitchMark} from '@/components/GlitchMark';
-import {PulseFront} from '@/components/PulseFront';
 import {StoryImmersion} from '@/components/StoryImmersion';
+import {DiscoverDesk} from '@/components/DiscoverDesk';
+import {dedupeCases} from '@/lib/discover-ranking';
 
 type Lang='el'|'en';
 type Page='today'|'companies'|'markets'|'sources';
@@ -123,7 +124,7 @@ export default function EditorialDesk(){
  const load=useCallback(async()=>{setLoading(true);setError('');try{const r=await fetch('/api/feed',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);setFeed(await r.json() as Feed)}catch(e){setError(e instanceof Error?e.message:'Feed unavailable')}finally{setLoading(false)}},[]);
  useEffect(()=>{void load();fetch('/api/editorial').then(r=>r.json()).then(x=>setAiEnabled(x.available===true)).catch(()=>{});const id=setInterval(()=>{if(document.visibilityState==='visible')void load()},240000);return()=>clearInterval(id)},[load]);
  useEffect(()=>{if(page!=='markets'&&page!=='companies'&&page!=='today')return;if(markets||marketBusy||marketError)return;setMarketBusy(true);fetch('/api/market-intelligence').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(x=>setMarkets(x as MarketsData)).catch(e=>setMarketError(e instanceof Error?e.message:'Unavailable')).finally(()=>setMarketBusy(false))},[page,markets,marketBusy,marketError]);
- const cases=useMemo(()=>curate(buildWorldCases((feed?.signals||[]).filter(s=>s.confidence==='publisher'&&!['sports','culture'].includes(s.category)),72,150)),[feed]);
+ const cases=useMemo(()=>dedupeCases(buildWorldCases((feed?.signals||[]).filter(s=>s.confidence==='publisher'&&!['sports','culture'].includes(s.category)),72,180)),[feed]);
  const allVisible=useMemo(()=>page==='companies'?cases.filter(companyStory):cases.filter(c=>matches(c,topic)),[cases,page,topic]);
  const filtered=useMemo(()=>allVisible.filter(c=>(!savedOnly||savedIds.includes(c.id))&&(!query||c.reports.some(r=>(r.title+' '+r.source).toLocaleLowerCase().includes(query.toLocaleLowerCase())))),[allVisible,query,savedOnly,savedIds]);
  const shown=more?filtered.slice(0,24):filtered.slice(0,8);
@@ -185,10 +186,6 @@ export default function EditorialDesk(){
    <button className="ed-card-link" onClick={()=>open(c)}>{t.read} <ChevronRight size={15}/></button>
   </div>
  </article>;
- const Top=()=> <div className="ed-features">
-  <header className="ed-section-title"><div><span>{t.time}</span><h2>{t.todayTitle}</h2></div><strong>{cases.length} {t.events.toLowerCase()}</strong></header>
-  {cases.length>0&&<div className="ed-carousel">{cases.slice(0,5).map((c,i)=><button key={c.id} className="ed-carousel-slide" onClick={()=>open(c)}>{c.headline.imageUrl&&<img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>}<div><small>{String(i+1).padStart(2,'0')} / 05 · {uniqueSources(c).length} {t.sourcesLabel.toLowerCase()}</small><h3>{titleFor(c.headline)}</h3><span>{uniqueSources(c).slice(0,2).map(x=>x.source).join(' · ')}</span></div></button>)}</div>}
- </div>;
  const storyPane=()=><div className="ed-story-content">
   <div className="ed-controls"><div className="ed-filter-row">{(page==='today'?topicKeys:['all'] as const).map(k=><button key={k} className={topic===k?'active':''} onClick={()=>{setTopic(k);setMore(false)}}>{getTopicLabel(k,lang)}</button>)}</div><button className={'ed-bookmark-filter'+(savedOnly?' active':'')} onClick={()=>{setSavedOnly(x=>!x);setMore(false)}}><Bookmark size={15}/>{lang==='el'?'Αποθηκευμένα':'Saved'} ({savedIds.length})</button><label className="ed-search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.find}/></label></div>
   {shown.length?<div className="ed-news-grid">{shown.map((c,i)=>newsCard(c,i===0))}</div>:<p className="ed-empty">{t.empty}</p>}
@@ -209,9 +206,9 @@ export default function EditorialDesk(){
    <div className="ed-lang" role="group" aria-label={lang==='el'?'Γλώσσα':'Language'}><button className={lang==='el'?'active':''} onClick={()=>setLang('el')}>Ελληνικά</button><button className={lang==='en'?'active':''} onClick={()=>setLang('en')}>English</button></div>
   </header>
   <div className="ed-frame"><nav className="ed-navigation">{tabs.map(x=>{const Icon=x.icon;return <button key={x.id} className={page===x.id?'active':''} onClick={()=>{setPage(x.id);setQuery('');setTopic('all');setMore(false);setSelected(null)}}><Icon size={17}/>{x.label}</button>})}</nav>
-  <main><section className="ed-hero"><div className="ed-eyebrow"><span className="ed-live"/> {t.time}</div><h1>{t.intro}</h1><p>{t.introText}</p><div className="ed-mini-stats"><span>{cases.length} {t.events.toLowerCase()}</span><span>{feed?.sources?.filter(s=>s.ok).length||0} {t.sourcesLabel.toLowerCase()}</span><button onClick={()=>void load()}><RefreshCw size={14}/>{t.tryAgain}</button></div></section>
+  <main>{page!=='today'&&<section className="ed-hero"><div className="ed-eyebrow"><span className="ed-live"/> {t.time}</div><h1>{t.intro}</h1><p>{t.introText}</p><div className="ed-mini-stats"><span>{cases.length} {t.events.toLowerCase()}</span><span>{feed?.sources?.filter(s=>s.ok).length||0} {t.sourcesLabel.toLowerCase()}</span><button onClick={()=>void load()}><RefreshCw size={14}/>{t.tryAgain}</button></div></section>}
    {error&&<div className="ed-empty">{error}</div>}{loading&&!feed&&<p className="ed-empty">{t.loading}</p>}
-   {page==='today'&&<>{cases.length>0&&<PulseFront cases={cases} lang={lang} titleFor={titleFor} open={open}/>} {storyPane()}</>}
+   {page==='today'&&cases.length>0&&<DiscoverDesk cases={cases} lang={lang} titleFor={titleFor} summaryFor={sourceText} onOpen={open}/>}
    {page==='companies'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.companies}</span><h2>{t.corpTitle}</h2><p>{t.corpDesc}</p></div></header>{storyPane()}</section>}
    {page==='markets'&&marketsPane()}
    {page==='sources'&&<section className="ed-pane"><header className="ed-section-title"><div><span>{t.sourcesLabel}</span><h2>{t.mediaTitle}</h2><p>{t.mediaDesc}</p></div></header><div className="ed-media-list">{knownMedia.slice(0,35).map(name=>sourceRow(name))}</div><p className="ed-footnote">{t.ownershipNote} {t.crossBorder}</p></section>}
