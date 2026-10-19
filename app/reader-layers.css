@@ -57,3 +57,8 @@
 .spectrum-source-list a{display:grid;place-items:center;color:#9f6358}
 .spectrum-method{font-size:10px;line-height:1.7;color:#808a8d;margin:18px 0 0;padding:12px 0 0;border-top:1px solid #e9e9e4}
 @media(max-width:600px){.reader-tabs>button{font-size:10px;padding:11px 5px}.reader-tool-body{padding:16px}.reader-tool-body>p{font-size:15px}.spectrum-section{padding:14px}.spectrum-head{display:block}.spectrum-head>small{display:inline-flex;margin-top:10px}.spectrum-source-list{grid-template-columns:1fr}.reader-five>div{grid-template-columns:95px minmax(0,1fr)}}
+
+.ed-bookmark-filter{display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border:1px solid #dfe2e1;border-radius:8px;padding:11px;background:#fff;font-size:11px;color:#50616c;font-weight:850}
+.ed-bookmark-filter.active{background:#19343c;color:#fff;border-color:#19343c}
+.ed-bookmark-filter:hover{border-color:#b17b67}
+@media(max-width:760px){.ed-bookmark-filter{margin:5px 0 12px}.ed-controls{display:flex;flex-wrap:wrap}.ed-controls>.ed-filter-row{width:100%}.ed-controls>.ed-search{margin:0;min-width:140px;flex:1}}
