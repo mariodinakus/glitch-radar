@@ -1,6 +1,7 @@
 import type {StoryCase} from './world-pulse';
+import {majorEventSignal,rankMajorEvents} from './major-events';
 
-export type DiscoverMode='popular'|'latest'|'foryou';
+export type DiscoverMode='big'|'popular'|'latest'|'foryou';
 export type RankedStory={story:StoryCase;score:number;publisherCount:number;time:number;kind:string};
 const common=new Set('the this that with from into over after before amid says said will have their there about under above more than during against report reports warns warning latest breaking update updates new today yesterday tomorrow world global international government ministers president country countries crisis companies company amid says says not one two first last now says told more being amid major says news ελληνική ελληνικά ανακοίνωσε σύμφωνα όπως από στην στον στους στις της του των και για είναι μετά πριν νέο νέος νέα στην ως με στις ενώ'.split(/\s+/));
 function terms(text:string):string[]{
@@ -47,6 +48,7 @@ export function discoverScore(c:StoryCase,mode:DiscoverMode,interest:string[],se
  const freshness=Math.max(0,1-age/72);
  const sources=Math.min(6,publishers);
  const score=Math.min(100,c.headline.score);
+ if(mode==='big')return majorEventSignal(c,now).score;
  if(mode==='latest')return freshness*120+Math.min(sources,4)*3-age*.04;
  if(mode==='foryou'){
   const actors=c.actorIds.filter(x=>interest.includes(x)).length;
@@ -58,6 +60,7 @@ export function discoverScore(c:StoryCase,mode:DiscoverMode,interest:string[],se
  return sources*24+Math.min(c.reports.length,8)*3+Math.max(0,1-age/48)*38-age*1.05+score*.13-(recentlyViewed?42:0);
 }
 export function discoverRank(cases:StoryCase[],mode:DiscoverMode,interest:string[],seen:Record<string,number>,now=Date.now()):StoryCase[]{
+ if(mode==='big')return rankMajorEvents(dedupeCases(cases),24,now);
  const ranked=dedupeCases([...cases].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)))
   .filter(x=>mode!=='latest'||!seen[eventSignature(x)]||(now-seen[eventSignature(x)])>48*3600000)
   .map(x=>({story:x,score:discoverScore(x,mode,interest,seen,now)}))
