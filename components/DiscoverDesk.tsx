@@ -106,7 +106,7 @@ export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
     {miniUrl(primary)?<img src={miniUrl(primary)} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>:<div className="discover-no-photo"><Globe2 size={110} strokeWidth={.55}/></div>}
     <div className="discover-lead-shade"/>
     <div className="discover-lead-content">
-     <div className="discover-lead-overline"><span>{mode==='big'?loc(lang,'ΚΟΡΥΦΑΙΟ ΓΕΓΟΝΟΣ','TOP GLOBAL EVENT'):mode==='popular'?loc(lang,'ΣΤΟ ΕΠΙΚΕΝΤΡΟ','IN FOCUS'):mode==='latest'?loc(lang,'ΤΩΡΑ','RIGHT NOW'):loc(lang,'ΓΙΑ ΤΑ ΕΝΔΙΑΦΕΡΟΝΤΑ ΣΟΥ','YOUR WORLD')}</span><small>{time(primary.lastAt,lang)}</small></div>
+     <div className="discover-lead-overline"><span>{mode==='popular'?loc(lang,'ΣΤΟ ΕΠΙΚΕΝΤΡΟ','IN FOCUS'):mode==='latest'?loc(lang,'ΤΩΡΑ','RIGHT NOW'):loc(lang,'ΓΙΑ ΤΑ ΕΝΔΙΑΦΕΡΟΝΤΑ ΣΟΥ','YOUR WORLD')}</span><small>{time(primary.lastAt,lang)}</small></div>
      <h3>{titleFor(primary.headline)}</h3>
      <p>{summaryFor(primary.headline)}</p>
      <div className="discover-source-pills">{primary.sources.slice(0,3).map(s=><span key={s}>{s}</span>)}{primary.sources.length>3&&<span>+{primary.sources.length-3}</span>}</div>
