@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {Activity,ArrowLeft,ArrowRight,ArrowUpRight,BookOpen,Building2,CheckCircle2,ChevronRight,Clock3,ExternalLink,Globe2,Info,Landmark,Languages,Newspaper,Radio,RefreshCw,Search,ShieldAlert,Sparkles,TrendingUp,X} from 'lucide-react';
+import {Activity,ArrowLeft,ArrowRight,ArrowUpRight,BookOpen,Building2,CheckCircle2,ChevronRight,Clock3,ExternalLink,Globe2,Info,Landmark,Languages,Bookmark,Newspaper,Radio,RefreshCw,Search,ShieldAlert,Sparkles,TrendingUp,X} from 'lucide-react';
 import type {Feed,Signal} from '@/lib/types';
 import type {MarketQuote,VenueState} from '@/lib/markets';
 import {buildWorldCases} from '@/lib/world-pulse';
@@ -102,6 +102,8 @@ export default function EditorialDesk(){
  const [ready,setReady]=useState(false);
  const [cycle,setCycle]=useState(0);
  const [more,setMore]=useState(false);
+ const [savedOnly,setSavedOnly]=useState(false);
+ const [savedIds,setSavedIds]=useState<string[]>([]);
  const [aiEnabled,setAiEnabled]=useState(false);
  const [analysis,setAnalysis]=useState<Analysis|null>(null);
  const [analysisBusy,setAnalysisBusy]=useState(false);
@@ -111,7 +113,11 @@ export default function EditorialDesk(){
  const [marketBusy,setMarketBusy]=useState(false);
  const translating=useRef(false);
  const t=copy[lang];
- useEffect(()=>{setLang(readLocal('glitch-language','el'));setTranslations(readLocal('glitch-editor-translations',{}));setReady(true)},[]);
+ useEffect(()=>{setLang(readLocal('glitch-language','el'));setTranslations(readLocal('glitch-editor-translations',{}));setReady(true);
+  const sync=()=>setSavedIds(readLocal<string[]>('glitch-reading-list-v1',[]));
+  sync();window.addEventListener('glitch-readlist-changed',sync);
+  return()=>window.removeEventListener('glitch-readlist-changed',sync);
+ },[]);
  useEffect(()=>{if(ready){localStorage.setItem('glitch-language',JSON.stringify(lang));document.documentElement.lang=lang}},[lang,ready]);
  useEffect(()=>{if(ready)localStorage.setItem('glitch-editor-translations',JSON.stringify(Object.fromEntries(Object.entries(translations).slice(-160))))},[translations,ready]);
  const load=useCallback(async()=>{setLoading(true);setError('');try{const r=await fetch('/api/feed',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);setFeed(await r.json() as Feed)}catch(e){setError(e instanceof Error?e.message:'Feed unavailable')}finally{setLoading(false)}},[]);
@@ -119,7 +125,7 @@ export default function EditorialDesk(){
  useEffect(()=>{if(page!=='markets'&&page!=='companies'&&page!=='today')return;if(markets||marketBusy||marketError)return;setMarketBusy(true);fetch('/api/market-intelligence').then(r=>{if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).then(x=>setMarkets(x as MarketsData)).catch(e=>setMarketError(e instanceof Error?e.message:'Unavailable')).finally(()=>setMarketBusy(false))},[page,markets,marketBusy,marketError]);
  const cases=useMemo(()=>curate(buildWorldCases((feed?.signals||[]).filter(s=>s.confidence==='publisher'&&!['sports','culture'].includes(s.category)),72,150)),[feed]);
  const allVisible=useMemo(()=>page==='companies'?cases.filter(companyStory):cases.filter(c=>matches(c,topic)),[cases,page,topic]);
- const filtered=useMemo(()=>allVisible.filter(c=>!query||c.reports.some(r=>(r.title+' '+r.source).toLocaleLowerCase().includes(query.toLocaleLowerCase()))),[allVisible,query]);
+ const filtered=useMemo(()=>allVisible.filter(c=>(!savedOnly||savedIds.includes(c.id))&&(!query||c.reports.some(r=>(r.title+' '+r.source).toLocaleLowerCase().includes(query.toLocaleLowerCase())))),[allVisible,query,savedOnly,savedIds]);
  const shown=more?filtered.slice(0,24):filtered.slice(0,8);
  const lookup=useMemo(()=>{
   const stories=[...shown.map(c=>c.headline),...(selected?.reports||[]).slice(0,6)];
@@ -184,7 +190,7 @@ export default function EditorialDesk(){
   {cases.length>0&&<div className="ed-carousel">{cases.slice(0,5).map((c,i)=><button key={c.id} className="ed-carousel-slide" onClick={()=>open(c)}>{c.headline.imageUrl&&<img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>}<div><small>{String(i+1).padStart(2,'0')} / 05 · {uniqueSources(c).length} {t.sourcesLabel.toLowerCase()}</small><h3>{titleFor(c.headline)}</h3><span>{uniqueSources(c).slice(0,2).map(x=>x.source).join(' · ')}</span></div></button>)}</div>}
  </div>;
  const storyPane=()=><div className="ed-story-content">
-  <div className="ed-controls"><div className="ed-filter-row">{(page==='today'?topicKeys:['all'] as const).map(k=><button key={k} className={topic===k?'active':''} onClick={()=>{setTopic(k);setMore(false)}}>{getTopicLabel(k,lang)}</button>)}</div><label className="ed-search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.find}/></label></div>
+  <div className="ed-controls"><div className="ed-filter-row">{(page==='today'?topicKeys:['all'] as const).map(k=><button key={k} className={topic===k?'active':''} onClick={()=>{setTopic(k);setMore(false)}}>{getTopicLabel(k,lang)}</button>)}</div><button className={'ed-bookmark-filter'+(savedOnly?' active':'')} onClick={()=>{setSavedOnly(x=>!x);setMore(false)}}><Bookmark size={15}/>{lang==='el'?'Αποθηκευμένα':'Saved'} ({savedIds.length})</button><label className="ed-search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t.find}/></label></div>
   {shown.length?<div className="ed-news-grid">{shown.map((c,i)=>newsCard(c,i===0))}</div>:<p className="ed-empty">{t.empty}</p>}
   {!more&&filtered.length>shown.length&&<button className="ed-more" onClick={()=>setMore(true)}>{t.more}<ArrowRight size={15}/></button>}
  </div>;
