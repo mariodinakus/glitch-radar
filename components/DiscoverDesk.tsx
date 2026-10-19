@@ -4,6 +4,7 @@ import {ArrowRight,ArrowUpRight,Bookmark,ChevronLeft,ChevronRight,CircleDot,Cloc
 import type {StoryCase} from '@/lib/world-pulse';
 import type {Signal} from '@/lib/types';
 import {CoverageSpectrum} from './CoverageSpectrum';
+import {WorldSituationRoom} from './WorldSituationRoom';
 import {dedupeCases,discoverRank,eventSignature,publisherCount,type DiscoverMode} from '@/lib/discover-ranking';
 type Lang='el'|'en';
 type Interest='innovation'|'money'|'geopolitics'|'society';
@@ -31,7 +32,7 @@ const time=(s:string,l:Lang)=>{
 };
 function miniUrl(c:StoryCase){return c.headline.imageUrl||'';}
 export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
- const [mode,setMode]=useState<DiscoverMode>('popular');
+ const [mode,setMode]=useState<DiscoverMode>('big');
  const [seen,setSeen]=useState<Record<string,number>>({});
  const [interests,setInterests]=useState<Interest[]>(['innovation','money']);
  const [search,setSearch]=useState('');
@@ -73,7 +74,7 @@ export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
  const head=items.slice(0,5);
  const primary=head[Math.min(slide,Math.max(head.length-1,0))]||items[0];
  const popularCount=dedupeCases(cases).length;
- const shownBelow=items.filter(c=>!head.some(h=>h.id===c.id));
+ const shownBelow=mode==='big'?items.slice(6):items.filter(c=>!head.some(h=>h.id===c.id));
  const trends=(trendData?.trends||[]).filter(x=>x.region===region).slice(0,6);
  const pickMode=(next:DiscoverMode)=>{setMode(next);setAll(false);setSlide(0)};
  const interestsToggle=(key:Interest)=>setInterests(current=>{
@@ -88,6 +89,7 @@ export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
    <span className="discover-live"><span/>{loc(lang,'ΑΝΑΝΕΩΣΗ ΡΟΗΣ','LIVE FEED')}</span>
   </div>
   <div className="discover-controls"><div className="discover-tabs" role="group" aria-label={loc(lang,'Κατάταξη ειδήσεων','News ranking')}>
+   <button className={mode==='big'?'active':''} aria-pressed={mode==='big'} onClick={()=>pickMode('big')}><Globe2 size={17}/>{loc(lang,'Μεγάλα γεγονότα','Big Events')}</button>
    <button className={mode==='popular'?'active':''} aria-pressed={mode==='popular'} onClick={()=>pickMode('popular')}><Flame size={17}/>{loc(lang,'Δημοφιλή','Popular')}</button>
    <button className={mode==='latest'?'active':''} aria-pressed={mode==='latest'} onClick={()=>pickMode('latest')}><Clock3 size={17}/>{loc(lang,'Νέα τώρα','Latest')}</button>
    <button className={mode==='foryou'?'active':''} aria-pressed={mode==='foryou'} onClick={()=>pickMode('foryou')}><Sparkles size={17}/>{loc(lang,'Για σένα','For you')}</button>
@@ -95,16 +97,16 @@ export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
    <label className="discover-search"><Search size={16}/><input aria-label={loc(lang,'Αναζήτηση ειδήσεων','Search news')} placeholder={loc(lang,'Αναζήτηση γεγονότος…','Find a story…')} value={search} onChange={e=>{setSearch(e.target.value);setSlide(0)}}/></label>
   </div>
   <div className="discover-explainer">
-   <span><TrendingUp size={14}/>{mode==='popular'?loc(lang,'Κατάταξη από πλήθος εκδοτών και επικαιρότητα — όχι μετρήσεις κλικ.','Publisher coverage and recency — not click counts.'):mode==='latest'?loc(lang,'Δίνουμε προτεραιότητα σε όσα δεν έχεις διαβάσει.','Prioritizing reports you have not read.'):loc(lang,'Βάσει των ενδιαφερόντων που επιλέγεις στη συσκευή σου.','Based on the interests you select on this device.')}</span>
+   <span><TrendingUp size={14}/>{mode==='big'?loc(lang,'Εκδοτική προτεραιότητα με βάση είδος γεγονότος, πηγές και χρονική εγγύτητα — όχι μέτρηση πραγματικού αντίκτυπου.','Editorial priority based on event type, publisher breadth and recency — not measured impact.'):mode==='popular'?loc(lang,'Κατάταξη από πλήθος εκδοτών και επικαιρότητα — όχι μετρήσεις κλικ.','Publisher coverage and recency — not click counts.'):mode==='latest'?loc(lang,'Δίνουμε προτεραιότητα σε όσα δεν έχεις διαβάσει.','Prioritizing reports you have not read.'):loc(lang,'Βάσει των ενδιαφερόντων που επιλέγεις στη συσκευή σου.','Based on the interests you select on this device.')}</span>
    <strong>{popularCount} {loc(lang,'διαφορετικά γεγονότα','distinct cases')}</strong>
   </div>
   {mode==='foryou'&&<div className="discover-interests"><span><SlidersHorizontal size={16}/>{loc(lang,'Τι σε ενδιαφέρει;','Your interests')}</span>{categories.map(c=><button className={interests.includes(c.key)?'active':''} key={c.key} onClick={()=>interestsToggle(c.key)}>{lang==='el'?interestNames[c.key].el:interestNames[c.key].en}</button>)}</div>}
-  {primary?<div className="discover-lead-grid">
+  {mode==='big'?<WorldSituationRoom cases={cases} lang={lang} titleFor={titleFor} summaryFor={summaryFor} onOpen={mark}/>:primary?<div className="discover-lead-grid">
    <div className="discover-lead">
     {miniUrl(primary)?<img src={miniUrl(primary)} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>:<div className="discover-no-photo"><Globe2 size={110} strokeWidth={.55}/></div>}
     <div className="discover-lead-shade"/>
     <div className="discover-lead-content">
-     <div className="discover-lead-overline"><span>{mode==='popular'?loc(lang,'ΣΤΟ ΕΠΙΚΕΝΤΡΟ','IN FOCUS'):mode==='latest'?loc(lang,'ΤΩΡΑ','RIGHT NOW'):loc(lang,'ΓΙΑ ΤΑ ΕΝΔΙΑΦΕΡΟΝΤΑ ΣΟΥ','YOUR WORLD')}</span><small>{time(primary.lastAt,lang)}</small></div>
+     <div className="discover-lead-overline"><span>{mode==='big'?loc(lang,'ΚΟΡΥΦΑΙΟ ΓΕΓΟΝΟΣ','TOP GLOBAL EVENT'):mode==='popular'?loc(lang,'ΣΤΟ ΕΠΙΚΕΝΤΡΟ','IN FOCUS'):mode==='latest'?loc(lang,'ΤΩΡΑ','RIGHT NOW'):loc(lang,'ΓΙΑ ΤΑ ΕΝΔΙΑΦΕΡΟΝΤΑ ΣΟΥ','YOUR WORLD')}</span><small>{time(primary.lastAt,lang)}</small></div>
      <h3>{titleFor(primary.headline)}</h3>
      <p>{summaryFor(primary.headline)}</p>
      <div className="discover-source-pills">{primary.sources.slice(0,3).map(s=><span key={s}>{s}</span>)}{primary.sources.length>3&&<span>+{primary.sources.length-3}</span>}</div>
@@ -127,7 +129,7 @@ export function DiscoverDesk({cases,lang,titleFor,summaryFor,onOpen}:Props){
    {trends.length>0?<div className="discover-trend-items">{trends.map((x,i)=><a key={i} href={x.url} target="_blank" rel="noopener noreferrer"><span>{String(i+1).padStart(2,'0')}</span><strong>{x.term}</strong><small>{x.traffic} {loc(lang,'αναζητήσεις (περίπου)','approx. searches')}</small><ArrowUpRight size={15}/></a>)}</div>:<div className="discover-trend-unavailable">{trendError||trendData?loc(lang,'Δεν υπάρχουν διαθέσιμες τάσεις για αυτή τη χώρα αυτή τη στιγμή.','No search trends available for this region right now.'):loc(lang,'Φορτώνονται οι τάσεις αναζητήσεων…','Loading search trends…')}</div>}
    <p>{loc(lang,'Πηγή: δημόσια ροή Google Trends ανά χώρα. Οι όγκοι είναι προσεγγιστικοί και δεν μετρούν «δημοφιλία ειδήσεων».','Source: country-level Google Trends public RSS. Volumes are approximate search interest, not measured news readership.')}</p>
   </div>
-  {shownBelow.length>0&&<div className="discover-rest"><div className="discover-rest-head"><div><span>{loc(lang,'ΕΠΙΠΛΕΟΝ ΣΗΜΑΝΤΙΚΑ','MORE THAT MATTERS')}</span><h3>{mode==='popular'?loc(lang,'Αυτά καλύπτουν οι πηγές','In the news right now'):mode==='latest'?loc(lang,'Πρόσφατες ειδήσεις','Fresh reporting'):loc(lang,'Για τις επιλογές σου','Tailored to your interests')}</h3></div><small>{loc(lang,'Χωρίς επανάληψη των κορυφαίων','No duplicate lead stories')}</small></div>
+  {shownBelow.length>0&&<div className="discover-rest"><div className="discover-rest-head"><div><span>{loc(lang,'ΕΠΙΠΛΕΟΝ ΣΗΜΑΝΤΙΚΑ','MORE THAT MATTERS')}</span><h3>{mode==='big'?loc(lang,'Και άλλες σημαντικές εξελίξεις','More significant developments'):mode==='popular'?loc(lang,'Αυτά καλύπτουν οι πηγές','In the news right now'):mode==='latest'?loc(lang,'Πρόσφατες ειδήσεις','Fresh reporting'):loc(lang,'Για τις επιλογές σου','Tailored to your interests')}</h3></div><small>{loc(lang,'Χωρίς επανάληψη των κορυφαίων','No duplicate lead stories')}</small></div>
    <div className="discover-card-grid">{shownBelow.map(c=><article key={c.id} className="discover-card">
     <button className="discover-card-image" onClick={()=>mark(c)} aria-label={titleFor(c.headline)}>{miniUrl(c)?<img src={miniUrl(c)} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>:<div className="discover-no-photo"><Newspaper size={37}/></div>}</button>
     <div className="discover-card-inner"><div className="discover-card-meta"><span>{publisherCount(c)} {loc(lang,'εκδότες','publishers')}</span><small>{time(c.lastAt,lang)}</small></div>
