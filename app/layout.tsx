@@ -2,6 +2,7 @@ import type {Metadata,Viewport} from 'next';
 import './editorial.css';
 import './immersion.css';
 import './reader-layers.css';
+import './discover.css';
 export const metadata:Metadata={
  title:'GLITCH — Ειδήσεις με ανάλυση | World News & Analysis',
  description:'Παγκόσμια επικαιρότητα, πραγματικές πηγές και τεκμηριωμένη ανάλυση. Ελληνικά και αγγλικά.',
