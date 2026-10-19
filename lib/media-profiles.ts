@@ -36,12 +36,16 @@ const media:{test:RegExp;profile:MediaProfile}[]=[
  {test:/^associated press\b|^ap news\b|^the associated press\b/i,profile:{
   name:'Associated Press',ownerEl:'Ανεξάρτητος μη κερδοσκοπικός ειδησεογραφικός συνεταιρισμός',ownerEn:'Independent not-for-profit news cooperative',
   ownershipSource:'https://www.ap.org/about/our-people/',
+  biasEl:'Ελαφρώς αριστερά (AllSides, μέτρια βεβαιότητα)',biasEn:'Lean Left (AllSides, medium confidence)',
+  biasSource:'https://www.allsides.com/news-source/associated-press-media-bias',biasConfidence:'medium',
   notesEl:'Ο συνεταιρισμός διοικείται από συμβούλιο που εκλέγεται από τα αμερικανικά μέλη του. Δεν αποδίδεται πολιτική βαθμολόγηση εδώ.',
   notesEn:'A cooperative governed by a board elected by U.S. news members; no political rating is assigned here.'
  }},
  {test:/^new york times\b|^the new york times\b|^nyt\b/i,profile:{
   name:'The New York Times',ownerEl:'The New York Times Company / έλεγχος από τον Ochs-Sulzberger Trust',ownerEn:'The New York Times Company / Ochs-Sulzberger Trust control',
   ownershipSource:'https://www.sec.gov/Archives/edgar/data/71691/000007169126000016/nyt-20260313.htm',
+  biasEl:'Ελαφρώς αριστερά (AllSides, υψηλή βεβαιότητα)',biasEn:'Lean Left (AllSides, high confidence)',
+  biasSource:'https://www.allsides.com/news-source/new-york-times-news-media-bias',biasConfidence:'high',
   notesEl:'Η οικογενειακή δομή ελέγχου τεκμηριώνεται στην ανακοίνωση προς την SEC το 2026. Δεν συναγάγουμε πολιτική ταύτιση.',
   notesEn:'Family control is documented in the company’s 2026 SEC proxy filing; no government alignment is inferred.'
  }},
@@ -50,6 +54,14 @@ const media:{test:RegExp;profile:MediaProfile}[]=[
   ownershipSource:'https://www.francemediasmonde.com/fr/le-groupe/financement/',
   notesEl:'Δημόσια χρηματοδότηση, χωρίς αυτοματοποιημένη κρίση για πολιτική στάση ανά γεγονός.',
   notesEn:'Publicly funded; no automated inference about its stance on any story.'
+ }},
+ {test:/^fox news\b|^foxnews\b/i,profile:{
+  name:'Fox News Digital',ownerEl:'Fox Corporation',ownerEn:'Fox Corporation',
+  ownershipSource:'https://www.foxcorporation.com/',
+  biasEl:'Δεξιά (AllSides, μέτρια βεβαιότητα)',biasEn:'Right (AllSides, medium confidence)',
+  biasSource:'https://www.allsides.com/news-source/fox-news-media-bias',biasConfidence:'medium',
+  notesEl:'Η αξιολόγηση AllSides αφορά το FoxNews.com, όχι τις τηλεοπτικές εκπομπές ή τη σελίδα γνώμης.',
+  notesEn:'AllSides rating covers FoxNews.com, not TV broadcasts or opinion pages.'
  }},
  {test:/^un news\b/i,profile:{
   name:'UN News',ownerEl:'Οργανισμός Ηνωμένων Εθνών',ownerEn:'United Nations',
