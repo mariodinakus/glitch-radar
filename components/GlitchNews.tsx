@@ -150,14 +150,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
  const [sel,setSel]=useState<string|null>(null);
  const cur=list.find(x=>x.c.id===sel)||list[0];
  const pm=usePredictionMarkets();
- const key=(cur?.c.id||'')+'|'+lang;
- const [brief,setBrief]=useState<Brief|'off'|'err'|'loading'>('loading');
- useEffect(()=>{if(!cur||!cur.stories.length){setBrief('off');return}const c=BRIEF_CACHE.get(key);if(c){setBrief(c);return}
-  let live=true;setBrief('loading');
-  fetch('/api/brief?conflict='+cur.c.id+'&lang='+lang).then(async r=>{if(!live)return;
-   if(r.status===503){BRIEF_CACHE.set(key,'off');setBrief('off');return}
-   const d=await r.json() as {brief?:Brief};if(r.ok&&d.brief){BRIEF_CACHE.set(key,d.brief);setBrief(d.brief)}else setBrief('err')}).catch(()=>{if(live)setBrief('err')});
-  return()=>{live=false}},[key,cur,lang]);
+ const [brief]=useState<Brief|'off'|'err'|'loading'>('off');
  if(!cur)return <div className="empty">{t.noResults}</div>;
  const c=cur.c;const timeline=[...cur.stories].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt));
  const cover=cur.stories.find(s=>withImg(s));
@@ -200,7 +193,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
   <section className="ax war-brief">
    <div className="ax-head"><span className="ax-mark">✦</span><h2>{el?'Τα βασικά ζητήματα τώρα':'The key issues right now'}</h2>{b&&<em>AI</em>}</div>
    {brief==='loading'&&<div className="ax-wait"><i/><i/><i/><span>{el?'Το GLITCH διαβάζει όλη την κάλυψη…':'GLITCH is reading all the coverage…'}</span></div>}
-   {(brief==='off'||brief==='err')&&<p className="ax-off">{brief==='off'?(el?'Η ανάλυση AI δεν είναι ενεργή ακόμα — παρακάτω οι τελευταίες εξελίξεις από τις πηγές.':'AI analysis is not enabled yet — latest developments below.'):(el?'Η ανάλυση δεν είναι διαθέσιμη αυτή τη στιγμή.':'Briefing unavailable right now.')}</p>}
+   {(brief==='off'||brief==='err')&&<p className="ax-off">{brief==='off'?(el?'Η ανάλυση AI δεν είναι ενεργή ακόμα — παρακάτω οι τελευταίες εξελίξεις από τις πηγές.':'No external AI required. The current reports and dated faction profiles are shown above and below.'):(el?'Η ανάλυση δεν είναι διαθέσιμη αυτή τη στιγμή.':'Briefing unavailable right now.')}</p>}
    {b&&<>
     <p className="ax-big">{b.situation}</p>
     <div className="issues">{b.keyIssues.map((k,i)=><div key={i} className="issue"><b>{String(i+1).padStart(2,'0')}</b><strong>{k.title}</strong><p>{k.text}</p></div>)}</div>
