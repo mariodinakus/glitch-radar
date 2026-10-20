@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {needsTranslation,validTranslation} from '@/lib/translation-quality';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -48,7 +49,7 @@ async function myMemoryTranslate(text:string,target:'el'|'en'):Promise<string>{
 }
 
 async function one(item:TranslationItem,target:'el'|'en'):Promise<Translated>{
- const already=(s:string)=>target==='el'?hasGreek(s):!hasGreek(s);
+ const already=(s:string)=>!needsTranslation(s,target);
  const titleGreek=!item.title||already(item.title),summaryGreek=!item.summary||already(item.summary);
  if(titleGreek&&summaryGreek)return {...item,translated:true,provider:'original'};
  // Headline comes first: a failed, long RSS description must never discard a good title.
@@ -61,7 +62,7 @@ async function one(item:TranslationItem,target:'el'|'en'):Promise<Translated>{
  try {
   if(!titleGreek&&title){
    const result=await translate(title.slice(0,420));
-   if(!already(result))throw new Error('Translation language not available');
+   if(!validTranslation(item.title,result,target))throw new Error('Translation failed quality checks');
    title=result;
    titleOk=true;
    provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
@@ -74,7 +75,7 @@ async function one(item:TranslationItem,target:'el'|'en'):Promise<Translated>{
    const limit=raw.length<summary.length?raw.lastIndexOf(' '):-1;
    const snippet=limit>190?raw.slice(0,limit):raw;
    const result=await translate(snippet);
-   if(already(result)){
+   if(validTranslation(snippet,result,target)){
     summary=result+(snippet.length<summary.length?'…':'');
     summaryOk=true;
     provider=process.env.GOOGLE_TRANSLATE_API_KEY?'google-cloud':'mymemory';
@@ -82,7 +83,7 @@ async function one(item:TranslationItem,target:'el'|'en'):Promise<Translated>{
   }catch{}
  }
  if(!summaryOk)summary=target==='el'?'Δεν υπάρχει διαθέσιμη ελληνική μετάφραση της περίληψης. Διάβασε το αρχικό δημοσίευμα για πλήρες πλαίσιο.':'English summary unavailable. Open the original source for details.';
- return {id:item.id,title,summary,translated:titleOk&&(summaryOk||!item.summary),provider,
+ return {id:item.id,title,summary,translated:(!item.title||titleOk)&&(!item.summary||summaryOk),provider,
    ...(titleOk?{}:{error:'Η μετάφραση τίτλου δεν είναι διαθέσιμη από τον πάροχο'})};
 }
 
