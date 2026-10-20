@@ -1,0 +1,27 @@
+/* Social / governance research panel; keeps the news landing page uncluttered */
+.soc-dashboard{padding:14px 0 40px}
+.soc-heading{max-width:820px;margin:10px 0 26px}
+.soc-kicker{display:block;font:700 11px var(--mono);color:var(--gold);letter-spacing:.12em;margin-bottom:10px}
+.soc-heading h1{font:900 clamp(32px,4vw,52px) var(--serif);margin:0 0 12px}
+.soc-heading p{color:var(--tx2);font-size:15px;line-height:1.75;margin:0}
+.soc-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;border:1px solid var(--line2);background:var(--card);border-radius:14px;padding:14px 16px;margin-bottom:20px}
+.soc-toolbar label{display:flex;align-items:center;gap:10px;color:var(--tx2);font-size:13px;font-weight:700}
+.soc-toolbar select{background:var(--bg2);border:1px solid var(--line2);border-radius:9px;padding:9px 28px 9px 12px;color:var(--tx);font:inherit;max-width:240px}
+.soc-switch{display:flex;gap:7px;flex-wrap:wrap}
+.soc-switch button{color:var(--tx2);font-size:13px;border:1px solid var(--line2);padding:9px 13px;border-radius:9px}
+.soc-switch button.active{border-color:var(--gold);color:var(--gold);background:rgba(226,184,87,.09)}
+.soc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.soc-card{display:flex;flex-direction:column;min-width:0;min-height:245px;border:1px solid var(--line2);background:var(--card);border-radius:14px;padding:20px}
+.soc-card-top{display:flex;align-items:start;justify-content:space-between;gap:8px;color:var(--tx2);font-size:13px}
+.soc-card-top span:first-child{font-weight:700}
+.soc-card-top span:last-child{font:12px var(--mono);color:var(--mut);white-space:nowrap}
+.soc-card>strong{font:800 33px var(--sans);color:var(--gold2);margin:17px 0 10px;letter-spacing:-.03em}
+.soc-card>p{font-size:13px;line-height:1.65;color:var(--tx2);margin:0 0 16px}
+.soc-card-bottom{display:flex;align-items:end;justify-content:space-between;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.soc-card-bottom small{font-size:11px;color:var(--mut)}
+.soc-card-bottom a{font-size:12px;color:var(--gold);white-space:nowrap}
+.soc-method{border-left:2px solid var(--gold3);padding:8px 14px;font-size:12px;line-height:1.7;color:var(--mut);margin-top:22px}
+.soc-method a{color:var(--gold)}
+.soc-state{padding:45px 15px;text-align:center;border:1px dashed var(--line2);border-radius:14px;color:var(--tx2)}
+@media(max-width:900px){.soc-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:610px){.soc-grid{grid-template-columns:1fr}.soc-card{min-height:210px}.soc-toolbar{align-items:stretch}.soc-toolbar label{justify-content:space-between}.soc-switch button{flex:1}.soc-heading h1{font-size:34px}}
