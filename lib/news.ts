@@ -29,6 +29,13 @@ const feeds:NewsSource[]=[
  {name:'Guardian Technology',url:'https://www.theguardian.com/technology/rss',category:'tech',limit:20},
  {name:'Guardian Science',url:'https://www.theguardian.com/science/rss',category:'science',limit:18},
  {name:'Al Jazeera World',url:'https://www.aljazeera.com/xml/rss/all.xml',category:'world',limit:24},
+ {name:'New York Times World',url:'https://rss.nytimes.com/services/xml/rss/nyt/World.xml',category:'world',limit:30},
+ {name:'New York Times Business',url:'https://rss.nytimes.com/services/xml/rss/nyt/Business.xml',category:'economy',limit:20},
+ {name:'New York Times Technology',url:'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',category:'tech',limit:20},
+ {name:'New York Times Science',url:'https://rss.nytimes.com/services/xml/rss/nyt/Science.xml',category:'science',limit:12},
+ {name:'Sky News World',url:'https://feeds.skynews.com/feeds/rss/world.xml',category:'world',limit:12},
+ {name:'Πρώτο Θέμα Κόσμος',url:'https://www.protothema.gr/rss/news/world/',category:'world',limit:24},
+ {name:'Πρώτο Θέμα Ελλάδα',url:'https://www.protothema.gr/rss/news/greece/',category:'world',limit:24},
  {name:'ΕΡΤ Ειδήσεις',url:'https://www.ertnews.gr/feed/',category:'world',limit:36},
  {name:'Ναυτεμπορική',url:'https://www.naftemporiki.gr/feed/',category:'economy',limit:32}
 ];
