@@ -8,12 +8,13 @@ import {PublisherBubbles,StorySequence,PublisherStack,cleanSummary} from '@/comp
 import type {ConflictSummary} from '@/lib/conflicts';
 import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
 import type {IndicatorGroup} from '@/lib/indicators';
+import {SocietyDashboard} from '@/components/SocietyDashboard';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
 const T={
  el:{
-  foryou:'Για σένα',top:'Κορυφαία',wars:'Πόλεμοι',markets:'Αγορές',more:'Περισσότερες ειδήσεις',world:'Κόσμος',economy:'Οικονομία',tech:'AI & Τεχνολογία',greece:'Ελλάδα',science:'Επιστήμη',climate:'Κλίμα',sports:'Αθλητισμός',latest:'Τελευταία',saved:'Αποθηκευμένα',
+  foryou:'Για σένα',top:'Κορυφαία',wars:'Πόλεμοι',markets:'Αγορές',society:'Κοινωνία & Πολιτική',more:'Περισσότερες ειδήσεις',world:'Κόσμος',economy:'Οικονομία',tech:'AI & Τεχνολογία',greece:'Ελλάδα',science:'Επιστήμη',climate:'Κλίμα',sports:'Αθλητισμός',latest:'Τελευταία',saved:'Αποθηκευμένα',
   bigThemes:'Τα μεγάλα θέματα της υφηλίου',bigThemesSub:'Οι ιστορίες που κινούν τον κόσμο αυτή τη στιγμή — κατά όγκο κάλυψης',
   topStories:'Κορυφαίες ειδήσεις',topSub:'Ταξινόμηση κατά βαρύτητα & εύρος κάλυψης',
   mostCovered:'Τα πιο πολυκαλυμμένα',trends:'Τι ψάχνει ο κόσμος',latestNews:'Μόλις τώρα',
@@ -29,7 +30,7 @@ const T={
   trendRegions:{GR:'Ελλάδα',WORLD:'Κόσμος'},blind:'Μονόπλευρη κάλυψη',translatedNote:'Οι τίτλοι μεταφράζονται αυτόματα — δες το πρωτότυπο για ακρίβεια.'
  },
  en:{
-  foryou:'For you',top:'Top',wars:'Wars',markets:'Markets',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
+  foryou:'For you',top:'Top',wars:'Wars',markets:'Markets',society:'Society & Politics',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
   bigThemes:'The big stories of the world',bigThemesSub:'What is moving the planet right now — by volume of coverage',
   topStories:'Top stories',topSub:'Ranked by weight & breadth of coverage',
   mostCovered:'Most covered',trends:'What people search',latestNews:'Just in',
@@ -46,7 +47,7 @@ const T={
  }
 };
 type Copy=typeof T.el;
-const SECTIONS:Section[]=['top','foryou','wars','world','economy','markets','tech','greece','science','climate','sports','latest'];
+const SECTIONS:Section[]=['top','foryou','wars','world','society','economy','markets','tech','greece','science','climate','sports','latest'];
 
 /* ───────────── helpers ───────────── */
 const isGoogle=(s:Signal)=>s.url.includes('news.google.');
@@ -62,7 +63,7 @@ function ago(iso:string,lang:Lang):string{
 const shortSource=(s:string)=>s.replace(/^Google News \/ /,'').replace(/^(BBC|Guardian|New York Times|UN News|Spaceflight News)\s.*$/,'$1').replace(/^Spaceflight News \/ /,'');
 function load<T>(k:string,f:T):T{try{const v=localStorage.getItem(k);return v?JSON.parse(v) as T:f}catch{return f}}
 function store(k:string,v:unknown){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v12.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
+const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v13.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
 const EMPTY:Prefs={follow:[],mute:[],read:[],saved:[]};
 
 /* ───────────── icons (inline, no deps) ───────────── */
@@ -118,12 +119,6 @@ function Spark({data,up}:{data:number[];up:boolean}){
  if(data.length<3)return null;const mn=Math.min(...data),mx=Math.max(...data),r=mx-mn||1;
  const pts=data.map((v,i)=>`${(i/(data.length-1)*100).toFixed(1)},${(30-(v-mn)/r*28-1).toFixed(1)}`).join(' ');
  return <svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={pts} fill="none" stroke={up?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>;
-}
-function Ticker({quotes,lang,onOpen}:{quotes:Quote[];lang:Lang;onOpen:()=>void}){
- const list=INDICATORS.filter(i=>i.ticker).map(i=>({i,q:quotes.find(q=>q.symbol===i.symbol)})).filter(x=>x.q&&x.q.price!==null);
- if(!list.length)return null;
- const items=list.map(({i,q})=><button key={i.symbol} className="tk" onClick={onOpen}><span>{lang==='el'?i.el:i.en}</span><b>{fmt(q!)}</b><em className={(q!.change??0)>=0?'up':'down'}>{(q!.change??0)>=0?'▲':'▼'} {chg(q!)}</em></button>);
- return <div className="ticker-bar"><div className="tk-track">{items}{items.map((x,k)=><span key={'d'+k} aria-hidden="true">{x}</span>)}</div></div>;
 }
 const GROUPS:{g:IndicatorGroup;el:string;en:string}[]=[{g:'indices',el:'Χρηματιστήρια',en:'Stock markets'},{g:'energy',el:'Ενέργεια',en:'Energy'},{g:'metals',el:'Μέταλλα & αγροτικά',en:'Metals & agri'},{g:'fx',el:'Νομίσματα & crypto',en:'FX & crypto'},{g:'risk',el:'Επιτόκια & φόβος',en:'Rates & fear'}];
 function IndicatorCard({q,lang}:{q:Quote;lang:Lang}){
@@ -258,7 +253,7 @@ export default function GlitchNews(){
  useEffect(()=>{fetchFeed();const id=setInterval(fetchFeed,5*60000);return()=>clearInterval(id)},[fetchFeed]);
  useEffect(()=>{let live=true;fetch('/api/trends?region='+trendRegion).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[trendRegion]);
 
- useEffect(()=>{let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[]);
+ useEffect(()=>{if(section!=='markets'&&section!=='wars')return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
  const stories=useMemo(()=>buildStories(signals),[signals]);
  // og:image enrichment for stories without a picture
  const withImg=useCallback((s:Story)=>s.image||og[s.id]||undefined,[og]);
@@ -302,7 +297,7 @@ export default function GlitchNews(){
   else if(section==='foryou')list=mine.slice(0,50);
   else if(section==='latest')list=latest.slice(0,60);
   else if(section==='saved')list=stories.filter(s=>prefs.saved.includes(s.id));
-  else if(section==='wars'||section==='markets')list=[];
+  else if(section==='wars'||section==='markets'||section==='society')list=[];
   else list=bySection(section).slice(0,60);
   return list.filter((s,i,a)=>s&&a.findIndex(x=>x.id===s.id)===i);
  },[q,searchHits,line,visible,section,hero,themes,top,mostCovered,latest,worldRail,railOf,mine,stories,prefs.saved,bySection]);
@@ -357,8 +352,7 @@ export default function GlitchNews(){
    <nav className="gn-tabs" aria-label="sections">
     {SECTIONS.map(s=><button key={s} className={section===s&&!line?'on':''} onClick={()=>go(s)}>{s==='foryou'&&<span className="spark">✦</span>}{s==='wars'&&<i className="war-dot"/>}{t[s]}</button>)}
    </nav>
-   <Ticker quotes={quotes} lang={lang} onOpen={()=>go('markets')}/>
-  </header>
+     </header>
 
   <main className="gn-main">
    {state==='loading'&&<Skeleton t={t}/>}
@@ -394,13 +388,14 @@ export default function GlitchNews(){
     </>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
+     section==='society'?<SocietyDashboard lang={lang}/>:
     section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
     section==='latest'?<ListView heading={t.latest} stories={latest} {...ctx}/>:
     section==='saved'?<ListView heading={t.saved} stories={stories.filter(s=>prefs.saved.includes(s.id))} empty={t.emptySaved} {...ctx}/>:
     <SectionView heading={t[section]} stories={bySection(section)} themes={themes.filter(x=>x.stories.some(s=>s.section===section)).slice(0,8)} onPick={l=>go(section,l)} {...ctx}/>
    )}
   </main>
-  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Fox, Independent, CBS, NPR, DW, Al Jazeera, SCMP, Times of Israel, Sky, UN, ΕΡΤ, Πρώτο Θέμα, Ναυτεμπορική & Google News · {lang==='el'?'Δείκτες':'Indicators'}: Yahoo Finance · {lang==='el'?'Αγορές προβλέψεων':'Prediction markets'}: Polymarket, Kalshi. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
+  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Fox, Independent, CBS, NPR, DW, Al Jazeera, SCMP, Times of Israel, Sky, UN, ΕΡΤ, Πρώτο Θέμα, Ναυτεμπορική & Google News · {lang==='el'?'Δείκτες':'Indicators'}: Yahoo Finance, World Bank WDI/WGI · {lang==='el'?'Αγορές προβλέψεων':'Prediction markets'}: Polymarket, Kalshi. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
   {open&&<Sheet story={open} all={stories} onClose={()=>setOpen(null)} onPick={l=>{setOpen(null);go(section,l)}} {...ctx}/>}
  </div>;
 }
@@ -577,10 +572,10 @@ function frames(story:Story){
  return out;
 }
 const EX_CACHE=new Map<string,Explain|'off'>();
-function Analysis({story,lang}:{story:Story;lang:Lang}){
+function Analysis({story,lang,plainTitle,plainSummary}:{story:Story;lang:Lang;plainTitle:string;plainSummary:string}){
  const el=lang==='el';
  const L={hl:el?'Τα σημαντικότερα':'Key points',simple:el?'Με απλά λόγια':'In plain words',other:el?'Η άλλη ματιά':'Another view',next:el?'Τι έρχεται':"What's next"};
- const [tab,setTab]=useState<keyof typeof L>('hl');
+ const [tab,setTab]=useState<keyof typeof L>('simple');
  const key=story.id+'|'+lang;
  const [st,setSt]=useState<'loading'|'ok'|'off'|'err'>(()=>{const c=EX_CACHE.get(key);return c==='off'?'off':c?'ok':'loading'});
  const [data,setData]=useState<Explain|null>(()=>{const c=EX_CACHE.get(key);return c&&c!=='off'?c:null});
@@ -611,7 +606,7 @@ function Analysis({story,lang}:{story:Story;lang:Lang}){
      <h3>{data.simple.headline}</h3><p className="ax-big">{data.simple.summary}</p>
      <ul className="ax-know">{data.simple.bullets.map((b,i)=><li key={i}>{b}</li>)}</ul>
      <div className="ax-callouts"><div><small>{el?'Γιατί σε αφορά':'Why it matters'}</small><p>{data.simple.whyItMatters}</p></div><div className="gr"><small>{el?'🇬🇷 Για την Ελλάδα':'🇬🇷 For Greece'}</small><p>{data.simple.greece}</p></div></div>
-    </div>:st==='loading'?<Wait/>:<Off/>)}
+    </div>:st==='loading'?<Wait/>:<div className="ax-simple"><h3>{plainTitle}</h3><p className="ax-big">{plainSummary||(el?'Δεν υπάρχει αρκετό κείμενο πηγής για ασφαλή περίληψη.':'Not enough source text for a reliable summary.')}</p><p className="note">{el?'Προβάλλεται το διαθέσιμο απόσπασμα, όχι ολοκληρωμένη ανάλυση AI.':'Showing the available source excerpt, not a full AI analysis.'}</p></div>)}
    {tab==='other'&&<div className="ax-other">
      {st==='ok'&&data&&<div className="ax-vs"><div><small>{el?'Η κυρίαρχη αφήγηση':'The dominant framing'}</small><p>{data.perspectives.mainstream}</p></div><div className="alt"><small>{el?'Η άλλη ανάγνωση':'The other reading'}</small><p>{data.perspectives.alternative}</p></div></div>}
      {st==='ok'&&data&&<div className="ax-callouts"><div><small>{el?'Τι δεν λέγεται':'What is missing'}</small><p>{data.perspectives.missing}</p></div><div><small>{el?'Ποιος κερδίζει / χάνει':'Who wins / loses'}</small><p>{data.perspectives.winnersLosers}</p></div></div>}
@@ -662,7 +657,7 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      {story.storylines[0]&&<button className="btn ghost" onClick={()=>{toggle('mute',story.storylines[0]);onClose()}}>{I.eyeOff}{t.less}</button>}
     </div>
     <PublisherBubbles story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
-    <Analysis story={story} lang={lang}/>
+    <Analysis story={story} lang={lang} plainTitle={title(story)} plainSummary={sum(story)}/>
     <section className="cov">
      <h2>{t.coverage}</h2>
      <div className="lean big">{(['left','center','right','unrated'] as Lean[]).filter(k=>mix[k]>0).map(k=><i key={k} className={'l-'+k} style={{flexGrow:mix[k]}}/>)}</div>
