@@ -71,8 +71,14 @@ export const conflictMeta:Record<string,{region:ConflictRegion;kind:ConflictKind
 export const conflictById=(id:string)=>conflicts.find(c=>c.id===id);
 
 const titlesOf=(s:Story)=>[s.headline.title,...s.reports.slice(0,8).map(r=>r.title)];
+// Country mentions alone (e.g. a sports or economic headline) are not proof of conflict.
+// Require concrete security/armed-conflict context for broadly named regions.
+const securityContext=/\\b(war|wars|battle|battles|fighting|clash|clashes|armed|militan\\w*|insurgen\\w*|rebel\\w*|terror\\w*|jihad\\w*|troops|military|attack\\w*|strike\\w*|missile\\w*|bomb\\w*|shooting\\w*|dead|killed|wounded|casualt\\w*|civilian|ceasefire|truce|peace talks|frontline|occupation|captur\\w*|territor\\w*|humanitarian crisis|coup|security crisis|gang violence)\\b|πόλεμ|μάχ|ένοπλ|συγκρούσ|αντάρτ|τρομοκρατ|στρατ|επίθεσ|βομβαρδ|νεκρ|θύματ|τραυματ|εκεχειρ|εδαφ|κατοχ|πραξικόπ/iu;
+const requireSecurity=new Set(['ethiopia','somalia','southsudan','mali','burkina','niger','car','nigeria','cameroon','mozambique','syria','iraq','libya','haiti','afghanpak','colombia','mexico','armenia','taiwan','korea','philippines','venezuela','lebanon']);
 export function storiesForConflict(stories:Story[],c:Conflict):Story[]{
- return stories.filter(s=>{const t=titlesOf(s);return c.rx.test(s.headline.title)||t.filter(x=>c.rx.test(x)).length>=2});
+ return stories.filter(s=>{const t=titlesOf(s);const matched=c.rx.test(s.headline.title)||t.filter(x=>c.rx.test(x)).length>=2;
+  return matched&&(!requireSecurity.has(c.id)||t.some(x=>securityContext.test(x)));
+ });
 }
 export type ConflictSummary={c:Conflict;stories:Story[];last24:number;sources:number;image?:string;heat:number};
 export function conflictSummaries(stories:Story[],now=Date.now()):ConflictSummary[]{
