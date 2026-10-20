@@ -17,7 +17,7 @@ export const storylines:Storyline[]=[
  {id:'usa',el:'ΗΠΑ & Λευκός Οίκος',en:'US politics',emoji:'🇺🇸',rx:/\b(trump|white house|congress|senate|republicans?|democrats?|vance|pentagon|supreme court|washington)\b|τραμπ|λευκ[όο]ς οίκος|γερουσί|κογκρέσο/iu},
  {id:'space',el:'Διάστημα',en:'Space',emoji:'🚀',rx:/\b(nasa|spacex|esa|moon|lunar|mars|orbit\w*|telescope|astronaut\w*|asteroid|starship|artemis|phobos|spacecraft)\b|διάστημ|σελήν|αστροναύτ|διαστημόπλοι/iu},
  {id:'china',el:'Κίνα & Ασία',en:'China & Asia',emoji:'🐉',rx:/\b(china|chinese|beijing|xi jinping|taiwan\w*|hong kong|japan\w*|tokyo|korea\w*|pyongyang|india\w*|modi|pakistan\w*)\b|κίνα|κινέζ|ταϊβάν|ιαπωνί|κορέα|ινδί|πακιστ/iu},
- {id:'ai',el:'Τεχνητή νοημοσύνη',en:'Artificial intelligence',emoji:'🤖',rx:/\b(ai|a\.i\.|artificial intelligence|openai|anthropic|chatgpt|claude|gemini|deepmind|llms?|nvidia|chips?|semiconductors?|data cent(?:er|re)s?|robot\w*)\b|τεχνητ[ήής] νοημοσύν|ημιαγωγ|ρομπότ/iu},
+ {id:'ai',el:'Τεχνητή νοημοσύνη',en:'Artificial intelligence',emoji:'🤖',rx:/\b(ai|a\.i\.|artificial intelligence|openai|anthropic|chatgpt|gemini|deepmind|llms?|nvidia|chips?|semiconductors?|data cent(?:er|re)s?|robot\w*)\b|τεχνητ[ήής] νοημοσύν|ημιαγωγ|ρομπότ/iu},
  {id:'bigtech',el:'Big Tech',en:'Big Tech',emoji:'💻',rx:/\b(apple|google|alphabet|microsoft|meta|facebook|instagram|amazon|tesla|musk|spacex|tiktok|samsung|tsmc|netflix)\b/iu},
  {id:'economy',el:'Παγκόσμια οικονομία',en:'Global economy',emoji:'📈',rx:/\b(tariffs?|inflation|interest rates?|central bank|federal reserve|the fed|ecb|recession|stocks?|markets?|shares|bonds?|gdp|trade war|imf|economy|earnings|wall street|dollar|euro)\b|δασμ|πληθωρισμ|επιτόκι|ύφεσ|χρηματιστήρ|μετοχ|οικονομ|ΑΕΠ/iu},
  {id:'energy',el:'Ενέργεια & πετρέλαιο',en:'Energy & oil',emoji:'🛢️',rx:/\b(oil|opec|crude|natural gas|lng|energy|brent|pipelines?|nuclear power|renewables?|solar|electricity)\b|πετρέλαι|φυσικ[όο] αέρι|ενέργει|ρεύμα|ηλεκτρικ/iu},
@@ -27,7 +27,7 @@ export const storylines:Storyline[]=[
  {id:'greece',el:'Ελλάδα',en:'Greece',emoji:'🇬🇷',rx:/\b(greece|greek|athens|mitsotakis|thessaloniki|crete|aegean)\b|ελλάδ|ελλην|αθήν|μητσοτάκ|θεσσαλονίκ|κρήτ|αιγαί|κυβέρνησ|βουλ[ήη]|ΝΔ|ΠΑΣΟΚ|ΣΥΡΙΖΑ/u},
  {id:'africa',el:'Αφρική',en:'Africa',emoji:'🌍',rx:/\b(africa\w*|sudan\w*|congo\w*|ethiopia\w*|nigeria\w*|sahel|somalia|kenya|south africa|mali|niger|libya|egypt\w*|madagascar|cameroon)\b|αφρικ|σουδάν|κονγκό|αιθιοπ|νιγηρ|λιβύ|αίγυπτ/iu},
  {id:'latam',el:'Λατινική Αμερική',en:'Latin America',emoji:'🌎',rx:/\b(venezuela\w*|maduro|brazil\w*|lula|mexico|mexican|argentin\w*|milei|colombia\w*|cuba\w*|chile\w*|peru\w*|bolivia\w*|ecuador|haiti)\b|βενεζουέλ|βραζιλ|μεξικ|αργεντιν|κολομβ|κούβα/iu},
- {id:'health',el:'Υγεία',en:'Health',emoji:'🩺',rx:/\b(health|virus|outbreak|vaccines?|cancer|hospitals?|who|pandemic|disease|measles|cholera|mpox|drug)\b|υγεί|ιό[ςσ]|εμβόλι|καρκίν|νοσοκομ|πανδημ/iu}
+ {id:'health',el:'Υγεία',en:'Health',emoji:'🩺',rx:/\b(health|virus|outbreak|vaccines?|cancer|hospitals?|world health organization|pandemic|disease|measles|cholera|mpox|ebola|nhs)\b|υγεί|ιό[ςσ]|εμβόλι|καρκίν|νοσοκομ|πανδημ/iu}
 ];
 const storylineById=Object.fromEntries(storylines.map(s=>[s.id,s]));
 export const getStoryline=(id:string)=>storylineById[id] as Storyline|undefined;
@@ -119,8 +119,10 @@ export function buildStories(signals:Signal[],now=Date.now()):Story[]{
   const lead=[...reports].sort((a,b)=>rankLead(b)-rankLead(a))[0];
   const image=bigImage(lead.imageUrl||reports.find(r=>r.imageUrl)?.imageUrl);
   const times=reports.map(r=>Date.parse(r.timestamp));
-  const text=reports.slice(0,6).map(r=>r.title+' '+(isGoogle(r)?'':r.summary)).join(' ');
-  const lines=storylines.filter(l=>l.rx.test(lead.title)||l.rx.test(text)).map(l=>l.id).slice(0,4);
+  // Storylines from TITLES only: lead title, or at least two other report titles.
+  const titles=reports.slice(0,12).map(r=>r.title.replace(/\s+-\s+[^-]{2,60}$/,''));
+  const lines=storylines.map(l=>({id:l.id,lead:l.rx.test(lead.title),n:titles.filter(x=>l.rx.test(x)).length}))
+   .filter(x=>x.lead||x.n>=2).sort((a,b)=>Number(b.lead)-Number(a.lead)||b.n-a.n).map(x=>x.id).slice(0,3);
   const greek=reports.some(r=>GREEK_SOURCES.test(r.source)||hasGreek(r.title));
   const sources=[...new Set(reports.map(r=>r.source))];
   const base:StoryCase={id:'s:'+lead.id,headline:lead,reports,sources,topic:newsTopic(lead),
