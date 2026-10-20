@@ -304,29 +304,29 @@ export default function GlitchNews(){
  const [extraPool,setExtraPool]=useState<Story[]>([]);
  const trItems=useMemo(()=>{
   const items:{id:string;title:string;summary:string}[]=[];
-  const add=(id:string,title:string,summary:string)=>{if(tr[lang+':'+id])return;const ti=wrong(title)?title:'',su=wrong(summary)?summary.slice(0,320):'';if(ti||su)items.push({id,title:ti,summary:su})};
+  const add=(id:string,title:string,summary:string)=>{const prev=tr[lang+':'+id];const ti=wrong(title)&&!prev?.t?title:'',su=wrong(summary)&&!prev?.s?summary.slice(0,260):'';if(ti||su)items.push({id,title:ti,summary:su})};
   if(open){add(open.id,cleanTitle(open.headline),summaryOf(open));for(const r of open.reports.slice(0,16))add(r.id,cleanTitle(r),r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?cleanSummary(r.summary).slice(0,320):'')}
   for(const s of [...extraPool,...pool])add(s.id,cleanTitle(s.headline),summaryOf(s));
   return items;
  },[open,pool,extraPool,tr,lang,wrong]);
  const trBusy=useRef(false);const trFail=useRef(0);const aiTr=useRef<boolean|null>(null);
- useEffect(()=>{trFail.current=0},[lang]);
+ useEffect(()=>{trFail.current=0;aiTr.current=null},[lang,section,line]);
  useEffect(()=>{
   if(trBusy.current||trFail.current>=3||!trItems.length)return;
   trBusy.current=true;
   const useAI=aiTr.current!==false;
-  const batch=trItems.slice(0,useAI?24:4);
+  const batch=trItems.slice(0,useAI?6:2);
   const mark=(rows:{id:string;title:string;summary:string}[])=>setTr(o=>{
    const n={...o};
-   for(const b of batch){const r=rows.find(x=>x.id===b.id);n[lang+':'+b.id]={t:r?.title&&!wrong(r.title)?r.title:'',s:r?.summary&&!wrong(r.summary)?r.summary:undefined}}
+   for(const b of batch){const r=rows.find(x=>x.id===b.id);if(!r)continue;const k=lang+':'+b.id,old=n[k]||{t:''};const t=b.title&&r.title&&!wrong(r.title)?r.title:old.t;const su=b.summary&&r.summary&&!wrong(r.summary)?r.summary:old.s;if(t!==old.t||su!==old.s)n[k]={t:t||'',s:su}}
    store(TR_KEY,Object.fromEntries(Object.entries(n).slice(-900)));return n});
   const req=useAI?fetch('/api/tr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch})}).then(async r=>{
     if(r.status===503){aiTr.current=false;return null}
-    if(!r.ok)throw Error();aiTr.current=true;return (await r.json() as {items:{id:string;title:string;summary:string}[]}).items})
-   :fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch.map(b=>({id:b.id,title:b.title||' ',summary:b.summary.slice(0,300)}))})})
+    if(!r.ok){aiTr.current=false;return null}aiTr.current=true;return (await r.json() as {items:{id:string;title:string;summary:string}[]}).items})
+   :fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch.slice(0,2).map(b=>({id:b.id,title:b.title||' ',summary:b.summary.slice(0,260)}))})})
     .then(async r=>{if(!r.ok)throw Error();return ((await r.json()) as {items:{id:string;title:string;summary:string;translated:boolean}[]}).items.filter(x=>x.translated)});
-  req.then(rows=>{if(rows===null)return;if(!rows.length)trFail.current++;else trFail.current=0;mark(rows)})
-   .catch(()=>{trFail.current++})
+  req.then(rows=>{if(rows===null)return;if(!rows.length)trFail.current++;else trFail.current=0;if(rows.length)mark(rows)})
+   .catch(()=>{if(useAI)aiTr.current=false;else trFail.current++})
    .finally(()=>{trBusy.current=false;setTimeout(()=>setTr(o=>({...o})),aiTr.current?600:900)});
  },[trItems,lang,wrong]);
 
