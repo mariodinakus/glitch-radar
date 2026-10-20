@@ -1,5 +1,6 @@
 import type {Metadata,Viewport} from 'next';
 import './glitch-news.css';
+import './society.css';
 export const metadata:Metadata={
  title:'GLITCH — Δες τον κώδικα πίσω από τις ειδήσεις',
  description:'GLITCH: ποιοι εκδότες γράφουν κάθε είδηση, πώς την πλαισιώνουν και τι έρχεται — με live δείκτες, war room και ανάλυση. Ελληνικά & αγγλικά.',
