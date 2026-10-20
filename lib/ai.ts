@@ -4,8 +4,14 @@ export const aiProvider=():'gemini'|'openai'|null=>process.env.GEMINI_API_KEY?'g
 // Gemini's responseSchema is an OpenAPI subset (no additionalProperties).
 const strip=(s:unknown):unknown=>Array.isArray(s)?s.map(strip):s&&typeof s==='object'?Object.fromEntries(Object.entries(s as Record<string,unknown>).filter(([k])=>k!=='additionalProperties').map(([k,v])=>[k,strip(v)])):s;
 
+// Cost guard: hard cap of model calls per server instance per day (default 1000). With a Gemini key from a
+// Google AI Studio project WITHOUT billing, the API is free and simply returns 429 when the free quota ends.
+let day='',used=0;
+function allowCall(){const d=new Date().toISOString().slice(0,10);if(d!==day){day=d;used=0}const cap=Number(process.env.GLITCH_AI_MAX_PER_DAY||1000);if(used>=cap)return false;used++;return true}
+
 export async function aiJSON<T>(instructions:string,input:string,schema:object,opts:{maxTokens?:number;temperature?:number;timeoutMs?:number}={}):Promise<T>{
  const p=aiProvider();
+ if(p&&!allowCall())throw Error('daily AI cap reached');
  const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),opts.timeoutMs??25000);
  try{
   if(p==='gemini'){
