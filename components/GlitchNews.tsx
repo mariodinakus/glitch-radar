@@ -180,9 +180,9 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
  const markets=pm.filter(m=>c.market.test(m.question)).slice(0,6);
  const signals=cur.stories.flatMap(x=>x.reports.map(r=>({r,story:x}))).filter(x=>!(/review|movie|game|video game|historical|world war ii|second world war|β' παγκοσμ|β΄ παγκοσμ/i.test(x.r.title))).sort((a,b)=>Date.parse(b.r.timestamp)-Date.parse(a.r.timestamp));
  const choose=(rx:RegExp)=>signals.filter(x=>rx.test(x.r.title)&&x.r.url).filter((x,i,a)=>a.findIndex(z=>z.r.url===x.r.url)===i).slice(0,5);
- const battleReports=choose(/\\b(battles?|clashes?|fighting|offensive|assault|frontline|airstrikes?|shelling|missiles?|drone strikes?|attacks?|strike on)\\b|μάχ|σύγκρουσ|επίθεσ|βομβαρδ|πλήγμα/iu);
- const lossReports=choose(/\\b(killed|dead|deaths?|fatalit(?:y|ies)|casualt(?:y|ies)|wounded|injured|death toll|civilian deaths|displaced)\\b|νεκρ|σκοτώθ|τραυματ|θύματ|απώλει|εκτοπισμ/iu);
- const landReports=choose(/\\b(captur(?:e|ed|ing)|retak(?:e|en)|seiz(?:e|ed)|territor(?:y|ial)|control of|advanc(?:e|ed|ing)|withdr(?:aw|ew)|front lines?|occupied|liberat(?:e|ed))\\b|κατέλαβ|ανακατέλαβ|εδαφ|προέλασ|αποσύρ|ελέγχ|κατοχ/iu);
+ const battleReports=choose(/\b(battles?|clashes?|fighting|offensive|assault|frontline|airstrikes?|shelling|missiles?|drone strikes?|attacks?|strike on)\b|μάχ|σύγκρουσ|επίθεσ|βομβαρδ|πλήγμα/iu);
+ const lossReports=choose(/\b(killed|dead|deaths?|fatalit(?:y|ies)|casualt(?:y|ies)|wounded|injured|death toll|civilian deaths|displaced)\b|νεκρ|σκοτώθ|τραυματ|θύματ|απώλει|εκτοπισμ/iu);
+ const landReports=choose(/\b(captur(?:e|ed|ing)|retak(?:e|en)|seiz(?:e|ed)|territor(?:y|ial)|control of|advanc(?:e|ed|ing)|withdr(?:aw|ew)|front lines?|occupied|liberat(?:e|ed))\b|κατέλαβ|ανακατέλαβ|εδαφ|προέλασ|αποσύρ|ελέγχ|κατοχ/iu);
  const reporting=[{key:'losses',label:el?'Απώλειες / ανθρωπιστικές συνέπειες':'Losses / humanitarian impact',items:lossReports,
  empty:el?'Δεν υπάρχει πρόσφατη τεκμηριωμένη αναφορά στη ροή. Δεν υπολογίζουμε αυθαίρετα συνολικά θύματα.':'No matching report in the current feed. We do not invent cumulative casualties.'},
  {key:'territory',label:el?'Εδαφικές μεταβολές / έλεγχος περιοχών':'Territorial changes / control',items:landReports,
@@ -193,9 +193,9 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
  const like=(l:string)=>el?({high:'Πιθανό',medium:'Μέτρια πιθανό',low:'Λιγότερο πιθανό'} as Record<string,string>)[l]:({high:'Likely',medium:'Possible',low:'Less likely'} as Record<string,string>)[l];
  return <div className="view wars">
   <ConflictAtlas items={list} selected={c.id} onSelect={setSel} lang={lang} aiActors={b?.actors}/>
-  <div className="war-chips">{list.map(x=><button key={x.c.id} className={x.c.id===c.id?'on':''} onClick={()=>setSel(x.c.id)}><i className={x.last24>3?'hot':''}/>{el?x.c.el:x.c.en}<em>{x.last24}</em></button>)}</div>
+
   <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
-   <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ζωντανή παρακολούθηση':'WAR ROOM · live tracking'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
+   <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ροή ειδήσεων':'WAR ROOM · recent reporting'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
     <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
   {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
   <section className="war-field-report" aria-label={el?'Ειδήσεις από το μέτωπο':'Frontline reporting'}>
