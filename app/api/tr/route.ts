@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {validTranslation} from '@/lib/translation-quality';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export const maxDuration=30;
@@ -57,7 +58,12 @@ export async function POST(req:NextRequest){
    const parsed=JSON.parse(txt||'{}') as {items?:{id:string;title:string;summary:string}[]};
    for(const r of parsed.items||[]){
     const src=todo.find(t=>t.id===r.id);if(!src)continue;
-    const v={title:src.title?clip(r.title,500):'',summary:src.summary?clip(r.summary,600):''};
+    const trTitle=src.title?clip(r.title,500):'';
+    const trSummary=src.summary?clip(r.summary,600):'';
+    const okTitle=!src.title||validTranslation(src.title,trTitle,target);
+    const okSummary=!src.summary||validTranslation(src.summary,trSummary,target);
+    if(!okTitle||!okSummary)continue;
+    const v={title:trTitle,summary:trSummary};
     results[r.id]=v;if(cache.size>5000)cache.clear();cache.set(target+hkey(src.title,src.summary),JSON.stringify(v));
    }
   }catch{return out({error:'translation failed',items:Object.entries(results).map(([id,v])=>({id,...v}))},502)}
