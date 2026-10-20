@@ -297,6 +297,8 @@ export default function GlitchNews(){
  const bySection=useCallback((sec:Section)=>visible.filter(s=>s.section===sec),[visible]);
  const mine=useMemo(()=>forYou(stories,prefs),[stories,prefs]);
  const searchHits=useMemo(()=>{const n=q.trim().toLocaleLowerCase();if(n.length<2)return [];return stories.filter(s=>(s.headline.title+' '+s.reports.map(r=>r.title).join(' ')).toLocaleLowerCase().includes(n)).slice(0,40)},[q,stories]);
+ const worldRail=useMemo(()=>diverseTop(visible.filter(s=>s.section==='world'),14,{exclude:shown,perLine:3}),[visible,shown]);
+ const [,setExtraPool]=useState<Story[]>([]);
 
  /* prefs actions */
  const toggle=(k:keyof Prefs,v:string)=>setPrefs(p=>({...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]}));
@@ -351,7 +353,7 @@ export default function GlitchNews(){
        <Side title={t.trends} icon={<span className="g-dot"/>} extra={<span className="gn-world-trends">WORLD</span>}>
         {trends.length?<ul className="trends">{trends.map((x,i)=><li key={x.id}><a href={x.url} target="_blank" rel="noreferrer"><b>{i+1}</b><span>{x.name}{x.relatedHeadlines[0]&&<small>{x.relatedHeadlines[0]}</small>}</span>{x.traffic&&<em>{x.traffic}</em>}</a></li>)}</ul>:<p className="muted small">…</p>}
        </Side>
-       <Side title={t.latestNews} icon={<i className="live-dot"/>}><ul className="ticker">{latest.slice(0,8).map(s=><li key={s.id}><button onClick={()=>openStory(s)}><time>{new Date(s.lastAt).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>{title(s)}</span></button></li>)}</ul></Side>
+       <Side title={t.latestNews} icon={<i className="live-dot"/>}><ul className="ticker">{latest.slice(0,8).map(s=><li key={s.id}><button onClick={()=>openStory(s)}><time>{new Date(s.lastAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>{title(s)}</span></button></li>)}</ul></Side>
       </aside>
      </div>
      <Rail heading={t.world} stories={worldRail} onAll={()=>go('world')} {...ctx}/>
