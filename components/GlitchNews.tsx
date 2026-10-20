@@ -368,8 +368,14 @@ export default function GlitchNews(){
     if(!r.ok){aiTr.current=false;return null}aiTr.current=true;return (await r.json() as {items:{id:string;title:string;summary:string}[]}).items})
    :fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch.slice(0,2).map(b=>({id:b.id,title:b.title,summary:b.summary.slice(0,260)}))})})
     .then(async r=>{if(!r.ok)throw Error();return ((await r.json()) as {items:{id:string;title:string;summary:string;translated:boolean}[]}).items.filter(x=>x.translated)});
-  req.then(rows=>{if(rows===null)return;if(!rows.length)trFail.current++;else trFail.current=0;if(rows.length)mark(rows)})
-   .catch(()=>{if(useAI)aiTr.current=false;else trFail.current++})
+  req.then(rows=>{
+   if(rows===null)return;
+   const accepted=rows.filter(r=>batch.some(b=>b.id===r.id&&
+    ((!!b.title&&validTranslation(b.title,r.title,lang))||
+     (!!b.summary&&validTranslation(b.summary,r.summary,lang)))));
+   if(!accepted.length){if(useAI){aiTr.current=false;trFail.current=0}else trFail.current++}
+   else{trFail.current=0;mark(accepted)}
+  }).catch(()=>{if(useAI){aiTr.current=false;trFail.current=0}else trFail.current++})
    .finally(()=>{trBusy.current=false;setTimeout(()=>setTr(o=>({...o})),aiTr.current?600:900)});
  },[trItems,lang,wrong]);
 
