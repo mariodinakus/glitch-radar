@@ -410,6 +410,7 @@ export default function GlitchNews(){
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
+     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <Hero slides={hero} {...ctx}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
@@ -434,6 +435,7 @@ export default function GlitchNews(){
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
+    section==='world'?<><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:
