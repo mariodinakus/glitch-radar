@@ -11,27 +11,12 @@ import type {IndicatorGroup} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
-import {needsTranslation,validTranslation,tidyNewsExcerpt} from '@/lib/translation-quality';
+import {tidyNewsExcerpt} from '@/lib/translation-quality';
+import BlackCatDetector from '@/components/BlackCatDetector';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
 const T={
- el:{
-  foryou:'Για σένα',top:'Κορυφαία',wars:'Πόλεμοι',markets:'Αγορές',society:'Κοινωνία & Πολιτική',more:'Περισσότερες ειδήσεις',world:'Κόσμος',economy:'Οικονομία',tech:'AI & Τεχνολογία',greece:'Ελλάδα',science:'Επιστήμη',climate:'Κλίμα',sports:'Αθλητισμός',latest:'Τελευταία',saved:'Αποθηκευμένα',
-  bigThemes:'Τα μεγάλα θέματα της υφηλίου',bigThemesSub:'Οι ιστορίες που κινούν τον κόσμο αυτή τη στιγμή — κατά όγκο κάλυψης',
-  topStories:'Κορυφαίες ειδήσεις',topSub:'Ταξινόμηση κατά βαρύτητα & εύρος κάλυψης',
-  mostCovered:'Τα πιο πολυκαλυμμένα',trends:'Τι ψάχνει ο κόσμος',latestNews:'Μόλις τώρα',
-  sources:'πηγές',source:'πηγή',articles:'άρθρα',stories:'ιστορίες',fullCoverage:'Πλήρης κάλυψη',openStory:'Δες την ιστορία',
-  readOriginal:'Άνοιγμα πρωτότυπου',save:'Αποθήκευση',saved1:'Αποθηκεύτηκε',share:'Κοινοποίηση',less:'Λιγότερα τέτοια',
-  follow:'Ακολούθησε',following:'Ακολουθείς',pickTitle:'Φτιάξε το δικό σου πρωτοσέλιδο',pickSub:'Διάλεξε θέματα. Θα ανεβαίνουν πρώτα — όσα κρύψεις θα εξαφανιστούν.',
-  related:'Σχετικές ιστορίες',coverage:'Κάλυψη ανά πολιτική τάση εκδότη',left:'Αριστερά',center:'Κέντρο',right:'Δεξιά',unrated:'Χωρίς αξιολόγηση',
-  leanNote:'Προσέγγιση σε επίπεδο εκδότη (κατά AllSides, με αμερικανικό πλαίσιο) — όχι αξιολόγηση του κάθε άρθρου.',
-  search:'Αναζήτηση ειδήσεων…',loading:'Φορτώνει ο κόσμος…',error:'Δεν φόρτωσαν οι ειδήσεις. Δοκίμασε ξανά.',retry:'Ξανά',
-  updated:'Ενημέρωση',live:'LIVE',seeAll:'Όλα',back:'Πίσω',emptySaved:'Δεν έχεις αποθηκεύσει ιστορίες ακόμα. Πάτα το σελιδοδείκτη σε μια είδηση.',
-  noResults:'Δεν βρέθηκαν ειδήσεις.',timeline:'Χρονολόγιο',firstSeen:'Πρώτη αναφορά',hidden:'Κρυμμένα',
-  kinds:{conflict:'Σύγκρουση',protest:'Διαδηλώσεις',election:'Πολιτική',economy:'Οικονομία',disaster:'Έκτακτο',ai:'Τεχνολογία',other:'Ειδήσεις'},
-  trendRegions:{GR:'Ελλάδα',WORLD:'Κόσμος'},blind:'Μονόπλευρη κάλυψη',translatedNote:'Οι τίτλοι μεταφράζονται αυτόματα — δες το πρωτότυπο για ακρίβεια.'
- },
  en:{
   foryou:'For you',top:'Top',wars:'Wars',markets:'Markets',society:'Society & Politics',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
   bigThemes:'The big stories of the world',bigThemesSub:'What is moving the planet right now — by volume of coverage',
@@ -49,8 +34,8 @@ const T={
   trendRegions:{GR:'Greece',WORLD:'World'},blind:'One-sided coverage',translatedNote:''
  }
 };
-type Copy=typeof T.el;
-const SECTIONS:Section[]=['top','foryou','wars','world','society','economy','markets','tech','greece','science','climate','sports','latest'];
+type Copy=typeof T.en;
+const SECTIONS:Section[]=['top','foryou','wars','world','society','economy','markets','tech','science','climate','sports','latest'];
 
 /* ───────────── helpers ───────────── */
 const isGoogle=(s:Signal)=>s.url.includes('news.google.');
@@ -66,7 +51,7 @@ function ago(iso:string,lang:Lang):string{
 const shortSource=(s:string)=>s.replace(/^Google News \/ /,'').replace(/^(BBC|Guardian|New York Times|UN News|Spaceflight News)\s.*$/,'$1').replace(/^Spaceflight News \/ /,'');
 function load<T>(k:string,f:T):T{try{const v=localStorage.getItem(k);return v?JSON.parse(v) as T:f}catch{return f}}
 function store(k:string,v:unknown){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v15.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
+const PREFS_KEY='glitch.v11.prefs',OG_KEY='glitch.v11.og';
 const EMPTY:Prefs={follow:[],mute:[],read:[],saved:[]};
 
 /* ───────────── icons (inline, no deps) ───────────── */
@@ -258,22 +243,19 @@ export default function GlitchNews(){
  const [updated,setUpdated]=useState<string>('');
  const [section,setSection]=useState<Section>('top');
  const [line,setLine]=useState<string|null>(null);
- const [lang,setLang]=useState<Lang>('el');
+ const [lang]=useState<Lang>('en');
  const [prefs,setPrefs]=useState<Prefs>(EMPTY);
  const [open,setOpen]=useState<Story|null>(null);
  const [q,setQ]=useState('');
  const tabsRef=useRef<HTMLElement>(null);
- const [tr,setTr]=useState<Record<string,{t:string;s?:string}>>({});
  const [quotes,setQuotes]=useState<Quote[]>([]);
  const [og,setOg]=useState<Record<string,string|null>>({});
- const [trendRegion,setTrendRegion]=useState<'GR'|'WORLD'>('GR');
  const [trends,setTrends]=useState<TrendItem[]>([]);
- const t=T[lang];
+ const t=T.en;
 
- useEffect(()=>{setPrefs(load(PREFS_KEY,EMPTY));setTr(load(TR_KEY,{}));setLang(load<Lang>(LANG_KEY,'el'));setOg(load(OG_KEY,{}));
+ useEffect(()=>{setPrefs(load(PREFS_KEY,EMPTY));setOg(load(OG_KEY,{}));
   const h=new URLSearchParams(location.search);const s=h.get('s') as Section|null;if(s&&SECTIONS.includes(s))setSection(s);const l=h.get('topic');if(l&&getStoryline(l))setLine(l);},[]);
  useEffect(()=>store(PREFS_KEY,prefs),[prefs]);
- useEffect(()=>store(LANG_KEY,lang),[lang]);
 
  const fetchFeed=useCallback(async()=>{
   try{const r=await fetch('/api/feed',{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json() as {signals:Signal[];generatedAt:string};
@@ -281,7 +263,7 @@ export default function GlitchNews(){
   catch{setState(s=>s==='ready'?'ready':'error')}
  },[]);
  useEffect(()=>{fetchFeed();const id=setInterval(fetchFeed,5*60000);return()=>clearInterval(id)},[fetchFeed]);
- useEffect(()=>{let live=true;fetch('/api/trends?region='+trendRegion).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[trendRegion]);
+ useEffect(()=>{let live=true;fetch('/api/trends?region=WORLD').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[]);
 
  useEffect(()=>{if(section!=='markets'&&section!=='wars')return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
  const stories=useMemo(()=>buildStories(signals),[signals]);
@@ -297,11 +279,10 @@ export default function GlitchNews(){
    .finally(()=>{ogBusy.current=false});
  },[stories,og]);
 
- const wrong=useCallback((x:string)=>needsTranslation(x,lang),[lang]);
- const title=useCallback((s:Story)=>{const raw=cleanTitle(s.headline);const v=tr[lang+':'+s.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
- const sum=useCallback((s:Story)=>{const raw=tidyNewsExcerpt(summaryOf(s),cleanTitle(s.headline));const v=tr[lang+':'+s.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
- const rsum=useCallback((r:Signal)=>{if(!r.summary||GOOGLE_PLACEHOLDER.test(r.summary))return '';const raw=tidyNewsExcerpt(cleanSummary(r.summary),cleanTitle(r)).slice(0,320);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
- const rtitle=useCallback((r:Signal)=>{const raw=cleanTitle(r);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
+ const title=useCallback((st:Story)=>cleanTitle(st.headline),[]);
+ const sum=useCallback((st:Story)=>tidyNewsExcerpt(summaryOf(st),cleanTitle(st.headline)),[]);
+ const rsum=useCallback((r:Signal)=>r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?tidyNewsExcerpt(cleanSummary(r.summary),cleanTitle(r)).slice(0,320):'',[]);
+ const rtitle=useCallback((r:Signal)=>cleanTitle(r),[]);
 
  /* derived lists */
  const visible=useMemo(()=>stories.filter(s=>!s.storylines.some(l=>prefs.mute.includes(l))),[stories,prefs.mute]);
@@ -315,69 +296,7 @@ export default function GlitchNews(){
  const latest=useMemo(()=>[...visible].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)),[visible]);
  const bySection=useCallback((sec:Section)=>visible.filter(s=>s.section===sec),[visible]);
  const mine=useMemo(()=>forYou(stories,prefs),[stories,prefs]);
- const searchHits=useMemo(()=>{const n=q.trim().toLocaleLowerCase();if(n.length<2)return [];return stories.filter(s=>(s.headline.title+' '+(tr[lang+':'+s.id]?.t||'')+' '+s.reports.map(r=>r.title).join(' ')).toLocaleLowerCase().includes(n)).slice(0,40)},[q,stories,tr,lang]);
-
- /* full translation EL⇄EN of what is on screen: titles + excerpts (+ report titles of the open story) */
- const worldRail=useMemo(()=>diverseTop(visible.filter(s=>s.section==='world'),14,{exclude:shown,perLine:3}),[visible,shown]);
- const pool=useMemo(()=>{
-  let list:Story[]=[];
-  if(q.trim().length>=2)list=searchHits;
-  else if(line)list=visible.filter(s=>s.storylines.includes(line)).slice(0,60);
-  else if(section==='top')list=[...hero,...themes.slice(0,12).map(x=>x.stories[0]),...top.slice(0,22),...mostCovered,...latest.slice(0,8),...worldRail,...(['economy','tech','greece','science','climate'] as Section[]).flatMap(railOf)];
-  else if(section==='foryou')list=mine.slice(0,50);
-  else if(section==='latest')list=latest.slice(0,60);
-  else if(section==='saved')list=stories.filter(s=>prefs.saved.includes(s.id));
-  else if(section==='wars'||section==='markets'||section==='society')list=[];
-  else list=bySection(section).slice(0,60);
-  return list.filter((s,i,a)=>s&&a.findIndex(x=>x.id===s.id)===i);
- },[q,searchHits,line,visible,section,hero,themes,top,mostCovered,latest,worldRail,railOf,mine,stories,prefs.saved,bySection]);
- const [extraPool,setExtraPool]=useState<Story[]>([]);
- const trItems=useMemo(()=>{
-  const titles:{id:string;title:string;summary:string}[]=[];
-  const summaries:{id:string;title:string;summary:string}[]=[];
-  const seen=new Set<string>();
-  const add=(id:string,headline:string,excerpt:string)=>{
-   if(seen.has(id))return;seen.add(id);
-   const prev=tr[lang+':'+id],summary=tidyNewsExcerpt(excerpt,headline);
-   if(wrong(headline)&&!prev?.t)titles.push({id,title:headline.slice(0,390),summary:''});
-   else if(wrong(summary)&&!prev?.s)summaries.push({id,title:'',summary:summary.slice(0,300)});
-  };
-  if(open){add(open.id,cleanTitle(open.headline),summaryOf(open));for(const r of open.reports.slice(0,12))
-   add(r.id,cleanTitle(r),r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?cleanSummary(r.summary):'')}
-  for(const s of [...extraPool,...pool])add(s.id,cleanTitle(s.headline),summaryOf(s));
-  return [...titles,...summaries];
- },[open,pool,extraPool,tr,lang,wrong]);
- const trBusy=useRef(false);const trFail=useRef(0);const aiTr=useRef<boolean|null>(null);
- useEffect(()=>{trFail.current=0;aiTr.current=null},[lang,section,line]);
- useEffect(()=>{
-  if(trBusy.current||trFail.current>=3||!trItems.length)return;
-  trBusy.current=true;
-  const useAI=aiTr.current!==false;
-  const batch=trItems.slice(0,useAI?6:2);
-  const mark=(rows:{id:string;title:string;summary:string}[])=>setTr(o=>{
-   const n={...o};
-   for(const b of batch){const r=rows.find(x=>x.id===b.id);if(!r)continue;
-    const k=lang+':'+b.id,old=n[k]||{t:''};
-    const t=b.title&&validTranslation(b.title,r.title,lang)?r.title:old.t;
-    const su=b.summary&&validTranslation(b.summary,r.summary,lang)?r.summary:old.s;
-    if(t!==old.t||su!==old.s)n[k]={t:t||'',s:su};
-   }
-   store(TR_KEY,Object.fromEntries(Object.entries(n).slice(-900)));return n});
-  const req=useAI?fetch('/api/tr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch})}).then(async r=>{
-    if(r.status===503){aiTr.current=false;return null}
-    if(!r.ok){aiTr.current=false;return null}aiTr.current=true;return (await r.json() as {items:{id:string;title:string;summary:string}[]}).items})
-   :fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch.slice(0,2).map(b=>({id:b.id,title:b.title,summary:b.summary.slice(0,260)}))})})
-    .then(async r=>{if(!r.ok)throw Error();return ((await r.json()) as {items:{id:string;title:string;summary:string;translated:boolean}[]}).items.filter(x=>x.translated)});
-  req.then(rows=>{
-   if(rows===null)return;
-   const accepted=rows.filter(r=>batch.some(b=>b.id===r.id&&
-    ((!!b.title&&validTranslation(b.title,r.title,lang))||
-     (!!b.summary&&validTranslation(b.summary,r.summary,lang)))));
-   if(!accepted.length){if(useAI){aiTr.current=false;trFail.current=0}else trFail.current++}
-   else{trFail.current=0;mark(accepted)}
-  }).catch(()=>{if(useAI){aiTr.current=false;trFail.current=0}else trFail.current++})
-   .finally(()=>{trBusy.current=false;setTimeout(()=>setTr(o=>({...o})),aiTr.current?600:900)});
- },[trItems,lang,wrong]);
+ const searchHits=useMemo(()=>{const n=q.trim().toLocaleLowerCase();if(n.length<2)return [];return stories.filter(s=>(s.headline.title+' '+s.reports.map(r=>r.title).join(' ')).toLocaleLowerCase().includes(n)).slice(0,40)},[q,stories]);
 
  /* prefs actions */
  const toggle=(k:keyof Prefs,v:string)=>setPrefs(p=>({...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]}));
@@ -395,7 +314,7 @@ export default function GlitchNews(){
     <div className="gn-tools">
      <span className="live"><i/>{t.live}{updated&&<em>{new Date(updated).toLocaleTimeString(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})}</em>}</span>
      <button className={'icon'+(section==='saved'?' on':'')} onClick={()=>go('saved')} aria-label={t.saved}>{I.bm(section==='saved')}{prefs.saved.length>0&&<sup>{prefs.saved.length}</sup>}</button>
-     <div className="langs"><button className={lang==='el'?'on':''} onClick={()=>setLang('el')}>ΕΛ</button><button className={lang==='en'?'on':''} onClick={()=>setLang('en')}>EN</button></div>
+     
     </div>
    </div>
    <div className="gn-nav-shell">
@@ -416,6 +335,7 @@ export default function GlitchNews(){
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
+     <BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <Hero slides={hero} {...ctx}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
@@ -428,7 +348,7 @@ export default function GlitchNews(){
       </section>
       <aside className="col-side">
        <Side title={t.mostCovered} icon={I.trend}><ol className="ranked">{mostCovered.map((s,i)=><li key={s.id}><button onClick={()=>openStory(s)}><b>{i+1}</b><span><strong>{title(s)}</strong><small>{s.sources.length} {t.sources} · {ago(s.lastAt,lang)}</small><LeanBar story={s} compact/></span></button></li>)}</ol></Side>
-       <Side title={t.trends} icon={<span className="g-dot"/>} extra={<div className="seg">{(['GR','WORLD'] as const).map(r=><button key={r} className={trendRegion===r?'on':''} onClick={()=>setTrendRegion(r)}>{t.trendRegions[r]}</button>)}</div>}>
+       <Side title={t.trends} icon={<span className="g-dot"/>} extra={<span className="gn-world-trends">WORLD</span>}>
         {trends.length?<ul className="trends">{trends.map((x,i)=><li key={x.id}><a href={x.url} target="_blank" rel="noreferrer"><b>{i+1}</b><span>{x.name}{x.relatedHeadlines[0]&&<small>{x.relatedHeadlines[0]}</small>}</span>{x.traffic&&<em>{x.traffic}</em>}</a></li>)}</ul>:<p className="muted small">…</p>}
        </Side>
        <Side title={t.latestNews} icon={<i className="live-dot"/>}><ul className="ticker">{latest.slice(0,8).map(s=><li key={s.id}><button onClick={()=>openStory(s)}><time>{new Date(s.lastAt).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>{title(s)}</span></button></li>)}</ul></Side>
@@ -451,7 +371,7 @@ export default function GlitchNews(){
     <SectionView heading={t[section]} stories={bySection(section)} themes={themes.filter(x=>x.stories.some(s=>s.section===section)).slice(0,8)} onPick={l=>go(section,l)} {...ctx}/>
    )}
   </main>
-  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Fox, Independent, CBS, NPR, DW, Al Jazeera, SCMP, Times of Israel, Sky, UN, ΕΡΤ, Πρώτο Θέμα, Ναυτεμπορική & Google News · {lang==='el'?'Δείκτες':'Indicators'}: Yahoo Finance, World Bank WDI/WGI · {lang==='el'?'Αγορές προβλέψεων':'Prediction markets'}: Polymarket, Kalshi. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
+  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Fox, Independent, CBS, NPR, DW, Al Jazeera, SCMP, Times of Israel, Sky, UN, France 24, Euronews, CBC, Washington Post, WSJ, Economist & Google News · {lang==='el'?'Δείκτες':'Indicators'}: Yahoo Finance, World Bank WDI/WGI · {lang==='el'?'Αγορές προβλέψεων':'Prediction markets'}: Polymarket, Kalshi. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
   {open&&<Sheet story={open} all={stories} onClose={()=>setOpen(null)} onPick={l=>{setOpen(null);go(section,l)}} {...ctx}/>}
  </div>;
 }
