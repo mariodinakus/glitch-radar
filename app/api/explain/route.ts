@@ -64,6 +64,17 @@ function valid(e:Explain):boolean{
 export async function GET(req:NextRequest){
  const id=req.nextUrl.searchParams.get('id')||'';
  const lang=req.nextUrl.searchParams.get('lang')==='en'?'en':'el';
+ if(req.nextUrl.searchParams.has('debug')&&process.env.GEMINI_API_KEY){
+  // Diagnostics: tiny call per model, reports HTTP status + latency (no key or content exposed).
+  const out:Record<string,unknown>[]=[];
+  for(const m of ['gemini-2.5-flash','gemini-2.5-flash-lite','gemini-flash-latest']){
+   const t=Date.now();const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),30000);
+   try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json','x-goog-api-key':process.env.GEMINI_API_KEY},body:JSON.stringify({contents:[{role:'user',parts:[{text:'Say OK'}]}],generationConfig:{maxOutputTokens:20,...(m!=='gemini-flash-latest'?{thinkingConfig:{thinkingBudget:0}}:{})}})});
+    const txt=await r.text();out.push({model:m,status:r.status,ms:Date.now()-t,err:r.ok?'':txt.slice(0,160)})}
+   catch(e){out.push({model:m,error:e instanceof Error?e.message:'x',ms:Date.now()-t})}finally{clearTimeout(tm)}
+  }
+  return json({debug:out});
+ }
  if(req.nextUrl.searchParams.has('status')||!id)return json({available:!!provider(),provider:provider()});
  if(!provider())return json({available:false},503);
  if(!/^s:[\w.:/-]{3,160}$/.test(id))return json({error:'bad id'},400);
