@@ -1,9 +1,9 @@
 {
-  "name": "GLITCH — Ο κόσμος σε μια ματιά",
+  "name": "GLITCH — The Black Cat News Detector",
   "short_name": "GLITCH",
-  "description": "Τα μεγάλα θέματα της υφηλίου με εικόνες, πλήρη κάλυψη και ανάλυση.",
-  "lang": "el",
-  "start_url": "/?app=v2",
+  "description": "Global English-language news, observed headline revisions, publisher echoes and geopolitics.",
+  "lang": "en",
+  "start_url": "/?app=v4",
   "scope": "/",
   "display": "standalone",
   "background_color": "#07080B",
