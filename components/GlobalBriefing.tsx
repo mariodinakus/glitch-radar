@@ -49,6 +49,22 @@ export default function GlobalBriefing({stories,lang,titleFor,onOpen,onWars,comp
    <div><span className="global-brief-updated"><Radio size={12}/>{tr(lang,'Τελευταία ανάκτηση','Feed fetched')}</span><strong className="global-brief-date">{sourceAt||'—'}</strong></div>
   </div>
   {more&&<>
+   <section className="global-context">
+    <div className="global-context-title"><strong>{tr(lang,'Πού βρισκόμαστε παγκοσμίως','Where the world stands')}</strong>
+     <span>{tr(lang,'Στοιχεία αναφοράς · 20 Οκτωβρίου 2026','Source snapshot · 20 October 2026')}</span></div>
+    <p>{tr(lang,'Η εικόνα δεν είναι ένας ενιαίος «παγκόσμιος πόλεμος»: συνυπάρχουν ένοπλες συγκρούσεις, ανθρωπιστικές ανάγκες, οικονομικοί κίνδυνοι και κλιματική πίεση. Τα παρακάτω είναι χρονολογημένα στοιχεία από πηγές, όχι αυτοματοποιημένοι ζωντανοί μετρητές.','There is no single global war to summarize: ongoing conflicts, humanitarian needs, economic uncertainty and climate stress coexist. These are dated sourced observations, not live automatically updated counters.')}</p>
+    <div className="global-context-grid">
+     <div><span>{tr(lang,'Γεωπολιτική','Geopolitics')}</span><strong>{tr(lang,'27 εστίες στον κατάλογο CFR','27 conflicts on CFR tracker')}</strong>
+       <p>{tr(lang,'Διακρατικοί πόλεμοι, εμφύλιοι, ένοπλη βία και εδαφικές εντάσεις. Το GLITCH παρακολουθεί επιπλέον δικές του εστίες, με διαφορετική μεθοδολογία.','Interstate wars, civil wars, armed violence and territorial disputes. GLITCH has a broader editorial watchlist with a different methodology.')}</p><a href="https://www.cfr.org/global-conflict-tracker/dashboard" target="_blank" rel="noopener noreferrer">CFR ↗</a></div>
+     <div><span>{tr(lang,'Ανθρωπιστική κατάσταση','Humanitarian conditions')}</span><strong>{tr(lang,'Σουδάν και Γάζα υπό πίεση','Sudan and Gaza under strain')}</strong>
+       <p>{tr(lang,'Ο ΠΟΥ προειδοποίησε στις 12/10 για αυξημένο κίνδυνο λιμού σε Νταρφούρ και Κορντοφάν. Στις 20/10 αναφέρθηκαν μεγάλες περικοπές επισιτιστικής βοήθειας στη Γάζα.','WHO warned on 12 October of rising famine risk in Darfur and Kordofan. Major food aid reductions in Gaza were reported on 20 October.')}</p>
+       <a href="https://www.who.int/news/item/12-10-2026-ipc-sudan-food-insecurity-and-malnutrition-alert" target="_blank" rel="noopener noreferrer">WHO ↗</a> · <a href="https://apnews.com/article/d7ebbcf1fd30cc608c9b9ed5126deb95" target="_blank" rel="noopener noreferrer">AP / WFP ↗</a></div>
+     <div><span>{tr(lang,'Παγκόσμια οικονομία','World economy')}</span><strong>{tr(lang,'3,1% ανάπτυξη το 2026','3.1% growth in 2026')}</strong>
+       <p>{tr(lang,'Πρόβλεψη ΔΝΤ Οκτωβρίου 2026, με παγκόσμιο πληθωρισμό 4,7%. Η ανάπτυξη παραμένει θετική αλλά άνιση· γεωπολιτικές και ενεργειακές αναταράξεις πιέζουν.','IMF October 2026 projection, with global inflation at 4.7%. Growth remains positive but uneven, exposed to geopolitical and energy shocks.')}</p><a href="https://www.imf.org/en/Publications/WEO/Issues/2026/10/13/world-economic-outlook-october-2026" target="_blank" rel="noopener noreferrer">IMF ↗</a></div>
+     <div><span>{tr(lang,'Κλίμα','Climate')}</span><strong>{tr(lang,'Περισσότερα παρατεταμένα κύματα ζέστης','Larger prolonged heat waves')}</strong>
+       <p>{tr(lang,'Έρευνα Reuters στις 20/10 ανέδειξε την αυξανόμενη έκταση και διάρκεια των μεγάλων κυμάτων ακραίας ζέστης. Η εικόνα δεν είναι ομοιόμορφη σε όλες τις περιοχές.','Reuters research published on 20 October shows an increase in the extent and persistence of massive heat waves, with unequal effects across regions.')}</p><a href="https://www.reuters.com/investigations/takeaways-key-findings-our-investigation-supersized-heat-waves-2026-10-20/" target="_blank" rel="noopener noreferrer">Reuters ↗</a></div>
+    </div>
+   </section>
    <div className="global-brief-axes">{groups.map(g=><article key={g.id}>
     <div className="global-brief-axis-head"><h3>{lang==='el'?g.el:g.en}</h3><span>{g.count} {tr(lang,'θέματα / 24ωρο','stories / 24h')}</span></div>
     <p>{lang==='el'?g.noteEl:g.noteEn}</p>
