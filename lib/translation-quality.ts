@@ -38,7 +38,7 @@ export function tidyNewsExcerpt(raw:string,title=''):string{
  let s=raw.replace(/\s+/g,' ').trim().replace(/\s+(?:www\.)[^\s]+\s*$/i,'').trim();
  if(!s)return '';
  const cutoff=s.search(/\s+[-–—]\s+(?:Η ΝΑΥΤΕΜΠΟΡΙΚΗ|THE GUARDIAN|BBC NEWS|ΕΡΤNEWS|ΠΡΩΤΟ ΘΕΜΑ)\s*$/i);
- if(cutoff>80)s=s.slice(0,cutoff).trim();
+ if(cutoff>28)s=s.slice(0,cutoff).trim();
  const headline=title.replace(/\s+/g,' ').trim();
  if(headline&&s.toLocaleLowerCase().endsWith(headline.toLocaleLowerCase())&&s.length>headline.length+30)
   s=s.slice(0,-headline.length).replace(/[\s–—-]+$/,'').trim();
