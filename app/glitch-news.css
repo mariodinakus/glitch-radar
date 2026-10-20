@@ -691,3 +691,47 @@ button.tag:hover{background:rgba(226,184,87,.22)}
 .global-context-grid>div>p{color:var(--tx2);font-size:12px;line-height:1.65;margin:8px 0 10px}
 .global-context-grid>div>a{color:var(--gold);font-size:11px;text-decoration:underline;text-underline-offset:3px}
 @media(max-width:630px){.global-context-grid{grid-template-columns:1fr}.global-context{padding:13px}}
+
+
+/* WAR ROOM — source-linked combatant/supporter briefing, no map dependency */
+.war-actor-anchor{scroll-margin-top:140px;margin:18px 0}
+.war-actors{border:1px solid rgba(226,184,87,.24);border-radius:16px;background:linear-gradient(125deg,rgba(226,184,87,.05),var(--card) 48%);padding:clamp(15px,2vw,24px)}
+.war-actors-heading>span{display:inline-flex;align-items:center;gap:7px;color:var(--gold);font:800 11px var(--mono);letter-spacing:.12em}
+.war-actors-heading h2{font:900 clamp(23px,3vw,34px) var(--serif);margin:8px 0;color:var(--tx)}
+.war-actors-heading h2 em{font-style:normal;color:var(--gold)}
+.war-actors-heading p{color:var(--tx2);font-size:12px;line-height:1.65;max-width:790px;margin:0 0 18px}
+.war-actor-matchup{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.war-actor-camp{padding:17px;border:1px solid var(--line2);background:var(--bg2);border-radius:12px;min-width:0}
+.war-actor-camp:first-child{border-top:3px solid #6b9ec4}
+.war-actor-camp:nth-child(2){border-top:3px solid #cc9279}
+.war-actor-camp-code{color:var(--mut);font:800 10px var(--mono);letter-spacing:.15em}
+.war-actor-camp h3{display:flex;align-items:center;gap:9px;font:800 17px/1.45 var(--sans);color:var(--tx);margin:9px 0 6px}
+.war-actor-camp h3 svg{flex:none;color:var(--gold)}
+.war-actor-description{font-size:12px;line-height:1.65;color:var(--tx2);margin:0 0 16px}
+.war-actor-support-head{display:flex;align-items:center;gap:8px;font:800 11px var(--sans);letter-spacing:.035em;border-top:1px solid var(--line2);padding:13px 0 4px;color:var(--gold)}
+.war-support-line{padding:12px 0;border-bottom:1px solid var(--line)}
+.war-support-line:last-child{border-bottom:0}
+.war-support-line>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.war-support-line strong{font:750 13px var(--sans);color:var(--tx)}
+.war-evidence{font:700 9px var(--sans);border-radius:5px;padding:4px 6px;color:var(--mut);border:1px solid var(--line2)}
+.war-evidence.e-documented{color:#83c9a0;border-color:rgba(131,201,160,.3)}
+.war-evidence.e-reported{color:#dfbe7d;border-color:rgba(223,190,125,.3)}
+.war-evidence.e-historical{color:#93abd2;border-color:rgba(147,171,210,.3)}
+.war-support-line p{font:12px/1.65 var(--sans);color:var(--tx2);margin:6px 0 0}
+.war-support-none{font:12px/1.7 var(--sans);color:var(--mut)}
+.war-actor-caveat{display:flex;align-items:flex-start;gap:8px;padding:12px;margin:13px 0;color:var(--tx2);font-size:11px;line-height:1.6;border:1px solid var(--line2);border-radius:10px}
+.war-actor-caveat svg{flex:none;color:var(--gold)}
+.war-actors-sources{display:flex;flex-wrap:wrap;align-items:center;gap:9px;font:11px/1.5 var(--sans);color:var(--mut)}
+.war-actors-sources a{color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+.war-actors-pending{border:1px dashed var(--line2);padding:20px;border-radius:11px;background:var(--bg2)}
+.war-actors-pending>strong{font:750 14px/1.5 var(--sans)}
+.war-actors-pending>p{font:12px/1.7 var(--sans);color:var(--tx2)}
+.war-actors-pending>a{font-size:12px;color:var(--gold)}
+.war-ai-actors{padding:13px 0}
+.war-ai-actors>small{color:var(--gold);font:700 11px var(--sans)}
+.war-ai-actors ul{padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:11px 0}
+.war-ai-actors li{border:1px solid var(--line);padding:10px;border-radius:8px}
+.war-ai-actors li strong{display:block;font-size:12px}
+.war-ai-actors li span{display:block;font-size:11px;color:var(--tx2)}
+@media(max-width:780px){.war-actor-matchup{grid-template-columns:1fr}.war-actor-camp{padding:14px}.war-actor-anchor{scroll-margin-top:125px}}
+@media(max-width:530px){.war-ai-actors ul{grid-template-columns:1fr}.war-actors{padding:13px}.war-actor-camp h3{font-size:15px}}
