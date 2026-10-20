@@ -1,28 +1,28 @@
 {
-  "name": "GLITCH — Παγκόσμια ενημέρωση",
+  "name": "GLITCH — Ο κόσμος σε μια ματιά",
   "short_name": "GLITCH",
-  "description": "Σημαντικές διεθνείς εξελίξεις, έρευνα πηγών και τεκμηριωμένη ανάλυση.",
+  "description": "Τα μεγάλα θέματα της υφηλίου με εικόνες, πλήρη κάλυψη και ανάλυση.",
   "lang": "el",
   "start_url": "/?app=v2",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#090C14",
-  "theme_color": "#090C14",
+  "background_color": "#07080B",
+  "theme_color": "#07080B",
   "icons": [
     {
-      "src": "/api/icon-v2/192",
+      "src": "/api/icon-v2/192?v=3",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icon-v2/512",
+      "src": "/api/icon-v2/512?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icon-v2/512",
+      "src": "/api/icon-v2/512?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

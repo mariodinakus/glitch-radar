@@ -3,12 +3,17 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import type {Signal} from '@/lib/types';
 import {buildStories,diverseTop,forYou,leanMix,leanOf,storylineSummaries,storylines,getStoryline} from '@/lib/stories';
 import type {Lean,Prefs,Section,Story,StorylineSummary} from '@/lib/stories';
+import {conflictSummaries} from '@/lib/conflicts';
+import {PublisherBubbles,StorySequence,PublisherStack,cleanSummary} from '@/components/Publishers';
+import type {ConflictSummary} from '@/lib/conflicts';
+import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
+import type {IndicatorGroup} from '@/lib/indicators';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
 const T={
  el:{
-  foryou:'Για σένα',top:'Κορυφαία',world:'Κόσμος',economy:'Οικονομία',tech:'AI & Τεχνολογία',greece:'Ελλάδα',science:'Επιστήμη',climate:'Κλίμα',sports:'Αθλητισμός',latest:'Τελευταία',saved:'Αποθηκευμένα',
+  foryou:'Για σένα',top:'Κορυφαία',wars:'Πόλεμοι',markets:'Αγορές',more:'Περισσότερες ειδήσεις',world:'Κόσμος',economy:'Οικονομία',tech:'AI & Τεχνολογία',greece:'Ελλάδα',science:'Επιστήμη',climate:'Κλίμα',sports:'Αθλητισμός',latest:'Τελευταία',saved:'Αποθηκευμένα',
   bigThemes:'Τα μεγάλα θέματα της υφηλίου',bigThemesSub:'Οι ιστορίες που κινούν τον κόσμο αυτή τη στιγμή — κατά όγκο κάλυψης',
   topStories:'Κορυφαίες ειδήσεις',topSub:'Ταξινόμηση κατά βαρύτητα & εύρος κάλυψης',
   mostCovered:'Τα πιο πολυκαλυμμένα',trends:'Τι ψάχνει ο κόσμος',latestNews:'Μόλις τώρα',
@@ -24,7 +29,7 @@ const T={
   trendRegions:{GR:'Ελλάδα',WORLD:'Κόσμος'},blind:'Μονόπλευρη κάλυψη',translatedNote:'Οι τίτλοι μεταφράζονται αυτόματα — δες το πρωτότυπο για ακρίβεια.'
  },
  en:{
-  foryou:'For you',top:'Top',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
+  foryou:'For you',top:'Top',wars:'Wars',markets:'Markets',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
   bigThemes:'The big stories of the world',bigThemesSub:'What is moving the planet right now — by volume of coverage',
   topStories:'Top stories',topSub:'Ranked by weight & breadth of coverage',
   mostCovered:'Most covered',trends:'What people search',latestNews:'Just in',
@@ -41,13 +46,13 @@ const T={
  }
 };
 type Copy=typeof T.el;
-const SECTIONS:Section[]=['top','foryou','world','economy','tech','greece','science','climate','sports','latest'];
+const SECTIONS:Section[]=['top','foryou','wars','world','economy','markets','tech','greece','science','climate','sports','latest'];
 
 /* ───────────── helpers ───────────── */
 const isGoogle=(s:Signal)=>s.url.includes('news.google.');
 const GOOGLE_PLACEHOLDER=/^Συγκεντρωτική αναφορά/;
 const cleanTitle=(s:Signal)=>isGoogle(s)?s.title.replace(/\s+-\s+[^-]{2,70}$/,''):s.title;
-const summaryOf=(st:Story)=>{const r=[st.headline,...st.reports].find(x=>x.summary&&!GOOGLE_PLACEHOLDER.test(x.summary)&&x.summary.length>40);return r?.summary||''};
+const summaryOf=(st:Story)=>{const r=[st.headline,...st.reports].find(x=>x.summary&&!GOOGLE_PLACEHOLDER.test(x.summary)&&x.summary.length>40);return r?cleanSummary(r.summary):''};
 const hasGreek=(s:string)=>/[Ͱ-Ͽἀ-῿]/.test(s);
 function ago(iso:string,lang:Lang):string{
  const m=Math.max(1,Math.round((Date.now()-Date.parse(iso))/60000));
@@ -57,7 +62,7 @@ function ago(iso:string,lang:Lang):string{
 const shortSource=(s:string)=>s.replace(/^Google News \/ /,'').replace(/^(BBC|Guardian|New York Times|UN News|Spaceflight News)\s.*$/,'$1').replace(/^Spaceflight News \/ /,'');
 function load<T>(k:string,f:T):T{try{const v=localStorage.getItem(k);return v?JSON.parse(v) as T:f}catch{return f}}
 function store(k:string,v:unknown){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v11.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
+const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v12.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
 const EMPTY:Prefs={follow:[],mute:[],read:[],saved:[]};
 
 /* ───────────── icons (inline, no deps) ───────────── */
@@ -73,7 +78,7 @@ const I={
  trend:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 17 6-6 4 4 8-8M15 7h6v6"/></svg>,
  refresh:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
 };
-function Mark(){return <svg width="30" height="30" viewBox="0 0 64 64" fill="none" aria-hidden="true"><defs><linearGradient id="gmk" x1="0" y1="0" x2="64" y2="64"><stop stopColor="#F3D58A"/><stop offset="1" stopColor="#B8862B"/></linearGradient></defs><circle cx="32" cy="32" r="27" stroke="url(#gmk)" strokeWidth="3"/><ellipse cx="32" cy="32" rx="12" ry="27" stroke="url(#gmk)" strokeWidth="2"/><path d="M6 24h52M6 40h52" stroke="url(#gmk)" strokeWidth="2"/><path d="M44 14 54 6" stroke="#F3D58A" strokeWidth="4" strokeLinecap="round"/></svg>}
+function Mark(){return <svg width="32" height="32" viewBox="0 0 64 64" fill="none" aria-hidden="true"><defs><linearGradient id="gmk" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse"><stop stopColor="#F3D58A"/><stop offset="1" stopColor="#B8862B"/></linearGradient></defs><circle cx="32" cy="32" r="22" stroke="url(#gmk)" strokeWidth="3.5"/><ellipse cx="32" cy="32" rx="9" ry="22" stroke="url(#gmk)" strokeWidth="2.2"/><path d="M12 24h40M12 40h40" stroke="url(#gmk)" strokeWidth="2.2"/><rect x="6" y="28.5" width="54" height="7" fill="#07080B" className="mk-cut"/><rect x="17" y="30" width="44" height="4" rx="1" fill="#F3D58A"/><rect x="4" y="30" width="9" height="4" rx="1" fill="#B8862B"/><circle cx="51" cy="11" r="3.2" fill="#EF5B5B"/></svg>}
 
 /* ───────────── small UI pieces ───────────── */
 function Pic({src,alt,story,className,eager}:{src?:string;alt:string;story:Story;className?:string;eager?:boolean}){
@@ -96,12 +101,129 @@ function LeanBar({story,compact}:{story:Story;compact?:boolean}){
 }
 function Meta({story,lang,t}:{story:Story;lang:Lang;t:Copy}){
  const n=story.sources.length;
- return <div className="meta"><span className="m-src">{shortSource(story.headline.source)}</span>{n>1&&<span className="m-count">+{n-1} {t.sources}</span>}<span className="m-dot">·</span><time>{ago(story.lastAt,lang)}</time></div>;
+ return <div className="meta"><PublisherStack story={story}/><span className="m-src">{shortSource(story.headline.source)}</span>{n>1&&<span className="m-count">+{n-1} {t.sources}</span>}<span className="m-dot">·</span><time>{ago(story.lastAt,lang)}</time></div>;
 }
 function Kind({story,t,lang}:{story:Story;t:Copy;lang:Lang}){
  const line=getStoryline(story.storylines[0]||'');
  const label=story.kind!=='other'?t.kinds[story.kind]:line?(lang==='el'?line.el:line.en):t[story.section as keyof Copy] as string;
  return <span className={'kind k-'+story.kind}>{story.level==='top'&&<b className="pulse"/>}{label}</span>;
+}
+
+/* ───────────── indicators ───────────── */
+type Quote={symbol:string;price:number|null;prev:number|null;change:number|null;currency:string|null;time:string|null;spark:number[]};
+const fmt=(q:Quote)=>{const i=indicatorBySymbol(q.symbol);if(q.price===null)return '—';const d=i?.digits??(q.price>=1000?0:2);
+ const n=q.price.toLocaleString('el-GR',{minimumFractionDigits:d,maximumFractionDigits:d});return i?.unit==='%'?n+'%':i?.unit==='¢'?n+'¢':(i?.unit||'')+n};
+const chg=(q:Quote)=>q.change===null?'':(q.change>0?'+':'')+q.change.toFixed(2)+'%';
+function Spark({data,up}:{data:number[];up:boolean}){
+ if(data.length<3)return null;const mn=Math.min(...data),mx=Math.max(...data),r=mx-mn||1;
+ const pts=data.map((v,i)=>`${(i/(data.length-1)*100).toFixed(1)},${(30-(v-mn)/r*28-1).toFixed(1)}`).join(' ');
+ return <svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={pts} fill="none" stroke={up?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>;
+}
+function Ticker({quotes,lang,onOpen}:{quotes:Quote[];lang:Lang;onOpen:()=>void}){
+ const list=INDICATORS.filter(i=>i.ticker).map(i=>({i,q:quotes.find(q=>q.symbol===i.symbol)})).filter(x=>x.q&&x.q.price!==null);
+ if(!list.length)return null;
+ const items=list.map(({i,q})=><button key={i.symbol} className="tk" onClick={onOpen}><span>{lang==='el'?i.el:i.en}</span><b>{fmt(q!)}</b><em className={(q!.change??0)>=0?'up':'down'}>{(q!.change??0)>=0?'▲':'▼'} {chg(q!)}</em></button>);
+ return <div className="ticker-bar"><div className="tk-track">{items}{items.map((x,k)=><span key={'d'+k} aria-hidden="true">{x}</span>)}</div></div>;
+}
+const GROUPS:{g:IndicatorGroup;el:string;en:string}[]=[{g:'indices',el:'Χρηματιστήρια',en:'Stock markets'},{g:'energy',el:'Ενέργεια',en:'Energy'},{g:'metals',el:'Μέταλλα & αγροτικά',en:'Metals & agri'},{g:'fx',el:'Νομίσματα & crypto',en:'FX & crypto'},{g:'risk',el:'Επιτόκια & φόβος',en:'Rates & fear'}];
+function IndicatorCard({q,lang}:{q:Quote;lang:Lang}){
+ const i=indicatorBySymbol(q.symbol);const up=(q.change??0)>=0;
+ return <a className="ind" href={'https://finance.yahoo.com/quote/'+encodeURIComponent(q.symbol)} target="_blank" rel="noreferrer">
+  <div className="ind-top"><span>{lang==='el'?i?.el:i?.en}</span><em className={up?'up':'down'}>{chg(q)}</em></div>
+  <b>{fmt(q)}</b><Spark data={q.spark} up={(q.spark.at(-1)??0)>=(q.spark[0]??0)}/>
+ </a>;
+}
+type PM={id:string;venue:string;question:string;probability:number;sourceUrl:string;volume24h:number|null};
+function usePredictionMarkets(){
+ const [m,setM]=useState<PM[]>([]);
+ useEffect(()=>{let live=true;fetch('/api/markets').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setM(d.quotes)}).catch(()=>{});return()=>{live=false}},[]);
+ return m;
+}
+function PMList({items,lang}:{items:PM[];lang:Lang}){
+ if(!items.length)return null;
+ return <div className="pm">{items.map(x=><a key={x.id} href={x.sourceUrl} target="_blank" rel="noreferrer" className="pm-row">
+  <span className="pm-q">{x.question}</span><span className="pm-p"><i style={{width:Math.round(x.probability*100)+'%'}}/><b>{Math.round(x.probability*100)}%</b></span><small>{x.venue==='polymarket'?'Polymarket':'Kalshi'}</small></a>)}
+  <p className="note">{lang==='el'?'Τιμές συμβολαίων αγορών προβλέψεων — δείχνουν τι «στοιχηματίζουν» οι αγορές, όχι βεβαιότητα.':'Prediction-market prices — what traders are betting on, not certainty.'}</p></div>;
+}
+function MarketsView({quotes,stories,...ctx}:Ctx&{quotes:Quote[];stories:Story[]}){
+ const {lang}=ctx;const pm=usePredictionMarkets();
+ const econ=stories.filter(s=>s.section==='economy'||s.storylines.includes('energy')||s.storylines.includes('economy')).slice(0,40);
+ return <div className="view">
+  <div className="view-head"><h1>{ctx.t.markets}</h1><span>{lang==='el'?'Live δείκτες · καθυστέρηση ~15′':'Live indicators · ~15-min delay'}</span></div>
+  {!quotes.length&&<div className="ax-wait"><i/><i/><i/><span>…</span></div>}
+  {GROUPS.map(({g,el,en})=>{const qs=INDICATORS.filter(i=>i.group===g).map(i=>quotes.find(q=>q.symbol===i.symbol)).filter((q):q is Quote=>!!q&&q.price!==null);
+   return qs.length?<section key={g} className="ind-group"><h2>{lang==='el'?el:en}</h2><div className="ind-grid">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div></section>:null})}
+  {pm.length>0&&<section className="ind-group"><h2>{lang==='el'?'Τι προεξοφλούν οι αγορές προβλέψεων':'What prediction markets price in'}</h2><PMList items={pm.slice(0,10)} lang={lang}/></section>}
+  <section className="ind-group"><h2>{lang==='el'?'Ειδήσεις αγορών & οικονομίας':'Markets & economy news'}</h2><Paged stories={econ} {...ctx}/></section>
+ </div>;
+}
+
+/* ───────────── war room ───────────── */
+type Brief={situation:string;keyIssues:{title:string;text:string}[];actors:{name:string;position:string}[];latest:string[];scenarios:{title:string;likelihood:'high'|'medium'|'low';text:string}[];watch:string[];economy:string;greece:string;caveat:string};
+const BRIEF_CACHE=new Map<string,Brief|'off'|'err'>();
+function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
+ const {lang,t,withImg}=ctx;const el=lang==='el';
+ const list=useMemo(()=>conflictSummaries(stories),[stories]);
+ const [sel,setSel]=useState<string|null>(null);
+ const cur=list.find(x=>x.c.id===sel)||list[0];
+ const pm=usePredictionMarkets();
+ const key=(cur?.c.id||'')+'|'+lang;
+ const [brief,setBrief]=useState<Brief|'off'|'err'|'loading'>('loading');
+ useEffect(()=>{if(!cur)return;const c=BRIEF_CACHE.get(key);if(c){setBrief(c);return}
+  let live=true;setBrief('loading');
+  fetch('/api/brief?conflict='+cur.c.id+'&lang='+lang).then(async r=>{if(!live)return;
+   if(r.status===503){BRIEF_CACHE.set(key,'off');setBrief('off');return}
+   const d=await r.json() as {brief?:Brief};if(r.ok&&d.brief){BRIEF_CACHE.set(key,d.brief);setBrief(d.brief)}else setBrief('err')}).catch(()=>{if(live)setBrief('err')});
+  return()=>{live=false}},[key,cur,lang]);
+ if(!cur)return <div className="empty">{t.noResults}</div>;
+ const c=cur.c;const timeline=[...cur.stories].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt));
+ const cover=cur.stories.find(s=>withImg(s));
+ const qs=c.indicators.map(sym=>quotes.find(q=>q.symbol===sym)).filter((q):q is Quote=>!!q&&q.price!==null);
+ const markets=pm.filter(m=>c.market.test(m.question)).slice(0,6);
+ const b=typeof brief==='object'?brief:null;
+ const like=(l:string)=>el?({high:'Πιθανό',medium:'Μέτρια πιθανό',low:'Λιγότερο πιθανό'} as Record<string,string>)[l]:({high:'Likely',medium:'Possible',low:'Less likely'} as Record<string,string>)[l];
+ return <div className="view wars">
+  <div className="war-chips">{list.map(x=><button key={x.c.id} className={x.c.id===c.id?'on':''} onClick={()=>setSel(x.c.id)}><i className={x.last24>3?'hot':''}/>{el?x.c.el:x.c.en}<em>{x.last24}</em></button>)}</div>
+  <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
+   <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ζωντανή παρακολούθηση':'WAR ROOM · live tracking'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
+    <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
+  {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
+  <section className="ax war-brief">
+   <div className="ax-head"><span className="ax-mark">✦</span><h2>{el?'Τα βασικά ζητήματα τώρα':'The key issues right now'}</h2>{b&&<em>AI</em>}</div>
+   {brief==='loading'&&<div className="ax-wait"><i/><i/><i/><span>{el?'Το GLITCH διαβάζει όλη την κάλυψη…':'GLITCH is reading all the coverage…'}</span></div>}
+   {(brief==='off'||brief==='err')&&<p className="ax-off">{brief==='off'?(el?'Η ανάλυση AI δεν είναι ενεργή ακόμα — παρακάτω οι τελευταίες εξελίξεις από τις πηγές.':'AI analysis is not enabled yet — latest developments below.'):(el?'Η ανάλυση δεν είναι διαθέσιμη αυτή τη στιγμή.':'Briefing unavailable right now.')}</p>}
+   {b&&<>
+    <p className="ax-big">{b.situation}</p>
+    <div className="issues">{b.keyIssues.map((k,i)=><div key={i} className="issue"><b>{String(i+1).padStart(2,'0')}</b><strong>{k.title}</strong><p>{k.text}</p></div>)}</div>
+    <h3 className="ax-h3">{el?'Ποιος θέλει τι':'Who wants what'}</h3>
+    <div className="actors">{b.actors.map((a,i)=><div key={i}><strong>{a.name}</strong><p>{a.position}</p></div>)}</div>
+    <h3 className="ax-h3">{el?'Τι έρχεται':"What's next"}</h3>
+    <ol className="ax-sc">{b.scenarios.map((sc,i)=><li key={i} className={'lk-'+sc.likelihood}><div className="sc-top"><strong>{sc.title}</strong><span className="lk"><i/><i/><i/>{like(sc.likelihood)}</span></div><p>{sc.text}</p></li>)}</ol>
+    <div className="ax-callouts"><div><small>{el?'Τι να παρακολουθείς':'Signals to watch'}</small><ul>{b.watch.map((w,i)=><li key={i}>{w}</li>)}</ul></div><div><small>{el?'Αγορές & οικονομία':'Markets & economy'}</small><p>{b.economy}</p></div><div className="gr"><small>🇬🇷 {el?'Για την Ελλάδα':'For Greece'}</small><p>{b.greece}</p></div><div><small>{el?'Τελευταίες 72 ώρες':'Last 72 hours'}</small><ul>{b.latest.map((w,i)=><li key={i}>{w}</li>)}</ul></div></div>
+    <p className="note">⚠ {b.caveat}</p>
+   </>}
+  </section>
+  {markets.length>0&&<section className="ind-group"><h2>{el?'Τι στοιχηματίζουν οι αγορές':'What markets are betting on'}</h2><PMList items={markets} lang={lang}/></section>}
+  <h2 className="tl-h">{t.timeline}</h2>
+  <Paged stories={timeline} timeline {...ctx}/>
+ </div>;
+}
+
+/* load-more list */
+function Paged({stories,timeline,...ctx}:Ctx&{stories:Story[];timeline?:boolean}){
+ const [n,setN]=useState(20);
+ const resetKey=stories.length+':'+(stories[0]?.id||'');
+ useEffect(()=>setN(20),[resetKey]);
+ const shown=stories.slice(0,n);
+ const {setExtraPool}=ctx;
+ const ids=shown.map(s=>s.id).join(',');
+ const shownRef=useRef(shown);shownRef.current=shown;
+ useEffect(()=>{setExtraPool(shownRef.current)},[ids,setExtraPool]);
+ return <>
+  {timeline?<ol className="timeline">{shown.map(s=><li key={s.id}><time>{new Date(s.lastAt).toLocaleString(ctx.lang==='el'?'el-GR':'en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false})}</time><Row story={s} {...ctx}/></li>)}</ol>
+   :<div className="rows">{shown.map(s=><Row key={s.id} story={s} {...ctx}/>)}</div>}
+  {stories.length>n&&<button className="btn more" onClick={()=>setN(x=>x+20)}>{ctx.t.more} <em>{stories.length-n}</em></button>}
+ </>;
 }
 
 /* ───────────── main ───────────── */
@@ -116,7 +238,8 @@ export default function GlitchNews(){
  const [prefs,setPrefs]=useState<Prefs>(EMPTY);
  const [open,setOpen]=useState<Story|null>(null);
  const [q,setQ]=useState('');
- const [tr,setTr]=useState<Record<string,string>>({});
+ const [tr,setTr]=useState<Record<string,{t:string;s?:string}>>({});
+ const [quotes,setQuotes]=useState<Quote[]>([]);
  const [og,setOg]=useState<Record<string,string|null>>({});
  const [trendRegion,setTrendRegion]=useState<'GR'|'WORLD'>('GR');
  const [trends,setTrends]=useState<TrendItem[]>([]);
@@ -135,6 +258,7 @@ export default function GlitchNews(){
  useEffect(()=>{fetchFeed();const id=setInterval(fetchFeed,5*60000);return()=>clearInterval(id)},[fetchFeed]);
  useEffect(()=>{let live=true;fetch('/api/trends?region='+trendRegion).then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[trendRegion]);
 
+ useEffect(()=>{let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[]);
  const stories=useMemo(()=>buildStories(signals),[signals]);
  // og:image enrichment for stories without a picture
  const withImg=useCallback((s:Story)=>s.image||og[s.id]||undefined,[og]);
@@ -148,7 +272,11 @@ export default function GlitchNews(){
    .finally(()=>{ogBusy.current=false});
  },[stories,og]);
 
- const title=useCallback((s:Story)=>{const raw=cleanTitle(s.headline);if(lang==='el'&&!hasGreek(raw)&&tr[s.id])return tr[s.id];return raw},[lang,tr]);
+ const wrong=useCallback((x:string)=>!!x&&(lang==='el'?!hasGreek(x):hasGreek(x)),[lang]);
+ const title=useCallback((s:Story)=>{const raw=cleanTitle(s.headline);const v=tr[lang+':'+s.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
+ const sum=useCallback((s:Story)=>{const raw=summaryOf(s);const v=tr[lang+':'+s.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
+ const rsum=useCallback((r:Signal)=>{if(!r.summary||GOOGLE_PLACEHOLDER.test(r.summary))return '';const raw=cleanSummary(r.summary).slice(0,320);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
+ const rtitle=useCallback((r:Signal)=>{const raw=cleanTitle(r);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
 
  /* derived lists */
  const visible=useMemo(()=>stories.filter(s=>!s.storylines.some(l=>prefs.mute.includes(l))),[stories,prefs.mute]);
@@ -162,23 +290,50 @@ export default function GlitchNews(){
  const latest=useMemo(()=>[...visible].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)),[visible]);
  const bySection=useCallback((sec:Section)=>visible.filter(s=>s.section===sec),[visible]);
  const mine=useMemo(()=>forYou(stories,prefs),[stories,prefs]);
- const searchHits=useMemo(()=>{const n=q.trim().toLocaleLowerCase();if(n.length<2)return [];return stories.filter(s=>(s.headline.title+' '+(tr[s.id]||'')+' '+s.reports.map(r=>r.title).join(' ')).toLocaleLowerCase().includes(n)).slice(0,40)},[q,stories,tr]);
+ const searchHits=useMemo(()=>{const n=q.trim().toLocaleLowerCase();if(n.length<2)return [];return stories.filter(s=>(s.headline.title+' '+(tr[lang+':'+s.id]?.t||'')+' '+s.reports.map(r=>r.title).join(' ')).toLocaleLowerCase().includes(n)).slice(0,40)},[q,stories,tr,lang]);
 
- /* auto-translate titles (Greek mode) — hero + first screens, 4 at a time */
- const trBusy=useRef(false);const trFail=useRef(0);
+ /* full translation EL⇄EN of what is on screen: titles + excerpts (+ report titles of the open story) */
+ const worldRail=useMemo(()=>diverseTop(visible.filter(s=>s.section==='world'),14,{exclude:shown,perLine:3}),[visible,shown]);
+ const pool=useMemo(()=>{
+  let list:Story[]=[];
+  if(q.trim().length>=2)list=searchHits;
+  else if(line)list=visible.filter(s=>s.storylines.includes(line)).slice(0,60);
+  else if(section==='top')list=[...hero,...themes.slice(0,12).map(x=>x.stories[0]),...top.slice(0,22),...mostCovered,...latest.slice(0,8),...worldRail,...(['economy','tech','greece','science','climate'] as Section[]).flatMap(railOf)];
+  else if(section==='foryou')list=mine.slice(0,50);
+  else if(section==='latest')list=latest.slice(0,60);
+  else if(section==='saved')list=stories.filter(s=>prefs.saved.includes(s.id));
+  else if(section==='wars'||section==='markets')list=[];
+  else list=bySection(section).slice(0,60);
+  return list.filter((s,i,a)=>s&&a.findIndex(x=>x.id===s.id)===i);
+ },[q,searchHits,line,visible,section,hero,themes,top,mostCovered,latest,worldRail,railOf,mine,stories,prefs.saved,bySection]);
+ const [extraPool,setExtraPool]=useState<Story[]>([]);
+ const trItems=useMemo(()=>{
+  const items:{id:string;title:string;summary:string}[]=[];
+  const add=(id:string,title:string,summary:string)=>{if(tr[lang+':'+id])return;const ti=wrong(title)?title:'',su=wrong(summary)?summary.slice(0,320):'';if(ti||su)items.push({id,title:ti,summary:su})};
+  if(open){add(open.id,cleanTitle(open.headline),summaryOf(open));for(const r of open.reports.slice(0,16))add(r.id,cleanTitle(r),r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?cleanSummary(r.summary).slice(0,320):'')}
+  for(const s of [...extraPool,...pool])add(s.id,cleanTitle(s.headline),summaryOf(s));
+  return items;
+ },[open,pool,extraPool,tr,lang,wrong]);
+ const trBusy=useRef(false);const trFail=useRef(0);const aiTr=useRef<boolean|null>(null);
+ useEffect(()=>{trFail.current=0},[lang]);
  useEffect(()=>{
-  if(lang!=='el'||trBusy.current||trFail.current>=3||!stories.length)return;
-  const pool=[...hero,...themes.slice(0,8).map(x=>x.stories[0]),...top.slice(0,18),...mostCovered,...(open?[open]:[])].filter((s,i,a)=>s&&a.findIndex(x=>x.id===s.id)===i);
-  const batch=pool.filter(s=>!tr[s.id]&&!hasGreek(cleanTitle(s.headline))).slice(0,4);
-  if(!batch.length)return;trBusy.current=true;
-  fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:'el',items:batch.map(s=>({id:s.id,title:cleanTitle(s.headline),summary:''}))})})
-   .then(r=>r.ok?r.json():Promise.reject()).then((d:{items?:{id:string;title:string;translated:boolean}[]})=>{
-    const ok=(d.items||[]).filter(x=>x.translated&&hasGreek(x.title));if(!ok.length)trFail.current++;else trFail.current=0;
-    setTr(o=>{const n={...o,...Object.fromEntries(ok.map(x=>[x.id,x.title]))};
-     // mark failures with the original so we don't retry forever
-     for(const s of batch)if(!n[s.id])n[s.id]='';store(TR_KEY,Object.fromEntries(Object.entries(n).slice(-500)));return n});
-   }).catch(()=>{trFail.current++}).finally(()=>{trBusy.current=false;setTimeout(()=>setTr(o=>({...o})),400)});
- },[lang,stories,hero,themes,top,mostCovered,open,tr]);
+  if(trBusy.current||trFail.current>=3||!trItems.length)return;
+  trBusy.current=true;
+  const useAI=aiTr.current!==false;
+  const batch=trItems.slice(0,useAI?24:4);
+  const mark=(rows:{id:string;title:string;summary:string}[])=>setTr(o=>{
+   const n={...o};
+   for(const b of batch){const r=rows.find(x=>x.id===b.id);n[lang+':'+b.id]={t:r?.title&&!wrong(r.title)?r.title:'',s:r?.summary&&!wrong(r.summary)?r.summary:undefined}}
+   store(TR_KEY,Object.fromEntries(Object.entries(n).slice(-900)));return n});
+  const req=useAI?fetch('/api/tr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch})}).then(async r=>{
+    if(r.status===503){aiTr.current=false;return null}
+    if(!r.ok)throw Error();aiTr.current=true;return (await r.json() as {items:{id:string;title:string;summary:string}[]}).items})
+   :fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch.map(b=>({id:b.id,title:b.title||' ',summary:b.summary.slice(0,300)}))})})
+    .then(async r=>{if(!r.ok)throw Error();return ((await r.json()) as {items:{id:string;title:string;summary:string;translated:boolean}[]}).items.filter(x=>x.translated)});
+  req.then(rows=>{if(rows===null)return;if(!rows.length)trFail.current++;else trFail.current=0;mark(rows)})
+   .catch(()=>{trFail.current++})
+   .finally(()=>{trBusy.current=false;setTimeout(()=>setTr(o=>({...o})),aiTr.current?600:900)});
+ },[trItems,lang,wrong]);
 
  /* prefs actions */
  const toggle=(k:keyof Prefs,v:string)=>setPrefs(p=>({...p,[k]:p[k].includes(v)?p[k].filter(x=>x!==v):[...p[k],v]}));
@@ -186,22 +341,23 @@ export default function GlitchNews(){
  const go=(sec:Section,l:string|null=null)=>{setSection(sec);setLine(l);setQ('');window.scrollTo({top:0,behavior:'smooth'});
   try{const u=new URL(location.href);u.searchParams.delete('s');u.searchParams.delete('topic');if(sec!=='top')u.searchParams.set('s',sec);if(l)u.searchParams.set('topic',l);history.replaceState(null,'',u)}catch{}};
 
- const ctx={t,lang,title,withImg,openStory,prefs,toggle};
+ const ctx={t,lang,title,sum,rtitle,rsum,withImg,openStory,prefs,toggle,setExtraPool};
 
  return <div className="gn">
   <header className="gn-top">
    <div className="gn-bar">
-    <button className="brand" onClick={()=>go('top')} aria-label="GLITCH"><Mark/><span><b>GLITCH</b><small>{lang==='el'?'Ο κόσμος σε μια ματιά':'The world at a glance'}</small></span></button>
+    <button className="brand" onClick={()=>go('top')} aria-label="GLITCH"><Mark/><span><b className="g-glitch" data-t="GLITCH">GLITCH</b><small>{lang==='el'?'Δες τον κώδικα πίσω από τις ειδήσεις':'See the code behind the news'}</small></span></button>
     <label className="gn-search">{I.search}<input value={q} onChange={e=>setQ(e.target.value)} placeholder={t.search}/>{q&&<button onClick={()=>setQ('')} aria-label="clear">{I.x}</button>}</label>
     <div className="gn-tools">
-     <span className="live"><i/>{t.live}{updated&&<em>{new Date(updated).toLocaleTimeString(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit'})}</em>}</span>
+     <span className="live"><i/>{t.live}{updated&&<em>{new Date(updated).toLocaleTimeString(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})}</em>}</span>
      <button className={'icon'+(section==='saved'?' on':'')} onClick={()=>go('saved')} aria-label={t.saved}>{I.bm(section==='saved')}{prefs.saved.length>0&&<sup>{prefs.saved.length}</sup>}</button>
      <div className="langs"><button className={lang==='el'?'on':''} onClick={()=>setLang('el')}>ΕΛ</button><button className={lang==='en'?'on':''} onClick={()=>setLang('en')}>EN</button></div>
     </div>
    </div>
    <nav className="gn-tabs" aria-label="sections">
-    {SECTIONS.map(s=><button key={s} className={section===s&&!line?'on':''} onClick={()=>go(s)}>{s==='foryou'&&<span className="spark">✦</span>}{t[s]}</button>)}
+    {SECTIONS.map(s=><button key={s} className={section===s&&!line?'on':''} onClick={()=>go(s)}>{s==='foryou'&&<span className="spark">✦</span>}{s==='wars'&&<i className="war-dot"/>}{t[s]}</button>)}
    </nav>
+   <Ticker quotes={quotes} lang={lang} onOpen={()=>go('markets')}/>
   </header>
 
   <main className="gn-main">
@@ -211,6 +367,7 @@ export default function GlitchNews(){
     <SearchView hits={searchHits} q={q} {...ctx}/>:
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
+     <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
      <Hero slides={hero} {...ctx}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
@@ -225,41 +382,43 @@ export default function GlitchNews(){
        <Side title={t.trends} icon={<span className="g-dot"/>} extra={<div className="seg">{(['GR','WORLD'] as const).map(r=><button key={r} className={trendRegion===r?'on':''} onClick={()=>setTrendRegion(r)}>{t.trendRegions[r]}</button>)}</div>}>
         {trends.length?<ul className="trends">{trends.map((x,i)=><li key={x.id}><a href={x.url} target="_blank" rel="noreferrer"><b>{i+1}</b><span>{x.name}{x.relatedHeadlines[0]&&<small>{x.relatedHeadlines[0]}</small>}</span>{x.traffic&&<em>{x.traffic}</em>}</a></li>)}</ul>:<p className="muted small">…</p>}
        </Side>
-       <Side title={t.latestNews} icon={<i className="live-dot"/>}><ul className="ticker">{latest.slice(0,8).map(s=><li key={s.id}><button onClick={()=>openStory(s)}><time>{new Date(s.lastAt).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit'})}</time><span>{title(s)}</span></button></li>)}</ul></Side>
+       <Side title={t.latestNews} icon={<i className="live-dot"/>}><ul className="ticker">{latest.slice(0,8).map(s=><li key={s.id}><button onClick={()=>openStory(s)}><time>{new Date(s.lastAt).toLocaleTimeString('el-GR',{hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>{title(s)}</span></button></li>)}</ul></Side>
       </aside>
      </div>
-     <Rail heading={t.world} stories={diverseTop(visible.filter(s=>s.section==='world'),14,{exclude:shown,perLine:3})} onAll={()=>go('world')} {...ctx}/>
+     <Rail heading={t.world} stories={worldRail} onAll={()=>go('world')} {...ctx}/>
      <Rail heading={t.economy} stories={railOf('economy')} onAll={()=>go('economy')} {...ctx}/>
      <Rail heading={t.tech} stories={railOf('tech')} onAll={()=>go('tech')} {...ctx}/>
      <Rail heading={t.greece} stories={railOf('greece')} onAll={()=>go('greece')} {...ctx}/>
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
+    section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
+    section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
     section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
-    section==='latest'?<ListView heading={t.latest} stories={latest.slice(0,80)} {...ctx}/>:
+    section==='latest'?<ListView heading={t.latest} stories={latest} {...ctx}/>:
     section==='saved'?<ListView heading={t.saved} stories={stories.filter(s=>prefs.saved.includes(s.id))} empty={t.emptySaved} {...ctx}/>:
     <SectionView heading={t[section]} stories={bySection(section)} themes={themes.filter(x=>x.stories.some(s=>s.section===section)).slice(0,8)} onPick={l=>go(section,l)} {...ctx}/>
    )}
   </main>
-  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Al Jazeera, Sky, UN, ΕΡΤ, Πρώτο Θέμα, Ναυτεμπορική & Google News. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
+  <footer className="gn-foot"><Mark/><p>GLITCH · {lang==='el'?'Ειδήσεις από':'News from'} BBC, Guardian, NYT, Fox, Independent, CBS, NPR, DW, Al Jazeera, SCMP, Times of Israel, Sky, UN, ΕΡΤ, Πρώτο Θέμα, Ναυτεμπορική & Google News · {lang==='el'?'Δείκτες':'Indicators'}: Yahoo Finance · {lang==='el'?'Αγορές προβλέψεων':'Prediction markets'}: Polymarket, Kalshi. {lang==='el'?'Η κατάταξη είναι αλγοριθμική — άνοιγε πάντα την πηγή.':'Ranking is algorithmic — always check the source.'}</p></footer>
   {open&&<Sheet story={open} all={stories} onClose={()=>setOpen(null)} onPick={l=>{setOpen(null);go(section,l)}} {...ctx}/>}
  </div>;
 }
 
-type Ctx={t:Copy;lang:Lang;title:(s:Story)=>string;withImg:(s:Story)=>string|undefined;openStory:(s:Story)=>void;prefs:Prefs;toggle:(k:keyof Prefs,v:string)=>void};
+type Ctx={t:Copy;lang:Lang;title:(s:Story)=>string;sum:(s:Story)=>string;rtitle:(r:Signal)=>string;rsum:(r:Signal)=>string;setExtraPool:(s:Story[])=>void;withImg:(s:Story)=>string|undefined;openStory:(s:Story)=>void;prefs:Prefs;toggle:(k:keyof Prefs,v:string)=>void};
 
 function Skeleton({t}:{t:Copy}){return <div className="skel"><div className="sk-hero"><span>{t.loading}</span></div><div className="sk-row">{[0,1,2,3,4].map(i=><div key={i}/>)}</div></div>}
 function SectionHead({title,sub,onAll,allLabel}:{title:string;sub?:string;onAll?:()=>void;allLabel?:string}){return <div className="sec-head"><div><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>{onAll&&<button className="link" onClick={onAll}>{allLabel}{I.chevR}</button>}</div>}
 function Side({title,icon,extra,children}:{title:string;icon?:React.ReactNode;extra?:React.ReactNode;children:React.ReactNode}){return <div className="side"><div className="side-h"><h3>{icon}{title}</h3>{extra}</div>{children}</div>}
 
 /* ───────────── hero carousel ───────────── */
-function Hero({slides,t,lang,title,withImg,openStory}:Ctx&{slides:Story[]}){
+function Hero({slides,t,lang,title,sum,withImg,openStory}:Ctx&{slides:Story[]}){
  const [i,setI]=useState(0);const [paused,setPaused]=useState(false);const touch=useRef<number|null>(null);
  const n=slides.length;
  useEffect(()=>{if(i>=n)setI(0)},[n,i]);
  useEffect(()=>{if(paused||n<2)return;const id=setTimeout(()=>setI(x=>(x+1)%n),7500);return()=>clearTimeout(id)},[i,paused,n]);
  if(!n)return null;
- const s=slides[Math.min(i,n-1)];const sum=summaryOf(s);
+ const s=slides[Math.min(i,n-1)];const sm=sum(s);
  return <section className="hero" onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)}
   onTouchStart={e=>{touch.current=e.touches[0].clientX}} onTouchEnd={e=>{if(touch.current===null)return;const dx=e.changedTouches[0].clientX-touch.current;if(Math.abs(dx)>40)setI(x=>(x+(dx<0?1:-1)+n)%n);touch.current=null}}>
   <div className="hero-stage">
@@ -268,7 +427,7 @@ function Hero({slides,t,lang,title,withImg,openStory}:Ctx&{slides:Story[]}){
    <div className="hero-copy" key={s.id}>
     <div className="hero-tags"><Kind story={s} t={t} lang={lang}/>{s.storylines.slice(0,2).map(l=><span key={l} className="tag">{lang==='el'?getStoryline(l)?.el:getStoryline(l)?.en}</span>)}</div>
     <h1 onClick={()=>openStory(s)}>{title(s)}</h1>
-    {sum&&<p>{sum}</p>}
+    {sm&&<p>{sm}</p>}
     <div className="hero-meta"><span><b>{s.sources.length}</b> {s.sources.length===1?t.source:t.sources} · <b>{s.reports.length}</b> {t.articles} · {ago(s.lastAt,lang)}</span><LeanBar story={s}/></div>
     <button className="btn gold" onClick={()=>openStory(s)}>{t.openStory}{I.chevR}</button>
    </div>
@@ -312,21 +471,21 @@ function Themes({themes,onPick,t,lang,title,prefs,toggle}:Ctx&{themes:StorylineS
 }
 
 /* ───────────── cards ───────────── */
-function Feature({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
- const sum=summaryOf(story);
+function Feature({story,t,lang,title,sum,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
+ const sm=sum(story);
  return <article className="feature" onClick={()=>openStory(story)}>
   <div className="f-img"><Pic src={withImg(story)} alt="" story={story}/></div>
-  <div className="f-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3>{sum&&<p>{sum}</p>}
+  <div className="f-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3>{sm&&<p>{sm}</p>}
    <div className="f-foot"><Meta story={story} lang={lang} t={t}/><LeanBar story={story}/></div>
    <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
   </div>
  </article>;
 }
 function SaveBtn({id,prefs,toggle}:{id:string;prefs:Prefs;toggle:Ctx['toggle']}){const on=prefs.saved.includes(id);return <button className={'save'+(on?' on':'')} onClick={e=>{e.stopPropagation();toggle('saved',id)}} aria-label="save">{I.bm(on)}</button>}
-function Card({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
+function Card({story,t,lang,title,sum,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
  const read=prefs.read.includes(story.id);const img=withImg(story);
- if(!img){const sum=summaryOf(story);return <article className={'card text k-bg-'+story.kind+(read?' read':'')} onClick={()=>openStory(story)}>
-  <div className="c-body"><div className="c-top"><Kind story={story} t={t} lang={lang}/>{story.sources.length>2&&<span className="c-n">{story.sources.length} {t.sources}</span>}</div><h3>{title(story)}</h3>{sum&&<p>{sum}</p>}<div className="c-foot"><Meta story={story} lang={lang} t={t}/></div><LeanBar story={story} compact/></div>
+ if(!img){const sm=sum(story);return <article className={'card text k-bg-'+story.kind+(read?' read':'')} onClick={()=>openStory(story)}>
+  <div className="c-body"><div className="c-top"><Kind story={story} t={t} lang={lang}/>{story.sources.length>2&&<span className="c-n">{story.sources.length} {t.sources}</span>}</div><h3>{title(story)}</h3>{sm&&<p>{sm}</p>}<div className="c-foot"><Meta story={story} lang={lang} t={t}/></div><LeanBar story={story} compact/></div>
   <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
  </article>}
  return <article className={'card'+(read?' read':'')} onClick={()=>openStory(story)}>
@@ -335,10 +494,10 @@ function Card({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Sto
   <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
  </article>;
 }
-function Row({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
- const sum=summaryOf(story);
+function Row({story,t,lang,title,sum,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
+ const sm=sum(story);
  return <article className={'row'+(prefs.read.includes(story.id)?' read':'')} onClick={()=>openStory(story)}>
-  <div className="r-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3>{sum&&<p>{sum}</p>}<div className="r-foot"><Meta story={story} lang={lang} t={t}/><LeanBar story={story} compact/></div></div>
+  <div className="r-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3>{sm&&<p>{sm}</p>}<div className="r-foot"><Meta story={story} lang={lang} t={t}/><LeanBar story={story} compact/></div></div>
   {withImg(story)&&<div className="r-img"><Pic src={withImg(story)} alt="" story={story}/></div>}
   <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
  </article>;
@@ -366,12 +525,12 @@ function SectionView({heading,stories,themes,onPick,...ctx}:Ctx&{heading:string;
   {themes.length>0&&<div className="chips">{themes.map(x=><button key={x.line.id} onClick={()=>onPick(x.line.id)}>{x.line.emoji} {ctx.lang==='el'?x.line.el:x.line.en}<em>{x.stories.length}</em></button>)}</div>}
   <div className="lead-grid">{lead[0]&&<Feature story={lead[0]} {...ctx}/>}<div className="lead-side">{lead.slice(1).map(s=><Card key={s.id} story={s} {...ctx}/>)}</div></div>
   <div className="grid">{rest.slice(0,9).map(s=><Card key={s.id} story={s} {...ctx}/>)}</div>
-  <div className="rows">{rest.slice(9,60).map(s=><Row key={s.id} story={s} {...ctx}/>)}</div>
+  <Paged stories={rest.slice(9)} {...ctx}/>
  </div>;
 }
 function ListView({heading,stories,empty,...ctx}:Ctx&{heading:string;stories:Story[];empty?:string}){
  return <div className="view"><div className="view-head"><h1>{heading}</h1><span>{stories.length} {ctx.t.stories}</span></div>
-  {stories.length?<div className="rows">{stories.map(s=><Row key={s.id} story={s} {...ctx}/>)}</div>:<div className="empty">{empty||ctx.t.noResults}</div>}</div>;
+  {stories.length?<Paged stories={stories} {...ctx}/>:<div className="empty">{empty||ctx.t.noResults}</div>}</div>;
 }
 function SearchView({hits,q,...ctx}:Ctx&{hits:Story[];q:string}){return <ListView heading={`“${q}”`} stories={hits} {...ctx}/>}
 function StorylineView({id,stories,onBack,...ctx}:Ctx&{id:string;stories:Story[];onBack:()=>void}){
@@ -383,7 +542,7 @@ function StorylineView({id,stories,onBack,...ctx}:Ctx&{id:string;stories:Story[]
     <p>{stories.length} {ctx.t.stories} · {srcs} {ctx.t.sources}</p>
     <div className="line-act"><button className={'btn'+(f?'':' gold')} onClick={()=>ctx.toggle('follow',id)}>{f?'✓ '+ctx.t.following:'+ '+ctx.t.follow}</button><button className="btn ghost" onClick={()=>ctx.toggle('mute',id)}>{I.eyeOff}{m?ctx.t.hidden:ctx.t.less}</button></div></div></div>
   <h2 className="tl-h">{ctx.t.timeline}</h2>
-  <ol className="timeline">{[...stories].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)).slice(0,60).map(s=><li key={s.id}><time>{new Date(s.lastAt).toLocaleString(ctx.lang==='el'?'el-GR':'en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'})}</time><Row story={s} {...ctx}/></li>)}</ol>
+  <Paged stories={[...stories].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt))} timeline {...ctx}/>
  </div>;
 }
 function ForYouView({stories,onPickLine,...ctx}:Ctx&{stories:Story[];onPickLine:(l:string)=>void}){
@@ -400,16 +559,82 @@ function ForYouView({stories,onPickLine,...ctx}:Ctx&{stories:Story[];onPickLine:
   {prefs.follow.length>0&&<div className="chips">{prefs.follow.filter(x=>!x.startsWith('sec:')).map(l=><button key={l} onClick={()=>onPickLine(l)}>{getStoryline(l)?.emoji} {lang==='el'?getStoryline(l)?.el:getStoryline(l)?.en} →</button>)}</div>}
   <div className="lead-grid">{stories[0]&&<Feature story={stories[0]} {...ctx}/>}<div className="lead-side">{stories.slice(1,3).map(s=><Card key={s.id} story={s} {...ctx}/>)}</div></div>
   <div className="grid">{stories.slice(3,12).map(s=><Card key={s.id} story={s} {...ctx}/>)}</div>
-  <div className="rows">{stories.slice(12,50).map(s=><Row key={s.id} story={s} {...ctx}/>)}</div>
+  <Paged stories={stories.slice(12)} {...ctx}/>
  </div>;
+}
+
+/* ───────────── GLITCH analysis (highlights · simple · other view · what next) ───────────── */
+type Explain={highlights:string[];simple:{headline:string;summary:string;bullets:string[];whyItMatters:string;greece:string};
+ perspectives:{mainstream:string;alternative:string;missing:string;winnersLosers:string};
+ outlook:{scenarios:{title:string;likelihood:'high'|'medium'|'low';text:string}[];watch:string[];markets:string};caveat:string};
+const NONWEST=/^(al jazeera|trt|press ?tv|rt\b|cgtn|xinhua|global times|anadolu|tass|times of india|hindustan times|dawn|arab news|middle east eye|tehran times|the national|south china morning post|scmp|china daily)/i;
+const GREEK_SRC=/^(ΕΡΤ|Ναυτεμπορική|Πρώτο Θέμα|Καθημερινή|in\.gr)/u;
+type FrameKey='left'|'center'|'right'|'nonwest'|'greek';
+function frames(story:Story){
+ const out:{key:FrameKey;r:Signal}[]=[];
+ const bucket=(r:Signal):FrameKey|null=>GREEK_SRC.test(r.source)?'greek':NONWEST.test(r.source)?'nonwest':(()=>{const l=leanOf(r.source);return l==='unrated'?null:l})();
+ for(const r of story.reports){const k=bucket(r);if(k&&!out.some(x=>x.key===k))out.push({key:k,r})}
+ return out;
+}
+const EX_CACHE=new Map<string,Explain|'off'>();
+function Analysis({story,lang}:{story:Story;lang:Lang}){
+ const el=lang==='el';
+ const L={hl:el?'Τα σημαντικότερα':'Key points',simple:el?'Με απλά λόγια':'In plain words',other:el?'Η άλλη ματιά':'Another view',next:el?'Τι έρχεται':"What's next"};
+ const [tab,setTab]=useState<keyof typeof L>('hl');
+ const key=story.id+'|'+lang;
+ const [st,setSt]=useState<'loading'|'ok'|'off'|'err'>(()=>{const c=EX_CACHE.get(key);return c==='off'?'off':c?'ok':'loading'});
+ const [data,setData]=useState<Explain|null>(()=>{const c=EX_CACHE.get(key);return c&&c!=='off'?c:null});
+ useEffect(()=>{
+  const c=EX_CACHE.get(key);if(c){if(c==='off')setSt('off');else{setData(c);setSt('ok')}return}
+  let live=true;setSt('loading');setData(null);
+  fetch('/api/explain?id='+encodeURIComponent(story.id)+'&lang='+lang).then(async r=>{
+   if(!live)return;
+   if(r.status===503){EX_CACHE.set(key,'off');setSt('off');return}
+   const d=await r.json() as {explain?:Explain};
+   if(r.ok&&d.explain){EX_CACHE.set(key,d.explain);setData(d.explain);setSt('ok')}else setSt('err');
+  }).catch(()=>{if(live)setSt('err')});
+  return()=>{live=false};
+ },[key,story.id,lang]);
+ const fr=frames(story);
+ const frameLabel:Record<FrameKey,string>=el?{left:'Κεντροαριστερά μέσα',center:'Κεντρώα μέσα',right:'Δεξιά μέσα',nonwest:'Μη δυτικά μέσα',greek:'Ελληνικά μέσα'}:{left:'Left-leaning',center:'Center',right:'Right-leaning',nonwest:'Non-Western',greek:'Greek media'};
+ const excerpts=[story.headline,...story.reports].filter((r,i,a)=>r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)&&r.summary.length>50&&a.findIndex(x=>x.summary===r.summary)===i).slice(0,5);
+ const like=(l:string)=>el?({high:'Πιθανό',medium:'Μέτρια πιθανό',low:'Λιγότερο πιθανό'} as Record<string,string>)[l]:({high:'Likely',medium:'Possible',low:'Less likely'} as Record<string,string>)[l];
+ const Wait=()=><div className="ax-wait"><i/><i/><i/><span>{el?'Το GLITCH διαβάζει τις πηγές…':'GLITCH is reading the sources…'}</span></div>;
+ const Off=()=><p className="ax-off">{st==='off'?(el?'Η ανάλυση AI δεν είναι ενεργή ακόμα σε αυτό το site.':'AI analysis is not enabled on this site yet.'):(el?'Η ανάλυση δεν είναι διαθέσιμη για αυτή την ιστορία αυτή τη στιγμή.':'Analysis is unavailable for this story right now.')}</p>;
+ return <section className="ax">
+  <div className="ax-head"><span className="ax-mark">✦</span><h2>{el?'Ανάλυση GLITCH':'GLITCH analysis'}</h2>{st==='ok'&&<em>AI</em>}</div>
+  <div className="ax-tabs" role="tablist">{(Object.keys(L) as (keyof typeof L)[]).map(k=><button key={k} role="tab" aria-selected={tab===k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{L[k]}</button>)}</div>
+  <div className="ax-body">
+   {tab==='hl'&&(st==='ok'&&data?<ul className="ax-hl">{data.highlights.map((h,i)=><li key={i}><b>{i+1}</b><span>{h}</span></li>)}</ul>:
+    st==='loading'?<Wait/>:excerpts.length?<><ul className="ax-hl">{excerpts.map((r,i)=><li key={r.id}><b>{i+1}</b><span>{r.summary.slice(0,240)}<small> — {shortSource(r.source)}</small></span></li>)}</ul></>:<Off/>)}
+   {tab==='simple'&&(st==='ok'&&data?<div className="ax-simple">
+     <h3>{data.simple.headline}</h3><p className="ax-big">{data.simple.summary}</p>
+     <ul className="ax-know">{data.simple.bullets.map((b,i)=><li key={i}>{b}</li>)}</ul>
+     <div className="ax-callouts"><div><small>{el?'Γιατί σε αφορά':'Why it matters'}</small><p>{data.simple.whyItMatters}</p></div><div className="gr"><small>{el?'🇬🇷 Για την Ελλάδα':'🇬🇷 For Greece'}</small><p>{data.simple.greece}</p></div></div>
+    </div>:st==='loading'?<Wait/>:<Off/>)}
+   {tab==='other'&&<div className="ax-other">
+     {st==='ok'&&data&&<div className="ax-vs"><div><small>{el?'Η κυρίαρχη αφήγηση':'The dominant framing'}</small><p>{data.perspectives.mainstream}</p></div><div className="alt"><small>{el?'Η άλλη ανάγνωση':'The other reading'}</small><p>{data.perspectives.alternative}</p></div></div>}
+     {st==='ok'&&data&&<div className="ax-callouts"><div><small>{el?'Τι δεν λέγεται':'What is missing'}</small><p>{data.perspectives.missing}</p></div><div><small>{el?'Ποιος κερδίζει / χάνει':'Who wins / loses'}</small><p>{data.perspectives.winnersLosers}</p></div></div>}
+     {st==='loading'&&<Wait/>}
+     {fr.length>1&&<div className="ax-frames"><small className="ax-sub">{el?'Πώς το γράφει ο καθένας — πραγματικοί τίτλοι':'How each side headlines it — real titles'}</small>
+      {fr.map(({key:k,r})=><a key={k} href={r.url} target="_blank" rel="noreferrer" className={'fr fr-'+k}><span>{frameLabel[k]} · {shortSource(r.source)}</span><strong>{cleanTitle(r)}</strong></a>)}</div>}
+     {st!=='ok'&&st!=='loading'&&fr.length<=1&&<Off/>}
+    </div>}
+   {tab==='next'&&(st==='ok'&&data?<div className="ax-next">
+     <ol className="ax-sc">{data.outlook.scenarios.map((sc,i)=><li key={i} className={'lk-'+sc.likelihood}><div className="sc-top"><strong>{sc.title}</strong><span className="lk"><i/><i/><i/>{like(sc.likelihood)}</span></div><p>{sc.text}</p></li>)}</ol>
+     <div className="ax-callouts"><div><small>{el?'Τι να παρακολουθείς':'Signals to watch'}</small><ul>{data.outlook.watch.map((w,i)=><li key={i}>{w}</li>)}</ul></div><div><small>{el?'Αγορές & οικονομία':'Markets & economy'}</small><p>{data.outlook.markets}</p></div></div>
+    </div>:st==='loading'?<Wait/>:<Off/>)}
+  </div>
+  {st==='ok'&&data?.caveat&&<p className="note">⚠ {data.caveat} {el?'Τα σενάρια είναι εκτιμήσεις AI, όχι βεβαιότητες.':'Scenarios are AI estimates, not certainties.'}</p>}
+ </section>;
 }
 
 /* ───────────── story sheet ───────────── */
 function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];onClose:()=>void;onPick:(l:string)=>void}){
- const {t,lang,title,withImg,prefs,toggle}=ctx;
+ const {t,lang,title,sum,rtitle,rsum,withImg,prefs,toggle}=ctx;
  useEffect(()=>{const k=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.removeEventListener('keydown',k);document.body.style.overflow=o}},[onClose]);
- const sum=summaryOf(story);const mix=leanMix(story.sources);const total=story.sources.length;
- const related=all.filter(s=>s.id!==story.id&&s.storylines.some(l=>story.storylines.includes(l))).slice(0,6);
+ const sm=sum(story);const mix=leanMix(story.sources);const total=story.sources.length;
+ const related=all.filter(s=>s.id!==story.id&&(s.storylines.some(l=>story.storylines.includes(l))||s.actorIds.some(a=>story.actorIds.includes(a)))).map(s=>({s,sc:s.storylines.filter(l=>story.storylines.includes(l)).length*2+s.actorIds.filter(a=>story.actorIds.includes(a)).length})).sort((a,b)=>b.sc-a.sc||Date.parse(b.s.lastAt)-Date.parse(a.s.lastAt)).slice(0,8).map(x=>x.s);
  const reports=[...story.reports].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));
  const saved=prefs.saved.includes(story.id);
  const share=()=>{const url=story.headline.url;if(navigator.share)navigator.share({title:title(story),url}).catch(()=>{});else navigator.clipboard?.writeText(url)};
@@ -425,7 +650,7 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
     <div className="hero-tags"><Kind story={story} t={t} lang={lang}/>{story.storylines.map(l=><button key={l} className="tag" onClick={()=>onPick(l)}>{getStoryline(l)?.emoji} {lang==='el'?getStoryline(l)?.el:getStoryline(l)?.en}</button>)}</div>
     <h1>{title(story)}</h1>
     {translated&&<p className="orig">{raw}</p>}
-    {sum&&<p className="lede">{sum}</p>}
+    {sm&&<p className="lede">{sm}</p>}
     <div className="sheet-stats">
      <div><b>{total}</b><span>{t.sources}</span></div><div><b>{story.reports.length}</b><span>{t.articles}</span></div>
      <div><b>{ago(story.firstAt,lang)}</b><span>{t.firstSeen}</span></div><div><b>{ago(story.lastAt,lang)}</b><span>{t.updated}</span></div>
@@ -436,6 +661,8 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      <button className="btn" onClick={share}>{I.share}{t.share}</button>
      {story.storylines[0]&&<button className="btn ghost" onClick={()=>{toggle('mute',story.storylines[0]);onClose()}}>{I.eyeOff}{t.less}</button>}
     </div>
+    <PublisherBubbles story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
+    <Analysis story={story} lang={lang}/>
     <section className="cov">
      <h2>{t.coverage}</h2>
      <div className="lean big">{(['left','center','right','unrated'] as Lean[]).filter(k=>mix[k]>0).map(k=><i key={k} className={'l-'+k} style={{flexGrow:mix[k]}}/>)}</div>
@@ -443,15 +670,8 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      {oneSided&&<p className="warn">⚠ {t.blind}</p>}
      <p className="note">{t.leanNote}</p>
     </section>
-    <section className="reports">
-     <h2>{t.fullCoverage} <em>{story.reports.length}</em></h2>
-     <ol>{reports.map(r=><li key={r.id}><a href={r.url} target="_blank" rel="noreferrer">
-      <span className={'dot l-'+leanOf(r.source)}/>
-      <span className="rp"><small>{shortSource(r.source)} · {ago(r.timestamp,lang)}</small><strong>{cleanTitle(r)}</strong>{r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)&&r.id!==story.headline.id&&<span>{r.summary.slice(0,180)}</span>}</span>
-      {r.imageUrl&&/* eslint-disable-next-line @next/next/no-img-element */<img src={r.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer"/>}
-     </a></li>)}</ol>
-    </section>
-    {related.length>0&&<section className="related"><h2>{t.related}</h2><div className="grid">{related.map(s=><Card key={s.id} story={s} {...ctx} openStory={x=>ctx.openStory(x)}/>)}</div></section>}
+    <StorySequence story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
+    {related.length>0&&<section className="related"><h2>{lang==='el'?'Παρεμφερή άρθρα & συνέχεια της ιστορίας':'Related stories & follow-ups'}</h2><div className="rows">{related.map(s=><Row key={s.id} story={s} {...ctx}/>)}</div></section>}
     {lang==='el'&&translated&&<p className="note">{t.translatedNote}</p>}
    </div>
   </article>
