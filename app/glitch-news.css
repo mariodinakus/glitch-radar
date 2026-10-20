@@ -598,3 +598,35 @@ button.tag:hover{background:rgba(226,184,87,.22)}
 .lede{font-size:17px;color:#e2e1e6;border-left:3px solid var(--gold);padding-left:14px}
 .related .rows{margin-top:6px}
 @media (max-width:820px){.manifesto{flex-direction:column;align-items:flex-start;gap:8px;padding:14px}.g-glitch.big{font-size:30px}.seq ol{padding-left:54px}.seq ol::before{left:46px}.seq time{left:-54px;width:40px;font-size:11px}.seq-day{margin-left:-54px}.seq img{display:none}.bubbles{gap:30px 10px}.frames span{min-width:auto}}
+
+
+/* 2026-10 global atlas: persistent readable category navigation */
+.gn-nav-shell{max-width:var(--max);margin:0 auto;display:flex;align-items:center;gap:6px;padding:2px 16px 9px}
+.gn-nav-shell .gn-tabs{min-width:0;flex:1;max-width:none;margin:0;gap:6px;padding:2px 0;overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(226,184,87,.34) transparent}
+.gn-nav-shell .gn-tabs::-webkit-scrollbar{display:block;height:3px}
+.gn-nav-shell .gn-tabs::-webkit-scrollbar-thumb{background:rgba(226,184,87,.36);border-radius:10px}
+.gn-nav-shell .gn-tabs button{border:1px solid transparent;font-size:13px;font-weight:650;padding:8px 13px;border-radius:10px;background:rgba(255,255,255,.025)}
+.gn-nav-shell .gn-tabs button:hover{background:var(--card2);border-color:var(--line2)}
+.gn-nav-shell .gn-tabs button.on{color:#0a0b0d;background:linear-gradient(135deg,var(--gold2),var(--gold));box-shadow:0 1px 12px rgba(226,184,87,.13)}
+.gn-nav-arrow{width:28px;height:33px;flex-shrink:0;display:grid;place-items:center;background:var(--card);border:1px solid var(--line2);border-radius:9px;font:700 23px var(--sans);color:var(--gold)}
+.gn-nav-arrow:hover{border-color:var(--gold)}
+.gn-latest-link{flex:none;border:1px solid rgba(226,184,87,.43);border-radius:10px;padding:8px 14px;color:var(--gold2);background:rgba(226,184,87,.08);font:800 12px var(--sans);white-space:nowrap;box-shadow:0 0 13px rgba(226,184,87,.04)}
+.gn-latest-link:hover,.gn-latest-link.on{color:#111;background:var(--gold)}
+.war-field-report{margin:24px 0 20px}
+.war-field-report>header strong{font:900 clamp(19px,2.6vw,27px) var(--serif);color:var(--tx)}
+.war-field-report>header p{margin:9px 0 16px;color:var(--tx2);font-size:12px;line-height:1.65;max-width:980px}
+.war-field-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.war-field-card{min-width:0;border:1px solid var(--line2);background:var(--card);padding:17px;border-radius:13px}
+.war-field-card h3{font:800 16px var(--sans);color:var(--gold2);margin:0 0 11px}
+.war-field-card ul{list-style:none;padding:0;margin:0}
+.war-field-card li{padding:11px 0;border-top:1px solid var(--line)}
+.war-field-card li:first-child{border-top:0}
+.war-field-card li a{display:flex;flex-direction:column;gap:5px}
+.war-field-card li a strong{font:650 13px/1.5 var(--sans);color:var(--tx)}
+.war-field-card li a:hover strong{text-decoration:underline;color:var(--gold)}
+.war-field-card li a span{font:11px var(--sans);color:var(--mut)}
+.war-field-card>p{color:var(--tx2);font-size:12px;line-height:1.6}
+.war-field-links{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:15px 3px;font-size:12px;color:var(--mut)}
+.war-field-links a{color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:900px){.war-field-grid{grid-template-columns:1fr 1fr}.war-field-card:last-child{grid-column:1/-1}}
+@media(max-width:650px){.gn-nav-shell{gap:5px;padding:2px 7px 8px}.gn-nav-arrow{width:23px;height:32px}.gn-nav-shell .gn-tabs button{font-size:12px;padding:7px 9px}.gn-latest-link{padding:8px 9px;font-size:11px}.war-field-grid{grid-template-columns:1fr}.war-field-card:last-child{grid-column:auto}}
