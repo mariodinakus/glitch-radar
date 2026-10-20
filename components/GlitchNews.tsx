@@ -155,9 +155,9 @@ export default function GlitchNews(){
  const hero=useMemo(()=>{const pick=diverseTop(visible.filter(s=>s.section!=='sports'&&s.section!=='greece'),6,{needImage:true,perLine:1});return pick.length>=3?pick:diverseTop(visible,6,{perLine:1})},[visible]);
  const heroIds=useMemo(()=>new Set(hero.map(h=>h.id)),[hero]);
  const themes=useMemo(()=>storylineSummaries(visible),[visible]);
- const top=useMemo(()=>diverseTop(visible.filter(s=>s.section!=='sports'),24,{exclude:heroIds,perLine:4}),[visible,heroIds]);
- const shown=useMemo(()=>new Set([...heroIds,...top.slice(0,10).map(s=>s.id)]),[heroIds,top]);
- const railOf=useCallback((sec:Section)=>visible.filter(s=>s.section===sec&&!shown.has(s.id)).slice(0,14),[visible,shown]);
+ const top=useMemo(()=>{const list=diverseTop(visible.filter(s=>s.section!=='sports'),30,{exclude:heroIds,perLine:4});const img=list.filter(s=>s.image||og[s.id]),txt=list.filter(s=>!(s.image||og[s.id]));return [...img.slice(0,10),...txt,...img.slice(10)]},[visible,heroIds,og]);
+ const shown=useMemo(()=>new Set([...heroIds,...top.slice(0,22).map(s=>s.id)]),[heroIds,top]);
+ const railOf=useCallback((sec:Section)=>{const l=visible.filter(s=>s.section===sec&&!shown.has(s.id)).slice(0,18);return [...l.filter(s=>withImg(s)),...l.filter(s=>!withImg(s))].slice(0,14)},[visible,shown,withImg]);
  const mostCovered=useMemo(()=>[...visible].filter(s=>s.sources.length>1).sort((a,b)=>b.sources.length-a.sources.length||b.importance-a.importance).slice(0,6),[visible]);
  const latest=useMemo(()=>[...visible].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)),[visible]);
  const bySection=useCallback((sec:Section)=>visible.filter(s=>s.section===sec),[visible]);
@@ -218,6 +218,7 @@ export default function GlitchNews(){
        <SectionHead title={t.topStories} sub={t.topSub}/>
        {top[0]&&<Feature story={top[0]} {...ctx}/>}
        <div className="grid">{top.slice(1,10).map(s=><Card key={s.id} story={s} {...ctx}/>)}</div>
+       <div className="rows compact">{top.slice(10,22).map(s=><Row key={s.id} story={s} {...ctx}/>)}</div>
       </section>
       <aside className="col-side">
        <Side title={t.mostCovered} icon={I.trend}><ol className="ranked">{mostCovered.map((s,i)=><li key={s.id}><button onClick={()=>openStory(s)}><b>{i+1}</b><span><strong>{title(s)}</strong><small>{s.sources.length} {t.sources} · {ago(s.lastAt,lang)}</small><LeanBar story={s} compact/></span></button></li>)}</ol></Side>
@@ -323,7 +324,11 @@ function Feature({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:
 }
 function SaveBtn({id,prefs,toggle}:{id:string;prefs:Prefs;toggle:Ctx['toggle']}){const on=prefs.saved.includes(id);return <button className={'save'+(on?' on':'')} onClick={e=>{e.stopPropagation();toggle('saved',id)}} aria-label="save">{I.bm(on)}</button>}
 function Card({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Story}){
- const read=prefs.read.includes(story.id);
+ const read=prefs.read.includes(story.id);const img=withImg(story);
+ if(!img){const sum=summaryOf(story);return <article className={'card text k-bg-'+story.kind+(read?' read':'')} onClick={()=>openStory(story)}>
+  <div className="c-body"><div className="c-top"><Kind story={story} t={t} lang={lang}/>{story.sources.length>2&&<span className="c-n">{story.sources.length} {t.sources}</span>}</div><h3>{title(story)}</h3>{sum&&<p>{sum}</p>}<div className="c-foot"><Meta story={story} lang={lang} t={t}/></div><LeanBar story={story} compact/></div>
+  <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
+ </article>}
  return <article className={'card'+(read?' read':'')} onClick={()=>openStory(story)}>
   <div className="c-img"><Pic src={withImg(story)} alt="" story={story}/>{story.sources.length>2&&<span className="c-badge">{story.sources.length} {t.sources}</span>}</div>
   <div className="c-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3><div className="c-foot"><Meta story={story} lang={lang} t={t}/></div><LeanBar story={story} compact/></div>
@@ -334,7 +339,7 @@ function Row({story,t,lang,title,withImg,openStory,prefs,toggle}:Ctx&{story:Stor
  const sum=summaryOf(story);
  return <article className={'row'+(prefs.read.includes(story.id)?' read':'')} onClick={()=>openStory(story)}>
   <div className="r-body"><Kind story={story} t={t} lang={lang}/><h3>{title(story)}</h3>{sum&&<p>{sum}</p>}<div className="r-foot"><Meta story={story} lang={lang} t={t}/><LeanBar story={story} compact/></div></div>
-  <div className="r-img"><Pic src={withImg(story)} alt="" story={story}/></div>
+  {withImg(story)&&<div className="r-img"><Pic src={withImg(story)} alt="" story={story}/></div>}
   <SaveBtn id={story.id} prefs={prefs} toggle={toggle}/>
  </article>;
 }
