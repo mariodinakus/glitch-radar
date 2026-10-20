@@ -1,5 +1,6 @@
 import type {Category,Signal,SourceStatus} from './types';
 import {rssField,rssPlainText,googleNewsPreview} from './rss-text';
+import {isEnglishForeignOutlet} from './source-policy';
 
 type NewsSource={name:string;url:string;category:Category;limit:number};
 const feeds:NewsSource[]=[
@@ -42,14 +43,8 @@ const feeds:NewsSource[]=[
  {name:'South China Morning Post',url:'https://www.scmp.com/rss/91/feed',category:'world',limit:30},
  {name:'DW',url:'https://rss.dw.com/rdf/rss-en-all',category:'world',limit:50},
  {name:'Google News / World',url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en',category:'world',limit:60},
- {name:'Google News / Business',url:'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en',category:'economy',limit:40},
- {name:'Google News / Κόσμος',url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=el&gl=GR&ceid=GR:el',category:'world',limit:45},
- {name:'Google News / Ελλάδα',url:'https://news.google.com/rss/headlines/section/topic/NATION?hl=el&gl=GR&ceid=GR:el',category:'world',limit:45},
- {name:'Google News / Οικονομία',url:'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=el&gl=GR&ceid=GR:el',category:'economy',limit:35},
- {name:'Πρώτο Θέμα Κόσμος',url:'https://www.protothema.gr/rss/news/world/',category:'world',limit:24},
- {name:'Πρώτο Θέμα Ελλάδα',url:'https://www.protothema.gr/rss/news/greece/',category:'world',limit:24},
- {name:'ΕΡΤ Ειδήσεις',url:'https://www.ertnews.gr/feed/',category:'world',limit:36},
- {name:'Ναυτεμπορική',url:'https://www.naftemporiki.gr/feed/',category:'economy',limit:32}
+ {name:'Google News / Business',url:'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en',category:'economy',limit:40}
+
 ];
 const clean=(s:unknown,max=240)=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
 // Preserve short publisher-supplied RSS previews. Never cut in the middle of a word.
@@ -134,8 +129,9 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
   if(!title||!link||!Number.isFinite(timestamp)||timestamp<cutoff()||!matchesGoogleSearch(src.name,title))return null;
   const publisher=src.name.startsWith('Google News /')?field(t,'source'):''; 
   const attribution=publisher?publisher.slice(0,95):src.name;
+  if(!isEnglishForeignOutlet(attribution,title,link))return null;
   const cat=classify(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
-  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'Η πηγή δεν παρέχει αναλυτική περίληψη. Άνοιξε το αρχικό άρθρο για πλήρες ρεπορτάζ.',score,level,timestamp:new Date(timestamp).toISOString(),source:attribution,url:link,...media,details:[`Published by: ${attribution}`,`Discovered via: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
+  return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'The publisher provides no detailed preview. Open the original report for context.',score,level,timestamp:new Date(timestamp).toISOString(),source:attribution,url:link,...media,details:[`Published by: ${attribution}`,`Discovered via: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
  }).filter((x):x is Signal=>x!==null).slice(0,src.limit)
  }finally{clearTimeout(timer)}}
 
@@ -143,7 +139,7 @@ type SpaceNews={results?:{id:number;title:string;url:string;summary:string;publi
 async function spaceflight():Promise<Signal[]>{const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),8000);try{
  const r=await fetch('https://api.spaceflightnewsapi.net/v4/articles/?limit=35',{next:{revalidate:300},signal:ctl.signal});if(!r.ok)throw Error('Spaceflight API '+r.status);
  const data=await r.json() as SpaceNews;
- return (data.results||[]).filter(a=>a.title&&safeUrl(a.url)&&Number.isFinite(Date.parse(a.published_at))&&Date.parse(a.published_at)>=cutoff()).slice(0,30).map(a=>{
+ return (data.results||[]).filter(a=>a.title&&safeUrl(a.url)&&isEnglishForeignOutlet(a.news_site,a.title,a.url)&&Number.isFinite(Date.parse(a.published_at))&&Date.parse(a.published_at)>=cutoff()).slice(0,30).map(a=>{
  const score=priority(a.title,Date.parse(a.published_at));return {id:'snapi-'+a.id,category:'space' as const,title:clean(a.title,800),imageUrl:safeUrl(a.image_url||'' )||undefined,summary:readableExcerpt(clean(a.summary,2000))||'Spaceflight coverage indexed by The Space Devs.',score,level:score>=73?'high' as const:'elevated' as const,timestamp:new Date(a.published_at).toISOString(),source:`Spaceflight News / ${clean(a.news_site,35)}`,url:a.url,details:[`Publisher: ${clean(a.news_site,70)}`,`Published: ${a.published_at}`],metricLabel:'SPACE NEWS',metricValue:'LATEST',reason:'News freshness and headline novelty heuristic. The source aggregates third-party spaceflight coverage; not NASA verification.',confidence:'publisher' as const};
  })
  }finally{clearTimeout(timer)}}
