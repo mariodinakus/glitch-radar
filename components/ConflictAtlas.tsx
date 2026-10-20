@@ -26,8 +26,12 @@ export default function ConflictAtlas({items,selected,onSelect,lang}:Props){
  const [kind,setKind]=useState<'all'|ConflictKind>('all');
  const [q,setQ]=useState('');
  const [expanded,setExpanded]=useState(false);
- const [showMap,setShowMap]=useState(false);
+ const [showMap,setShowMap]=useState(true);
  const totalNews=items.filter(x=>x.last24>0).length;
+ const focus=conflictMeta[selected]||conflictMeta[items[0]?.c.id];
+ const lat=focus?.lat??0,lon=focus?.lon??0;
+ const bbox=[lon-6,lat-4,lon+6,lat+4].map(n=>n.toFixed(4)).join(',');
+ const osm='https://www.openstreetmap.org/export/embed.html?bbox='+encodeURIComponent(bbox)+'&layer=mapnik&marker='+encodeURIComponent(lat+','+lon);
  const filtered=useMemo(()=>items.filter(x=>{
   const meta=conflictMeta[x.c.id];
   return meta&&(region==='all'||meta.region===region)&&(kind==='all'||meta.kind===kind)&&
@@ -67,8 +71,17 @@ export default function ConflictAtlas({items,selected,onSelect,lang}:Props){
     <button className={showMap?'map on':'map'} onClick={()=>setShowMap(p=>!p)}><Map size={15}/>{showMap?(el?'Κλείσε χάρτη':'Hide map'):(el?'Υδρόγειος':'Globe')}</button>
    </div>
   </div>
-  {showMap&&<div className="war-atlas-map"><WorldGlobe signals={pins} countryMentions language={lang} compact selected={'wc:'+selected} onChoose={s=>onSelect(s.id.replace(/^wc:/,''))}/>
-   <p>{el?'Οι κουκκίδες είναι ενδεικτικά γεωγραφικά σημεία, όχι ζωντανά μέτωπα, ακριβείς επιθέσεις ή μετρήσεις κινδύνου.':'Pins are approximate geographic markers, not live front lines, precise attacks or risk measurements.'}</p></div>}
+  {showMap&&<div className="war-atlas-maps">
+    <div className="war-atlas-map"><div className="war-map-heading"><strong>{el?'Παγκόσμια υδρόγειος':'Interactive world globe'}</strong><small>{el?'Επίλεξε μια εστία':'Select a situation'}</small></div>
+     <WorldGlobe signals={pins} countryMentions language={lang} compact selected={'wc:'+selected} onChoose={s=>onSelect(s.id.replace(/^wc:/,''))}/>
+    </div>
+    <div className="war-atlas-local"><div className="war-map-heading"><strong>{el?'Τοπικός γεωγραφικός χάρτης':'Regional reference map'}</strong><small>{el?'Επιλεγμένη εστία':'Selected situation'}</small></div>
+     <iframe title={el?'Γεωγραφικός χάρτης OpenStreetMap':'OpenStreetMap regional context'} src={osm} loading="lazy" referrerPolicy="no-referrer" />
+     <div className="war-map-focus"><strong>{el?items.find(x=>x.c.id===selected)?.c.el:items.find(x=>x.c.id===selected)?.c.en}</strong>
+      <a href={'https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'#map=7/'+lat+'/'+lon} target="_blank" rel="noopener noreferrer">{el?'Μεγέθυνση χάρτη':'Open large map'} ↗</a></div>
+    </div>
+    <p className="war-atlas-map-note">{el?'Χάρτες γεωγραφικού προσανατολισμού: οι δείκτες δείχνουν κατά προσέγγιση μια περιοχή, όχι τις γραμμές του μετώπου, πραγματικές κατακτήσεις, θέσεις στρατευμάτων ή κίνδυνο για αμάχους. Υπόβαθρο: OpenStreetMap.':'Geographic context only: markers are approximate, not front lines, territorial control, force positions or civilian-risk assessments. Map base: OpenStreetMap.'}</p>
+   </div>}
   <div className="war-atlas-grid">{visible.map(x=>{const m=conflictMeta[x.c.id];return <button key={x.c.id} className={'war-atlas-card'+(selected===x.c.id?' selected':'')} onClick={()=>onSelect(x.c.id)}>
    <div className="war-atlas-card-head"><span className={'war-atlas-kind kind-'+m.kind}>{kinds[m.kind][el?0:1]}</span><span>{labels[m.region][el?0:1]}</span></div>
    <strong>{el?x.c.el:x.c.en}</strong>
