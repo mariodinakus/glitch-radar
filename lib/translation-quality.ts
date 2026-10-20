@@ -25,6 +25,10 @@ export function validTranslation(source:string,result:string,target:TranslationL
  if(r.toLocaleLowerCase()===src.toLocaleLowerCase()&&needsTranslation(src,target))return false;
  if(target==='el'&&!gr.test(r))return false;
  if(target==='en'&&!latin.test(r))return false;
+ const greekWords=words(r,/[\\u0370-\\u03ff\\u1f00-\\u1fff]{2,}/gu).length;
+ const latinWords=words(r,/[A-Za-z]{2,}/g).length;
+ if(target==='el'&&greekWords<latinWords)return false;
+ if(target==='en'&&latinWords<greekWords)return false;
  if(needsTranslation(r,target))return false;
  return true;
 }
