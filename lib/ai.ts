@@ -12,16 +12,18 @@ function allowCall(){const d=new Date().toISOString().slice(0,10);if(d!==day){da
 export async function aiJSON<T>(instructions:string,input:string,schema:object,opts:{maxTokens?:number;temperature?:number;timeoutMs?:number}={}):Promise<T>{
  const p=aiProvider();
  if(p&&!allowCall())throw Error('daily AI cap reached');
- const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),opts.timeoutMs??25000);
+ const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),opts.timeoutMs??45000);
  try{
   if(p==='gemini'){
    let last='';
-   for(const model of [process.env.GLITCH_GEMINI_MODEL||'gemini-flash-latest','gemini-2.5-flash']){
+   // Fast, non-thinking model first (thinking models are slow and burn the free quota).
+   const models:[string,boolean][]=[[process.env.GLITCH_GEMINI_MODEL||'gemini-2.5-flash',true],['gemini-2.5-flash-lite',true],['gemini-flash-latest',false]];
+   for(const [model,noThink] of models){
     const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:ctl.signal,
      headers:{'Content-Type':'application/json','x-goog-api-key':process.env.GEMINI_API_KEY!},
      body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],
-      generationConfig:{temperature:opts.temperature??.5,maxOutputTokens:opts.maxTokens??2400,responseMimeType:'application/json',responseSchema:strip(schema)}})});
-    if(!r.ok){last='gemini '+r.status;if(r.status===404||r.status===400)continue;throw Error(last)}
+      generationConfig:{temperature:opts.temperature??.5,maxOutputTokens:opts.maxTokens??2400,responseMimeType:'application/json',responseSchema:strip(schema),...(noThink?{thinkingConfig:{thinkingBudget:0}}:{})}})});
+    if(!r.ok){last='gemini '+r.status;if(r.status===404||r.status===400||r.status===429||r.status>=500)continue;throw Error(last)}
     const d=await r.json() as {candidates?:{content?:{parts?:{text?:string}[]}}[]};
     return JSON.parse(d.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('')||'') as T;
    }
