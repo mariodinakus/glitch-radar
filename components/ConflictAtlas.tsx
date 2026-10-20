@@ -1,14 +1,13 @@
 'use client';
-import {useMemo,useState} from 'react';
-import {Globe2,Search,Map,Radio,ChevronDown,ChevronUp,ExternalLink} from 'lucide-react';
+import {useMemo,useRef,useState} from 'react';
+import {Search,Radio,ChevronDown,ChevronUp,ExternalLink} from 'lucide-react';
 import type {ConflictSummary} from '@/lib/conflicts';
 import {conflictMeta} from '@/lib/conflicts';
 import type {ConflictRegion,ConflictKind} from '@/lib/conflicts';
-import type {Signal} from '@/lib/types';
-import WorldGlobe from './WorldGlobe';
+import ConflictSides from './ConflictSides';
 
 type Lang='el'|'en';
-type Props={items:ConflictSummary[];selected:string;onSelect:(id:string)=>void;lang:Lang};
+type Props={items:ConflictSummary[];selected:string;onSelect:(id:string)=>void;lang:Lang;aiActors?:{name:string;position:string}[]};
 const regions:ConflictRegion[]=['europe','mena','africa','asia','americas'];
 const labels:Record<ConflictRegion,[string,string]>={
  europe:['Ευρώπη','Europe'],mena:['Μέση Ανατολή','Middle East & North Africa'],
@@ -20,40 +19,27 @@ const kinds:Record<ConflictKind,[string,string]>={
  instability:['Ένοπλη / πολιτική αστάθεια','Instability'],
  tension:['Στρατιωτική ένταση','Military tension']
 };
-export default function ConflictAtlas({items,selected,onSelect,lang}:Props){
+export default function ConflictAtlas({items,selected,onSelect,lang,aiActors}:Props){
  const el=lang==='el';
  const [region,setRegion]=useState<'all'|ConflictRegion>('all');
  const [kind,setKind]=useState<'all'|ConflictKind>('all');
  const [q,setQ]=useState('');
  const [expanded,setExpanded]=useState(false);
- const [showMap,setShowMap]=useState(true);
+ const actorRef=useRef<HTMLDivElement>(null);
  const totalNews=items.filter(x=>x.last24>0).length;
- const focus=conflictMeta[selected]||conflictMeta[items[0]?.c.id];
- const lat=focus?.lat??0,lon=focus?.lon??0;
- const bbox=[lon-6,lat-4,lon+6,lat+4].map(n=>n.toFixed(4)).join(',');
- const osm='https://www.openstreetmap.org/export/embed.html?bbox='+encodeURIComponent(bbox)+'&layer=mapnik&marker='+encodeURIComponent(lat+','+lon);
+ const pick=(id:string)=>{onSelect(id);actorRef.current?.scrollIntoView({behavior:'smooth',block:'start'})};
  const filtered=useMemo(()=>items.filter(x=>{
   const meta=conflictMeta[x.c.id];
   return meta&&(region==='all'||meta.region===region)&&(kind==='all'||meta.kind===kind)&&
    (!q.trim()||(x.c.el+' '+x.c.en+' '+x.c.descEl).toLocaleLowerCase().includes(q.toLocaleLowerCase().trim()))
  }),[items,region,kind,q]);
  const visible=expanded||q||region!=='all'||kind!=='all'?filtered:filtered.slice(0,12);
- const pins=useMemo(()=>filtered.map(x=>{
-  const m=conflictMeta[x.c.id];
-  return {id:'wc:'+x.c.id,category:'world' as const,title:el?x.c.el:x.c.en,
-   summary:el?x.c.descEl:x.c.descEn,lat:m.lat,lon:m.lon,
-   source:'GLITCH · coverage directory',url:'https://www.cfr.org/global-conflict-tracker/dashboard',
-   score:Math.min(100,x.heat),level:'elevated' as const,timestamp:'1970-01-01T00:00:00.000Z',
-   details:[],metricLabel:'NEWS / 24H',metricValue:String(x.last24),
-   reason:'Approximate regional marker, not a battlefield location or verified real-time severity.',
-   confidence:'catalog' as const} satisfies Signal;
- }),[filtered,el]);
  return <section className="war-atlas" aria-label={el?'Παγκόσμιος κατάλογος συγκρούσεων':'Global conflict directory'}>
   <div className="war-atlas-top">
    <div>
     <span className="war-atlas-kicker"><Radio size={14}/>{el?'ΠΑΓΚΟΣΜΙΟ WAR ROOM':'GLOBAL WAR ROOM'}</span>
-    <h2>{el?'Ο χάρτης των συγκρούσεων':'World conflict watch'}<em>.</em></h2>
-    <p>{el?'Πόλεμοι, ένοπλες συγκρούσεις και εστίες έντασης. Ξεχωρίζουμε την ύπαρξη μιας σύγκρουσης από τον αριθμό άρθρων που βρήκαμε.':'Wars, armed conflicts and flashpoints. A conflict is not the same thing as the number of news articles we found.'}</p>
+    <h2>{el?'Οι συγκρούσεις & οι πλευρές τους':'Conflicts & their sides'}<em>.</em></h2>
+    <p>{el?'Ποιος συγκρούεται με ποιον και ποιοι προσφέρουν εξωτερική στήριξη. Οι διπλωματικοί σύμμαχοι δεν είναι αυτομάτως εμπόλεμοι.':'Who fights whom and who provides outside backing. Political allies are not automatically combatants.'}</p>
    </div>
    <div className="war-atlas-count"><strong>{items.length}</strong><span>{el?'εστίες υπό παρακολούθηση':'tracked situations'}</span><small>{totalNews} {el?'με ειδήσεις 24ώρου':'covered in last 24h'}</small></div>
   </div>
@@ -68,21 +54,11 @@ export default function ConflictAtlas({items,selected,onSelect,lang}:Props){
      <option value="all">{el?'Όλοι οι τύποι':'All types'}</option>
      {(Object.keys(kinds) as ConflictKind[]).map(k=><option value={k} key={k}>{kinds[k][el?0:1]}</option>)}
     </select>
-    <button className={showMap?'map on':'map'} onClick={()=>setShowMap(p=>!p)}><Map size={15}/>{showMap?(el?'Κλείσε χάρτη':'Hide map'):(el?'Υδρόγειος':'Globe')}</button>
+
    </div>
   </div>
-  {showMap&&<div className="war-atlas-maps">
-    <div className="war-atlas-map"><div className="war-map-heading"><strong>{el?'Παγκόσμια υδρόγειος':'Interactive world globe'}</strong><small>{el?'Επίλεξε μια εστία':'Select a situation'}</small></div>
-     <WorldGlobe signals={pins} countryMentions language={lang} compact selected={'wc:'+selected} onChoose={s=>onSelect(s.id.replace(/^wc:/,''))}/>
-    </div>
-    <div className="war-atlas-local"><div className="war-map-heading"><strong>{el?'Τοπικός γεωγραφικός χάρτης':'Regional reference map'}</strong><small>{el?'Επιλεγμένη εστία':'Selected situation'}</small></div>
-     <iframe title={el?'Γεωγραφικός χάρτης OpenStreetMap':'OpenStreetMap regional context'} src={osm} loading="lazy" referrerPolicy="no-referrer" />
-     <div className="war-map-focus"><strong>{el?items.find(x=>x.c.id===selected)?.c.el:items.find(x=>x.c.id===selected)?.c.en}</strong>
-      <a href={'https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'#map=7/'+lat+'/'+lon} target="_blank" rel="noopener noreferrer">{el?'Μεγέθυνση χάρτη':'Open large map'} ↗</a></div>
-    </div>
-    <p className="war-atlas-map-note">{el?'Χάρτες γεωγραφικού προσανατολισμού: οι δείκτες δείχνουν κατά προσέγγιση μια περιοχή, όχι τις γραμμές του μετώπου, πραγματικές κατακτήσεις, θέσεις στρατευμάτων ή κίνδυνο για αμάχους. Υπόβαθρο: OpenStreetMap.':'Geographic context only: markers are approximate, not front lines, territorial control, force positions or civilian-risk assessments. Map base: OpenStreetMap.'}</p>
-   </div>}
-  <div className="war-atlas-grid">{visible.map(x=>{const m=conflictMeta[x.c.id];return <button key={x.c.id} className={'war-atlas-card'+(selected===x.c.id?' selected':'')} onClick={()=>onSelect(x.c.id)}>
+  <div ref={actorRef} className="war-actor-anchor"><ConflictSides conflictId={selected} lang={lang} aiActors={aiActors}/></div>
+  <div className="war-atlas-grid">{visible.map(x=>{const m=conflictMeta[x.c.id];return <button key={x.c.id} className={'war-atlas-card'+(selected===x.c.id?' selected':'')} onClick={()=>pick(x.c.id)}>
    <div className="war-atlas-card-head"><span className={'war-atlas-kind kind-'+m.kind}>{kinds[m.kind][el?0:1]}</span><span>{labels[m.region][el?0:1]}</span></div>
    <strong>{el?x.c.el:x.c.en}</strong>
    <p>{el?x.c.descEl:x.c.descEn}</p>
@@ -91,7 +67,7 @@ export default function ConflictAtlas({items,selected,onSelect,lang}:Props){
   {!filtered.length&&<p className="war-atlas-empty">{el?'Δεν βρέθηκε αντίστοιχη εστία.':'No matching situation.'}</p>}
   {!expanded&&!q&&region==='all'&&kind==='all'&&filtered.length>12&&<button className="war-atlas-expand" onClick={()=>setExpanded(true)}>{el?'Εμφάνιση και των '+items.length+' εστιών':'Show all '+items.length+' situations'}<ChevronDown size={16}/></button>}
   {expanded&&!q&&region==='all'&&kind==='all'&&<button className="war-atlas-expand" onClick={()=>setExpanded(false)}>{el?'Λιγότερα':'Show fewer'}<ChevronUp size={16}/></button>}
-  <p className="war-atlas-source">{el?'Μεθοδολογία: επιμελημένος κατάλογος, όχι εξαντλητική απογραφή ενεργών πολέμων. Η κατηγορία είναι περιγραφική· δεν επαληθεύουμε κατάσταση μάχης σε πραγματικό χρόνο. Το 0 σημαίνει μηδέν σχετικά άρθρα στις πηγές μας, όχι ειρήνη.':'Method: curated watchlist, not a complete census of active wars. Classification is descriptive; no live battle-status verification. Zero means no matching articles in our sources, not peace.'}
+  <p className="war-atlas-source">{el?'Μεθοδολογία: επιμελημένος κατάλογος, όχι εξαντλητική απογραφή πολέμων. Η εξωτερική στήριξη καταγράφεται ανά είδος και πηγή· το 0 στις ειδήσεις δεν σημαίνει ειρήνη.':'Method: a curated watchlist, not a complete war census. Support ties are source-linked and qualified; zero recent articles does not mean peace.'}
    {' '}<a href="https://www.cfr.org/global-conflict-tracker/dashboard" target="_blank" rel="noopener noreferrer">CFR <ExternalLink size={12}/></a>
    {' · '}<a href="https://www.uu.se/en/department/peace-and-conflict-research/research/ucdp/ucdp-definitions/" target="_blank" rel="noopener noreferrer">UCDP <ExternalLink size={12}/></a>
   </p>
