@@ -5,15 +5,17 @@ export async function GET(_request:Request,{params}:{params:Promise<{size:string
  const size=raw==='512'?512:raw==='180'?180:raw==='192'?192:null;
  if(size===null)return new Response('Unknown icon size',{status:404});
  return new ImageResponse(
-  <div style={{display:'flex',width:'100%',height:'100%',background:'#090C14',borderRadius:size*.18,alignItems:'center',justifyContent:'center'}}>
-   <svg width="72%" height="72%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M32 5 58 20v24L32 59 6 44V20L32 5Z" stroke="#F7436A" strokeWidth="2.8"/>
-    <path d="M43 22 32 15 17 24v17l15 8 15-9V32H31" stroke="#FAF1F6" strokeWidth="5" strokeLinecap="square" strokeLinejoin="bevel"/>
-    <path d="m8 27 13-6M42 41l14-8" stroke="#FF3B65" strokeWidth="5"/>
-    <path d="M8 35h10m29-15h9" stroke="#FF9BAB" strokeWidth="2"/>
-    <circle cx="48.5" cy="11" r="3" fill="#FF3B65"/>
+  <div style={{display:'flex',width:'100%',height:'100%',background:'#07080B',alignItems:'center',justifyContent:'center'}}>
+   <svg width="76%" height="76%" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="22" stroke="#E2B857" strokeWidth="3.5"/>
+    <ellipse cx="32" cy="32" rx="9" ry="22" stroke="#D4A84A" strokeWidth="2.2"/>
+    <path d="M12 24h40M12 40h40" stroke="#D4A84A" strokeWidth="2.2"/>
+    <rect x="6" y="28.5" width="54" height="7" fill="#07080B"/>
+    <rect x="17" y="30" width="44" height="4" rx="1" fill="#F3D58A"/>
+    <rect x="4" y="30" width="9" height="4" rx="1" fill="#B8862B"/>
+    <circle cx="51" cy="11" r="3.2" fill="#EF5B5B"/>
    </svg>
   </div>,
-  {width:size,height:size}
+  {width:size,height:size,headers:{'Cache-Control':'public, max-age=86400, s-maxage=604800'}}
  );
 }
