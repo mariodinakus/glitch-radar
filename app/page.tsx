@@ -1,2 +1,2 @@
-import EditorialDesk from '@/components/EditorialDesk';
-export default function Home(){return <EditorialDesk/>}
+import GlitchNews from '@/components/GlitchNews';
+export default function Home(){return <GlitchNews/>}
