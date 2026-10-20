@@ -33,16 +33,16 @@ export async function POST(req:NextRequest){
   const input=JSON.stringify({items:todo.map(t=>({id:t.id,title:t.title,summary:t.summary}))});
   const schema={type:'object',properties:{items:{type:'array',items:{type:'object',properties:{id:{type:'string'},title:{type:'string'},summary:{type:'string'}},required:['id','title','summary']}}},required:['items']};
   if(!trAllow())return out({error:'daily cap',items:Object.entries(results).map(([id,v])=>({id,...v}))},429);
-  const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),25000);
+  const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),45000);
   try{
    let txt='';
    if(gem){
-    for(const model of [process.env.GLITCH_GEMINI_MODEL||'gemini-flash-latest','gemini-2.5-flash']){
+    for(const [model,noThink] of [['gemini-2.5-flash-lite',true],['gemini-2.5-flash',true],['gemini-flash-latest',false]] as [string,boolean][]){
      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:ctl.signal,
       headers:{'Content-Type':'application/json','x-goog-api-key':gem},
-      body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{temperature:.1,maxOutputTokens:6000,responseMimeType:'application/json',responseSchema:schema}})});
+      body:JSON.stringify({systemInstruction:{parts:[{text:instructions}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{temperature:.1,maxOutputTokens:6000,responseMimeType:'application/json',responseSchema:schema,...(noThink?{thinkingConfig:{thinkingBudget:0}}:{})}})});
      if(r.status===404||r.status===400)continue;
-     if(!r.ok)return out({error:'provider '+r.status},502);
+     if(!r.ok){if(r.status===429||r.status>=500)continue;return out({error:'provider '+r.status},502)}
      const d=await r.json() as {candidates?:{content?:{parts?:{text?:string}[]}}[]};
      txt=d.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('')||'';break;
     }
