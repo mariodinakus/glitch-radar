@@ -34,6 +34,18 @@ const feeds:NewsSource[]=[
  {name:'New York Times Technology',url:'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml',category:'tech',limit:20},
  {name:'New York Times Science',url:'https://rss.nytimes.com/services/xml/rss/nyt/Science.xml',category:'science',limit:12},
  {name:'Sky News World',url:'https://feeds.skynews.com/feeds/rss/world.xml',category:'world',limit:12},
+ {name:'Fox News World',url:'https://moxie.foxnews.com/google-publisher/world.xml',category:'world',limit:25},
+ {name:'The Independent World',url:'https://www.independent.co.uk/news/world/rss',category:'world',limit:40},
+ {name:'NPR World',url:'https://feeds.npr.org/1004/rss.xml',category:'world',limit:10},
+ {name:'CBS News World',url:'https://www.cbsnews.com/latest/rss/world',category:'world',limit:25},
+ {name:'Times of Israel',url:'https://www.timesofisrael.com/feed/',category:'world',limit:15},
+ {name:'South China Morning Post',url:'https://www.scmp.com/rss/91/feed',category:'world',limit:30},
+ {name:'DW',url:'https://rss.dw.com/rdf/rss-en-all',category:'world',limit:50},
+ {name:'Google News / World',url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en',category:'world',limit:60},
+ {name:'Google News / Business',url:'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en',category:'economy',limit:40},
+ {name:'Google News / Κόσμος',url:'https://news.google.com/rss/headlines/section/topic/WORLD?hl=el&gl=GR&ceid=GR:el',category:'world',limit:45},
+ {name:'Google News / Ελλάδα',url:'https://news.google.com/rss/headlines/section/topic/NATION?hl=el&gl=GR&ceid=GR:el',category:'world',limit:45},
+ {name:'Google News / Οικονομία',url:'https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=el&gl=GR&ceid=GR:el',category:'economy',limit:35},
  {name:'Πρώτο Θέμα Κόσμος',url:'https://www.protothema.gr/rss/news/world/',category:'world',limit:24},
  {name:'Πρώτο Θέμα Ελλάδα',url:'https://www.protothema.gr/rss/news/greece/',category:'world',limit:24},
  {name:'ΕΡΤ Ειδήσεις',url:'https://www.ertnews.gr/feed/',category:'world',limit:36},
@@ -80,6 +92,10 @@ function imageFromItem(item:string):{imageUrl?:string;imageCredit?:string}{
  const embedded=markup.match(/<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/i)?.[2];
  const embeddedUrl=embedded?safeUrl(dec(embedded).replace(/&amp;/g,'&')):null;
  if(embeddedUrl&&!/\.(?:svg|gif)(?:[?#]|$)/i.test(embeddedUrl))candidates.push({url:embeddedUrl,weight:4});
+ // Some feeds (e.g. CBS) put the URL as text: <image>https://…</image>
+ const textImage=item.match(/<image>\s*(https:\/\/[^<\s]+)\s*<\/image>/i)?.[1];
+ const textUrl=textImage?safeUrl(dec(textImage).replace(/&amp;/g,'&')):null;
+ if(textUrl&&!/\.(?:svg|gif)(?:[?#]|$)/i.test(textUrl))candidates.push({url:textUrl,weight:22});
  const best=candidates.sort((a,b)=>b.weight-a.weight)[0];
  const credit=rssField(item,'media:credit',120)||rssField(item,'media:copyright',120);
  return best?{imageUrl:best.url,imageCredit:credit||undefined}:{};

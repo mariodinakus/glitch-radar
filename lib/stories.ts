@@ -32,11 +32,11 @@ export const storylines:Storyline[]=[
 const storylineById=Object.fromEntries(storylines.map(s=>[s.id,s]));
 export const getStoryline=(id:string)=>storylineById[id] as Storyline|undefined;
 
-export type Section='foryou'|'top'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'saved';
+export type Section='foryou'|'top'|'wars'|'markets'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'saved';
 
 export type Story=StoryCase & {
  image?:string;kind:EventClass;importance:number;level:'top'|'major'|'watch';
- storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'>;
+ storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'|'wars'|'markets'>;
 };
 
 const GREEK_SOURCES=/^(ΕΡΤ|Ναυτεμπορική|Πρώτο Θέμα|Καθημερινή|in\.gr)/u;
@@ -102,6 +102,7 @@ export function buildStories(signals:Signal[],now=Date.now()):Story[]{
  const eligible=signals.filter(s=>!EXCLUDED_CONFIDENCE.has(s.confidence)&&s.category!=='earth'&&s.category!=='nature'&&now-Date.parse(s.timestamp)<96*3600000)
   .sort((a,b)=>Date.parse(b.timestamp)-Date.parse(a.timestamp));
  const groups:Group[]=[];
+ const index=new Map<string,number[]>();
  const seen=new Set<string>();
  for(const s of eligible){
   const norm=s.title.toLocaleLowerCase().replace(/\s+-\s+[^-]+$/,'').trim();
@@ -109,9 +110,12 @@ export function buildStories(signals:Signal[],now=Date.now()):Story[]{
   const keys=tokens(s.title.replace(/\s+-\s+[^-]{2,60}$/,''));
   const actors=actorsMentioned(s).map(a=>a.id);
   const t=Date.parse(s.timestamp);
-  const g=groups.find(x=>similar(x,keys,actors,t));
-  if(g){if(g.reports.length<30){g.reports.push(s);if(g.reports.length<=4)keys.forEach(k=>g.keys.add(k));actors.forEach(a=>g.actors.add(a));}}
-  else groups.push({reports:[s],keys:new Set(keys),actors:new Set(actors),t});
+  // Only compare with groups that share at least one key (inverted index keeps this fast at 1,500+ items).
+  const cand=new Set<number>();for(const k of keys)for(const gi of index.get(k)||[])cand.add(gi);
+  let g:Group|undefined;let gi=-1;
+  for(const i of [...cand].sort((a,b)=>a-b)){if(similar(groups[i],keys,actors,t)){g=groups[i];gi=i;break}}
+  if(g){if(g.reports.length<30){g.reports.push(s);if(g.reports.length<=4)keys.forEach(k=>{if(!g!.keys.has(k)){g!.keys.add(k);index.set(k,[...(index.get(k)||[]),gi])}});actors.forEach(a=>g!.actors.add(a));}}
+  else{groups.push({reports:[s],keys:new Set(keys),actors:new Set(actors),t});const ni=groups.length-1;for(const k of keys)index.set(k,[...(index.get(k)||[]),ni]);}
  }
  return groups.map(g=>{
   const reports=g.reports;
