@@ -23,6 +23,6 @@ test('Rejected provider warnings and pseudo-translations cannot be cached',()=>{
 test('Repeated Greek RSS headlines and trailing publisher noise are removed',()=>{
  const head='Οι τιμές της ενέργειας αυξάνονται';
  const desc='Οι τιμές της ενέργειας αυξήθηκαν σήμερα. Οι τιμές της ενέργειας αυξάνονται - Η ΝΑΥΤΕΜΠΟΡΙΚΗ';
- assert.equal(tidyNewsExcerpt(desc,head),'Οι τιμές της ενέργειας αυξήθηκαν σήμερα. Οι τιμές της ενέργειας αυξάνονται');
+ assert.equal(tidyNewsExcerpt(desc,head),'Οι τιμές της ενέργειας αυξήθηκαν σήμερα.');
  assert.equal(tidyNewsExcerpt('Η είδηση ανακοινώθηκε σήμερα. www.ertnews.gr'),'Η είδηση ανακοινώθηκε σήμερα.');
 });
