@@ -10,6 +10,8 @@ import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
 import type {IndicatorGroup} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
+import GlobalBriefing from '@/components/GlobalBriefing';
+import {needsTranslation,validTranslation,tidyNewsExcerpt} from '@/lib/translation-quality';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -64,7 +66,7 @@ function ago(iso:string,lang:Lang):string{
 const shortSource=(s:string)=>s.replace(/^Google News \/ /,'').replace(/^(BBC|Guardian|New York Times|UN News|Spaceflight News)\s.*$/,'$1').replace(/^Spaceflight News \/ /,'');
 function load<T>(k:string,f:T):T{try{const v=localStorage.getItem(k);return v?JSON.parse(v) as T:f}catch{return f}}
 function store(k:string,v:unknown){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v13.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
+const PREFS_KEY='glitch.v11.prefs',TR_KEY='glitch.v15.tr',LANG_KEY='glitch.v11.lang',OG_KEY='glitch.v11.og';
 const EMPTY:Prefs={follow:[],mute:[],read:[],saved:[]};
 
 /* ───────────── icons (inline, no deps) ───────────── */
@@ -202,7 +204,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
     </header>
     <div className="war-field-grid">{reporting.map(group=><article className="war-field-card" key={group.key}>
       <h3>{group.label}</h3>
-      {group.items.length?<ul>{group.items.map(({r,story})=><li key={r.id}><a href={r.url} target="_blank" rel="noopener noreferrer"><strong>{lang==='el'&&/^[A-Za-z]/.test(r.title)?title(story):r.title}</strong><span>{r.source} · {ago(r.timestamp,lang)} ↗</span></a></li>)}</ul>:<p>{group.empty}</p>}
+      {group.items.length?<ul>{group.items.map(({r,story})=><li key={r.id}><a href={r.url} target="_blank" rel="noopener noreferrer"><strong>{ctx.rtitle(r)}</strong><span>{r.source} · {ago(r.timestamp,lang)} ↗</span></a></li>)}</ul>:<p>{group.empty}</p>}
     </article>)}</div>
     <div className="war-field-links"><span>{el?'Εξειδικευμένες πηγές:':'Specialist sources:'}</span>
       <a href="https://acleddata.com/conflict-data" target="_blank" rel="noopener noreferrer">ACLED · {el?'περιστατικά / απώλειες':'events / fatalities'} ↗</a>
@@ -295,10 +297,10 @@ export default function GlitchNews(){
    .finally(()=>{ogBusy.current=false});
  },[stories,og]);
 
- const wrong=useCallback((x:string)=>!!x&&(lang==='el'?!hasGreek(x):hasGreek(x)),[lang]);
+ const wrong=useCallback((x:string)=>needsTranslation(x,lang),[lang]);
  const title=useCallback((s:Story)=>{const raw=cleanTitle(s.headline);const v=tr[lang+':'+s.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
- const sum=useCallback((s:Story)=>{const raw=summaryOf(s);const v=tr[lang+':'+s.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
- const rsum=useCallback((r:Signal)=>{if(!r.summary||GOOGLE_PLACEHOLDER.test(r.summary))return '';const raw=cleanSummary(r.summary).slice(0,320);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
+ const sum=useCallback((s:Story)=>{const raw=tidyNewsExcerpt(summaryOf(s),cleanTitle(s.headline));const v=tr[lang+':'+s.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
+ const rsum=useCallback((r:Signal)=>{if(!r.summary||GOOGLE_PLACEHOLDER.test(r.summary))return '';const raw=tidyNewsExcerpt(cleanSummary(r.summary),cleanTitle(r)).slice(0,320);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.s?v.s:raw},[lang,tr,wrong]);
  const rtitle=useCallback((r:Signal)=>{const raw=cleanTitle(r);const v=tr[lang+':'+r.id];return wrong(raw)&&v?.t?v.t:raw},[lang,tr,wrong]);
 
  /* derived lists */
@@ -331,11 +333,19 @@ export default function GlitchNews(){
  },[q,searchHits,line,visible,section,hero,themes,top,mostCovered,latest,worldRail,railOf,mine,stories,prefs.saved,bySection]);
  const [extraPool,setExtraPool]=useState<Story[]>([]);
  const trItems=useMemo(()=>{
-  const items:{id:string;title:string;summary:string}[]=[];
-  const add=(id:string,title:string,summary:string)=>{const prev=tr[lang+':'+id];const ti=wrong(title)&&!prev?.t?title:'',su=wrong(summary)&&!prev?.s?summary.slice(0,260):'';if(ti||su)items.push({id,title:ti,summary:su})};
-  if(open){add(open.id,cleanTitle(open.headline),summaryOf(open));for(const r of open.reports.slice(0,16))add(r.id,cleanTitle(r),r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?cleanSummary(r.summary).slice(0,320):'')}
+  const titles:{id:string;title:string;summary:string}[]=[];
+  const summaries:{id:string;title:string;summary:string}[]=[];
+  const seen=new Set<string>();
+  const add=(id:string,headline:string,excerpt:string)=>{
+   if(seen.has(id))return;seen.add(id);
+   const prev=tr[lang+':'+id],summary=tidyNewsExcerpt(excerpt,headline);
+   if(wrong(headline)&&!prev?.t)titles.push({id,title:headline.slice(0,390),summary:''});
+   else if(wrong(summary)&&!prev?.s)summaries.push({id,title:'',summary:summary.slice(0,300)});
+  };
+  if(open){add(open.id,cleanTitle(open.headline),summaryOf(open));for(const r of open.reports.slice(0,12))
+   add(r.id,cleanTitle(r),r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?cleanSummary(r.summary):'')}
   for(const s of [...extraPool,...pool])add(s.id,cleanTitle(s.headline),summaryOf(s));
-  return items;
+  return [...titles,...summaries];
  },[open,pool,extraPool,tr,lang,wrong]);
  const trBusy=useRef(false);const trFail=useRef(0);const aiTr=useRef<boolean|null>(null);
  useEffect(()=>{trFail.current=0;aiTr.current=null},[lang,section,line]);
@@ -346,7 +356,12 @@ export default function GlitchNews(){
   const batch=trItems.slice(0,useAI?6:2);
   const mark=(rows:{id:string;title:string;summary:string}[])=>setTr(o=>{
    const n={...o};
-   for(const b of batch){const r=rows.find(x=>x.id===b.id);if(!r)continue;const k=lang+':'+b.id,old=n[k]||{t:''};const t=b.title&&r.title&&!wrong(r.title)?r.title:old.t;const su=b.summary&&r.summary&&!wrong(r.summary)?r.summary:old.s;if(t!==old.t||su!==old.s)n[k]={t:t||'',s:su}}
+   for(const b of batch){const r=rows.find(x=>x.id===b.id);if(!r)continue;
+    const k=lang+':'+b.id,old=n[k]||{t:''};
+    const t=b.title&&validTranslation(b.title,r.title,lang)?r.title:old.t;
+    const su=b.summary&&validTranslation(b.summary,r.summary,lang)?r.summary:old.s;
+    if(t!==old.t||su!==old.s)n[k]={t:t||'',s:su};
+   }
    store(TR_KEY,Object.fromEntries(Object.entries(n).slice(-900)));return n});
   const req=useAI?fetch('/api/tr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:lang,items:batch})}).then(async r=>{
     if(r.status===503){aiTr.current=false;return null}
