@@ -192,7 +192,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
  const b=typeof brief==='object'?brief:null;
  const like=(l:string)=>el?({high:'Πιθανό',medium:'Μέτρια πιθανό',low:'Λιγότερο πιθανό'} as Record<string,string>)[l]:({high:'Likely',medium:'Possible',low:'Less likely'} as Record<string,string>)[l];
  return <div className="view wars">
-  <ConflictAtlas items={list} selected={c.id} onSelect={setSel} lang={lang}/>
+  <ConflictAtlas items={list} selected={c.id} onSelect={setSel} lang={lang} aiActors={b?.actors}/>
   <div className="war-chips">{list.map(x=><button key={x.c.id} className={x.c.id===c.id?'on':''} onClick={()=>setSel(x.c.id)}><i className={x.last24>3?'hot':''}/>{el?x.c.el:x.c.en}<em>{x.last24}</em></button>)}</div>
   <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
    <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ζωντανή παρακολούθηση':'WAR ROOM · live tracking'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
