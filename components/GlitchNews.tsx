@@ -9,6 +9,7 @@ import type {ConflictSummary} from '@/lib/conflicts';
 import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
 import type {IndicatorGroup} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
+import ConflictAtlas from '@/components/ConflictAtlas';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -157,14 +158,14 @@ function MarketsView({quotes,stories,...ctx}:Ctx&{quotes:Quote[];stories:Story[]
 type Brief={situation:string;keyIssues:{title:string;text:string}[];actors:{name:string;position:string}[];latest:string[];scenarios:{title:string;likelihood:'high'|'medium'|'low';text:string}[];watch:string[];economy:string;greece:string;caveat:string};
 const BRIEF_CACHE=new Map<string,Brief|'off'|'err'>();
 function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
- const {lang,t,withImg}=ctx;const el=lang==='el';
+ const {lang,t,withImg,title}=ctx;const el=lang==='el';
  const list=useMemo(()=>conflictSummaries(stories),[stories]);
  const [sel,setSel]=useState<string|null>(null);
  const cur=list.find(x=>x.c.id===sel)||list[0];
  const pm=usePredictionMarkets();
  const key=(cur?.c.id||'')+'|'+lang;
  const [brief,setBrief]=useState<Brief|'off'|'err'|'loading'>('loading');
- useEffect(()=>{if(!cur)return;const c=BRIEF_CACHE.get(key);if(c){setBrief(c);return}
+ useEffect(()=>{if(!cur||!cur.stories.length){setBrief('off');return}const c=BRIEF_CACHE.get(key);if(c){setBrief(c);return}
   let live=true;setBrief('loading');
   fetch('/api/brief?conflict='+cur.c.id+'&lang='+lang).then(async r=>{if(!live)return;
    if(r.status===503){BRIEF_CACHE.set(key,'off');setBrief('off');return}
@@ -175,14 +176,40 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
  const cover=cur.stories.find(s=>withImg(s));
  const qs=c.indicators.map(sym=>quotes.find(q=>q.symbol===sym)).filter((q):q is Quote=>!!q&&q.price!==null);
  const markets=pm.filter(m=>c.market.test(m.question)).slice(0,6);
+ const signals=cur.stories.flatMap(x=>x.reports.map(r=>({r,story:x}))).filter(x=>!(/review|movie|game|video game|historical|world war ii|second world war|β' παγκοσμ|β΄ παγκοσμ/i.test(x.r.title))).sort((a,b)=>Date.parse(b.r.timestamp)-Date.parse(a.r.timestamp));
+ const choose=(rx:RegExp)=>signals.filter(x=>rx.test(x.r.title)&&x.r.url).filter((x,i,a)=>a.findIndex(z=>z.r.url===x.r.url)===i).slice(0,5);
+ const battleReports=choose(/\\b(battles?|clashes?|fighting|offensive|assault|frontline|airstrikes?|shelling|missiles?|drone strikes?|attacks?|strike on)\\b|μάχ|σύγκρουσ|επίθεσ|βομβαρδ|πλήγμα/iu);
+ const lossReports=choose(/\\b(killed|dead|deaths?|fatalit(?:y|ies)|casualt(?:y|ies)|wounded|injured|death toll|civilian deaths|displaced)\\b|νεκρ|σκοτώθ|τραυματ|θύματ|απώλει|εκτοπισμ/iu);
+ const landReports=choose(/\\b(captur(?:e|ed|ing)|retak(?:e|en)|seiz(?:e|ed)|territor(?:y|ial)|control of|advanc(?:e|ed|ing)|withdr(?:aw|ew)|front lines?|occupied|liberat(?:e|ed))\\b|κατέλαβ|ανακατέλαβ|εδαφ|προέλασ|αποσύρ|ελέγχ|κατοχ/iu);
+ const reporting=[{key:'losses',label:el?'Απώλειες / ανθρωπιστικές συνέπειες':'Losses / humanitarian impact',items:lossReports,
+ empty:el?'Δεν υπάρχει πρόσφατη τεκμηριωμένη αναφορά στη ροή. Δεν υπολογίζουμε αυθαίρετα συνολικά θύματα.':'No matching report in the current feed. We do not invent cumulative casualties.'},
+ {key:'territory',label:el?'Εδαφικές μεταβολές / έλεγχος περιοχών':'Territorial changes / control',items:landReports,
+ empty:el?'Χωρίς πρόσφατη επιβεβαιωμένη αναφορά για εδαφική μεταβολή. Δεν δηλώνουμε έλεγχο περιοχών χωρίς πηγή.':'No recent sourced territorial change in the feed. No unsourced control claims.'},
+ {key:'battles',label:el?'Τελευταίες μάχες / επιθέσεις':'Latest battles / strikes',items:battleReports,
+ empty:el?'Δεν βρέθηκαν σχετικές αναφορές στο τρέχον δείγμα ειδήσεων.':'No matching reports in the current news sample.'}];
  const b=typeof brief==='object'?brief:null;
  const like=(l:string)=>el?({high:'Πιθανό',medium:'Μέτρια πιθανό',low:'Λιγότερο πιθανό'} as Record<string,string>)[l]:({high:'Likely',medium:'Possible',low:'Less likely'} as Record<string,string>)[l];
  return <div className="view wars">
+  <ConflictAtlas items={list} selected={c.id} onSelect={setSel} lang={lang}/>
   <div className="war-chips">{list.map(x=><button key={x.c.id} className={x.c.id===c.id?'on':''} onClick={()=>setSel(x.c.id)}><i className={x.last24>3?'hot':''}/>{el?x.c.el:x.c.en}<em>{x.last24}</em></button>)}</div>
   <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
    <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ζωντανή παρακολούθηση':'WAR ROOM · live tracking'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
     <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
   {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
+  <section className="war-field-report" aria-label={el?'Ειδήσεις από το μέτωπο':'Frontline reporting'}>
+    <header><strong>{el?'Απώλειες, έδαφος και μάχες':'Losses, territory and battles'}</strong>
+      <p>{el?'Μόνο αναφορές με πηγή από το τελευταίο τετραήμερο. Ενδέχεται να είναι ισχυρισμοί εμπλεκομένων — άνοιξε το δημοσίευμα για έλεγχο. Δεν είναι επαληθευμένα αθροίσματα, χάρτης ελέγχου ή πλήρης πολεμική καταγραφή.':'Sourced news reports from the last four days. Claims may be disputed. These are not verified cumulative totals, a territorial-control map or an exhaustive conflict record.'}</p>
+    </header>
+    <div className="war-field-grid">{reporting.map(group=><article className="war-field-card" key={group.key}>
+      <h3>{group.label}</h3>
+      {group.items.length?<ul>{group.items.map(({r,story})=><li key={r.id}><a href={r.url} target="_blank" rel="noopener noreferrer"><strong>{lang==='el'&&/^[A-Za-z]/.test(r.title)?title(story):r.title}</strong><span>{r.source} · {ago(r.timestamp,lang)} ↗</span></a></li>)}</ul>:<p>{group.empty}</p>}
+    </article>)}</div>
+    <div className="war-field-links"><span>{el?'Εξειδικευμένες πηγές:':'Specialist sources:'}</span>
+      <a href="https://acleddata.com/conflict-data" target="_blank" rel="noopener noreferrer">ACLED · {el?'περιστατικά / απώλειες':'events / fatalities'} ↗</a>
+      <a href="https://reliefweb.int/updates" target="_blank" rel="noopener noreferrer">ReliefWeb · {el?'ανθρωπιστικές αναφορές':'humanitarian reports'} ↗</a>
+      <a href="https://www.cfr.org/global-conflict-tracker" target="_blank" rel="noopener noreferrer">CFR · {el?'εξελίξεις':'conflict profiles'} ↗</a>
+    </div>
+  </section>
   <section className="ax war-brief">
    <div className="ax-head"><span className="ax-mark">✦</span><h2>{el?'Τα βασικά ζητήματα τώρα':'The key issues right now'}</h2>{b&&<em>AI</em>}</div>
    {brief==='loading'&&<div className="ax-wait"><i/><i/><i/><span>{el?'Το GLITCH διαβάζει όλη την κάλυψη…':'GLITCH is reading all the coverage…'}</span></div>}
@@ -233,6 +260,7 @@ export default function GlitchNews(){
  const [prefs,setPrefs]=useState<Prefs>(EMPTY);
  const [open,setOpen]=useState<Story|null>(null);
  const [q,setQ]=useState('');
+ const tabsRef=useRef<HTMLElement>(null);
  const [tr,setTr]=useState<Record<string,{t:string;s?:string}>>({});
  const [quotes,setQuotes]=useState<Quote[]>([]);
  const [og,setOg]=useState<Record<string,string|null>>({});
@@ -349,9 +377,14 @@ export default function GlitchNews(){
      <div className="langs"><button className={lang==='el'?'on':''} onClick={()=>setLang('el')}>ΕΛ</button><button className={lang==='en'?'on':''} onClick={()=>setLang('en')}>EN</button></div>
     </div>
    </div>
-   <nav className="gn-tabs" aria-label="sections">
-    {SECTIONS.map(s=><button key={s} className={section===s&&!line?'on':''} onClick={()=>go(s)}>{s==='foryou'&&<span className="spark">✦</span>}{s==='wars'&&<i className="war-dot"/>}{t[s]}</button>)}
-   </nav>
+   <div className="gn-nav-shell">
+    <button className="gn-nav-arrow" aria-label={lang==='el'?'Προηγούμενες κατηγορίες':'Previous sections'} onClick={()=>tabsRef.current?.scrollBy({left:-330,behavior:'smooth'})}>‹</button>
+    <nav className="gn-tabs" ref={tabsRef} aria-label="sections">
+     {SECTIONS.filter(s=>s!=='latest').map(s=><button key={s} className={section===s&&!line?'on':''} onClick={()=>go(s)} aria-current={section===s&&!line?'page':undefined}>{s==='foryou'&&<span className="spark">✦</span>}{s==='wars'&&<i className="war-dot"/>}{t[s]}</button>)}
+    </nav>
+    <button className="gn-nav-arrow" aria-label={lang==='el'?'Επόμενες κατηγορίες':'Next sections'} onClick={()=>tabsRef.current?.scrollBy({left:330,behavior:'smooth'})}>›</button>
+    <button className={'gn-latest-link'+(section==='latest'?' on':'')} onClick={()=>go('latest')}>◉ {t.latest}</button>
+   </div>
      </header>
 
   <main className="gn-main">
