@@ -24,9 +24,10 @@ export async function GET(req:NextRequest){
   return NextResponse.json({error:'Unauthorized'},{status:401});
  const admin=getAdmin(),hasVapid=Boolean(process.env.VAPID_PUBLIC_KEY&&process.env.VAPID_PRIVATE_KEY);
  const hasPush=Boolean(admin&&hasVapid);
+ const hasNative=Boolean(admin);
  const redis=process.env.UPSTASH_REDIS_REST_URL,redisKey=process.env.UPSTASH_REDIS_REST_TOKEN;
  const hasTelegram=Boolean(redis&&redisKey&&process.env.TELEGRAM_BOT_TOKEN&&process.env.TELEGRAM_CHAT_ID);
- if(!hasPush&&!hasTelegram)return NextResponse.json({error:'Configure Supabase/VAPID for push or Telegram/Redis for digest delivery'},{status:503});
+ if(!hasPush&&!hasNative&&!hasTelegram)return NextResponse.json({error:'Configure Supabase/VAPID for push or Telegram/Redis for digest delivery'},{status:503});
  const feed=await getFeed();
  const eligible=feed.signals.filter(s=>Number.isFinite(s.score)&&Date.parse(s.timestamp)>Date.now()-24*60*60*1000).sort((a,b)=>b.score-a.score).slice(0,80);
  let telegram=0,push=0,failed=0;
@@ -87,5 +88,51 @@ export async function GET(req:NextRequest){
    }
   }catch{failed++}
  }
- return NextResponse.json({ok:true,push,telegram,failed,channel:'personalized',schedule:'Vercel project cron'});
+ let nativePush=0;
+ if(hasNative&&admin){
+  try{
+   // Native Expo tokens are private and scoped to a signed-in user; only send matched stories.
+   const {data:tokens,error:tokError}=await admin.from('native_push_tokens').select('token,user_id,last_sent_at,last_signal_id').limit(300);
+   if(tokError)throw tokError;
+   const devices=(tokens||[]) as {token:string;user_id:string;last_sent_at:string|null;last_signal_id:string|null}[];
+   const userIds=[...new Set(devices.map(d=>d.user_id))];
+   const nativeProfiles=new Map<string,Preference>();
+   for(let index=0;index<userIds.length;index+=100){
+    const {data,error}=await admin.from('user_profiles').select('id,topics,min_score,notifications_enabled').in('id',userIds.slice(index,index+100));
+    if(error)throw error;
+    for(const p of (data||[]) as Preference[])nativeProfiles.set(p.id,p);
+   }
+   const outgoing:{to:string;sound:'default';title:string;body:string;data:{url:string;signalId:string};_signalId:string}[]=[];
+   for(const device of devices){
+    const pref=nativeProfiles.get(device.user_id);
+    if(!pref||!pref.notifications_enabled)continue;
+    const previous=device.last_sent_at?Date.parse(device.last_sent_at):0;
+    if(previous&&Date.now()-previous<4*3600000)continue;
+    const story=eligible.find(s=>s.id!==device.last_signal_id&&(!previous||Date.parse(s.timestamp)>previous)&&suits(s,pref));
+    if(!story)continue;
+    outgoing.push({to:device.token,sound:'default',title:'GLITCH RADAR · '+story.score+'/100',body:limit(story.title,125),data:{url:'/?s=top',signalId:story.id},_signalId:story.id});
+   }
+   for(let k=0;k<outgoing.length;k+=50){
+    const group=outgoing.slice(k,k+50);
+    const response=await fetch('https://exp.host/--/api/v2/push/send',{
+     method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+     body:JSON.stringify(group.map(({_signalId,...message})=>message)),signal:AbortSignal.timeout(8500)
+    });
+    if(!response.ok){failed+=group.length;continue}
+    const result=await response.json() as {data?:Array<{status:string;details?:{error?:string}}>};
+    const receipts=Array.isArray(result.data)?result.data:[];
+    await Promise.all(group.map(async(item,i)=>{
+     const outcome=receipts[i];
+     if(outcome?.status==='ok'){
+      const {error}=await admin.from('native_push_tokens').update({last_signal_id:item._signalId,last_sent_at:new Date().toISOString()}).eq('token',item.to);
+      if(!error)nativePush++;else failed++;
+     }else{
+      failed++;
+      if(outcome?.details?.error==='DeviceNotRegistered')await admin.from('native_push_tokens').delete().eq('token',item.to);
+     }
+    }));
+   }
+  }catch{failed++}
+ }
+ return NextResponse.json({ok:true,push,telegram,nativePush,failed,channel:'personalized',schedule:'Vercel project cron'});
 }

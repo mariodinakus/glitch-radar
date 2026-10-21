@@ -1,0 +1,43 @@
+name: Android APK – GLITCH RADAR
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', 'public/icon.svg', '.github/workflows/android-apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Generate app icons
+        run: npm run assets
+      - name: Type-check native code
+        run: npm run typecheck
+      - name: Prebuild native Android sources
+        run: npx expo prebuild --platform android --no-install --clean
+      - name: Compile installable APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon
+      - name: Copy artifact
+        run: cp android/app/build/outputs/apk/release/*.apk GLITCH-RADAR.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GLITCH-RADAR-Android-APK
+          path: mobile/GLITCH-RADAR.apk
+          if-no-files-found: error
+          retention-days: 30
