@@ -773,3 +773,27 @@ button.tag:hover{background:rgba(226,184,87,.22)}
 .gn-world-trends{font:800 10px var(--mono);color:var(--gold);letter-spacing:.10em}
 @media(max-width:760px){.bc-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.bc-top{flex-direction:column}.bc-counter{display:flex;flex-direction:row;align-items:center;gap:9px}.bc-counter strong{font-size:23px}.bc-filterbar button{font-size:10px;padding:7px}}
+
+/* ───── GLITCH score chip + war glitch panel ───── */
+.gchip{display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:2px 7px;border-radius:999px;border:1px solid var(--gold,#e2b857);color:var(--gold,#e2b857);font:700 10px/1.4 var(--mono,monospace);letter-spacing:.08em;vertical-align:middle;white-space:nowrap}
+.gchip i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 0 0 currentColor;animation:gchipPulse 2.4s infinite}
+.gchip b{font-weight:800}
+.gchip-high{background:rgba(226,184,87,.16);color:#f3c969;border-color:#f3c969}
+@keyframes gchipPulse{0%{box-shadow:0 0 0 0 rgba(226,184,87,.6)}70%,100%{box-shadow:0 0 0 6px rgba(226,184,87,0)}}
+@media (prefers-reduced-motion:reduce){.gchip i{animation:none}}
+.war-glitch{margin:18px 0;padding:18px;border:1px solid var(--line2,#2a3340);border-radius:14px;background:rgba(226,184,87,.04)}
+.war-glitch header{margin-bottom:12px}
+.wg-eyebrow{font:700 11px var(--mono,monospace);letter-spacing:.13em;color:var(--gold,#e2b857)}
+.war-glitch h3{margin:6px 0 4px;font-size:22px}
+.war-glitch h3 em{font-style:normal;color:var(--gold,#e2b857)}
+.war-glitch header p{margin:0;opacity:.75;font-size:13px}
+.wg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.wg-card{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--line2,#2a3340);border-radius:12px}
+.wg-card strong{font-size:14px;line-height:1.35}
+.wg-card ul{margin:0;padding-left:16px;font-size:12.5px;opacity:.85}
+.wg-card small{font-size:11.5px;opacity:.75}
+.wg-card button{align-self:flex-start;margin-top:auto;padding:6px 0;color:var(--gold,#e2b857);font:700 12px var(--sans,inherit);background:none;border:0;cursor:pointer}
+.wg-counts{display:flex;flex-wrap:wrap;gap:6px}
+.wg-counts a{display:inline-flex;flex-direction:column;padding:6px 9px;border:1px solid var(--line2,#2a3340);border-radius:8px;font-size:12px;text-decoration:none;color:inherit}
+.wg-counts a b{font:800 15px var(--mono,monospace);color:var(--gold,#e2b857)}
+.wg-counts a span{font-size:10.5px;opacity:.7}
