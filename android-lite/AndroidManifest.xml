@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.mariodinakus.glitchlite">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.mariodinakus.glitchradar2026" android:versionCode="3" android:versionName="2.0.0">
 <uses-permission android:name="android.permission.INTERNET"/>
 <application android:label="GLITCH RADAR" android:icon="@drawable/icon" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false">
-<activity android:name=".MainActivity" android:exported="true">
+<activity android:name="com.mariodinakus.glitchradar2026.MainActivity" android:exported="true">
 <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
 </activity>
 </application>

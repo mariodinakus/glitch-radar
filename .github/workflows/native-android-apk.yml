@@ -11,7 +11,7 @@ permissions:
 jobs:
   compile:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,19 +32,23 @@ jobs:
         run: |
           set -euxo pipefail
           SDK="$ANDROID_HOME"
-          PLATFORM="$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -name 'android-*' | sort -V | tail -1)"
+          PLATFORM="$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/android-[0-9]+' | sort -V | tail -1)"
+          test -n "$PLATFORM" || PLATFORM="$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -name 'android-*' | sort -V | tail -1)"
           BT="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           echo "Using $PLATFORM and $BT"
           test -f "$PLATFORM/android.jar"
           "$BT/aapt2" compile --dir res -o build/resources.zip
-          "$BT/aapt2" link -o build/unsigned.apk -I "$PLATFORM/android.jar" --manifest AndroidManifest.xml --min-sdk-version 24 --target-sdk-version 33 build/resources.zip
+          "$BT/aapt2" link -o build/unsigned.apk -I "$PLATFORM/android.jar" --manifest AndroidManifest.xml --min-sdk-version 24 --target-sdk-version 36 --version-code 3 --version-name 2.0.0 build/resources.zip
           javac -source 8 -target 8 -encoding UTF-8 -classpath "$PLATFORM/android.jar" -d build/classes src/com/mariodinakus/glitchlite/MainActivity.java
           "$BT/d8" --lib "$PLATFORM/android.jar" --min-api 24 --output build/dex $(find build/classes -name '*.class')
           zip -q -j build/unsigned.apk build/dex/classes.dex
           "$BT/zipalign" -f -p 4 build/unsigned.apk build/aligned.apk
           keytool -genkeypair -v -keystore build/preview.jks -alias glitch -keyalg RSA -keysize 2048 -validity 3650 -storepass android -keypass android -dname "CN=GLITCH RADAR Preview" -noprompt
           "$BT/apksigner" sign --ks build/preview.jks --ks-pass pass:android --key-pass pass:android --out GLITCH-RADAR-Android.apk build/aligned.apk
-          "$BT/apksigner" verify --verbose GLITCH-RADAR-Android.apk
+          "$BT/apksigner" verify --verbose --print-certs GLITCH-RADAR-Android.apk
+          "$BT/aapt" dump badging GLITCH-RADAR-Android.apk | head -15
+          "$BT/aapt" dump badging GLITCH-RADAR-Android.apk | grep -F "targetSdkVersion:'36'"
+          "$BT/aapt" dump badging GLITCH-RADAR-Android.apk | grep -F "package: name='com.mariodinakus.glitchradar2026'"
           unzip -l GLITCH-RADAR-Android.apk | grep -E 'classes.dex|resources.arsc|AndroidManifest.xml'
           ls -lh GLITCH-RADAR-Android.apk
       - uses: actions/upload-artifact@v4
@@ -53,3 +57,20 @@ jobs:
           path: android-lite/GLITCH-RADAR-Android.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Enable KVM acceleration for install test
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - name: Install and open APK on Android 15 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: |
+            adb install android-lite/GLITCH-RADAR-Android.apk
+            adb shell am start -W -n com.mariodinakus.glitchradar2026/.MainActivity
+            adb shell pm path com.mariodinakus.glitchradar2026
+            adb shell pidof com.mariodinakus.glitchradar2026 || true

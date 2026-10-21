@@ -1,4 +1,4 @@
-package com.mariodinakus.glitchlite;
+package com.mariodinakus.glitchradar2026;
 
 import android.app.Activity;
 import android.os.Bundle;
