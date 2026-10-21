@@ -4,7 +4,7 @@ import {authenticatedUser,getAdmin} from '@/lib/glitch-server';
 export const runtime='nodejs';
 
 type Sub={endpoint:string;expirationTime?:number|null;keys:{p256dh:string;auth:string}};
-export function allowedPushEndpoint(endpoint:string){
+function allowedPushEndpoint(endpoint:string){
  try{
   const u=new URL(endpoint);
   if(u.protocol!=='https:'||u.username||u.password||u.port)return false;
@@ -15,7 +15,7 @@ export function allowedPushEndpoint(endpoint:string){
    /^[a-z0-9-]+\.push\.apple\.com$/.test(h);
  }catch{return false}
 }
-export function validateSubscription(x:unknown):x is Sub{
+function validateSubscription(x:unknown):x is Sub{
  if(!x||typeof x!=='object')return false;
  const s=x as Partial<Sub>;
  return typeof s.endpoint==='string'&&s.endpoint.length<=2500&&allowedPushEndpoint(s.endpoint)&&
