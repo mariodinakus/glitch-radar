@@ -16,6 +16,7 @@ import BlackCatDetector from '@/components/BlackCatDetector';
 import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
+import {getGlitchClient,cleanPrefs} from '@/lib/glitch-auth';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -280,7 +281,45 @@ export default function GlitchNews(){
 
  useEffect(()=>{setPrefs(load(PREFS_KEY,EMPTY));setOg(load(OG_KEY,{}));
   const h=new URLSearchParams(location.search);const s=h.get('s') as Section|null;if(s&&SECTIONS.includes(s))setSection(s);const l=h.get('topic');if(l&&getStoryline(l))setLine(l);},[]);
- useEffect(()=>store(PREFS_KEY,prefs),[prefs]);
+ // Preserve guest settings locally and sync signed-in settings only to their owner's row.
+ const [cloudUser,setCloudUser]=useState<string|null>(null);
+ const [cloudReadyFor,setCloudReadyFor]=useState<string|null>(null);
+ useEffect(()=>{
+  const sb=getGlitchClient();if(!sb)return;
+  let active=true;
+  void sb.auth.getUser().then(({data})=>{if(active)setCloudUser(data.user?.id||null)});
+  const {data:{subscription}}=sb.auth.onAuthStateChange((_event,session)=>{
+   if(active)setCloudUser(session?.user?.id||null);
+  });
+  return()=>{active=false;subscription.unsubscribe()};
+ },[]);
+ useEffect(()=>{
+  const sb=getGlitchClient();if(!sb)return;
+  let active=true;
+  setCloudReadyFor(null);
+  if(!cloudUser){setPrefs(load(PREFS_KEY,EMPTY));return}
+  setPrefs(load(PREFS_KEY+'.'+cloudUser,EMPTY));
+  void sb.from('user_profiles').select('prefs').eq('id',cloudUser).maybeSingle()
+   .then(({data,error})=>{
+    if(!active||error)return;
+    setPrefs(cleanPrefs(data?.prefs));
+    setCloudReadyFor(cloudUser);
+   });
+  return()=>{active=false};
+ },[cloudUser]);
+ useEffect(()=>{
+  // Never copy a previous user's library into the next account.
+  if(cloudUser){
+   if(cloudReadyFor!==cloudUser)return;
+   store(PREFS_KEY+'.'+cloudUser,prefs);
+   const sb=getGlitchClient();if(!sb)return;
+   const timer=setTimeout(()=>{
+    void sb.from('user_profiles').update({prefs:cleanPrefs(prefs)}).eq('id',cloudUser);
+   },700);
+   return()=>clearTimeout(timer);
+  }
+  store(PREFS_KEY,prefs);
+ },[prefs,cloudUser,cloudReadyFor]);
 
  const inflight=useRef<AbortController|null>(null);
  const latestStamp=useRef('');
