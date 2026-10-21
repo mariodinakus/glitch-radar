@@ -3,13 +3,13 @@ import './glitch-news.css';
 import './society.css';
 import './conflict-atlas.css';
 export const metadata:Metadata={
- title:'GLITCH — The Black Cat News Detector',
+ title:'GLITCH RADAR — The Black Cat News Detector',
  description:'GLITCH finds observable inconsistencies and source echoes in global English-language reporting, with keyless Black Cat analysis and source-linked War Room.',
- applicationName:'GLITCH',manifest:'/manifest.webmanifest?v=3',
- icons:{icon:[{url:'/api/icon-v2/192?v=3',sizes:'192x192',type:'image/png'},{url:'/icon.svg?v=3',type:'image/svg+xml'}],apple:[{url:'/api/icon-v2/180?v=3',sizes:'180x180',type:'image/png'}]},
- appleWebApp:{capable:true,title:'GLITCH',statusBarStyle:'black-translucent'}
+ applicationName:'GLITCH RADAR',manifest:'/manifest.webmanifest?v=4',
+ icons:{icon:[{url:'/api/icon-v2/192?v=4',sizes:'192x192',type:'image/png'},{url:'/icon.svg?v=4',type:'image/svg+xml'}],apple:[{url:'/api/icon-v2/180?v=4',sizes:'180x180',type:'image/png'}]},
+ appleWebApp:{capable:true,title:'GLITCH RADAR',statusBarStyle:'black-translucent'}
 };
-export const viewport:Viewport={width:'device-width',initialScale:1,themeColor:'#06070D'};
+export const viewport:Viewport={width:'device-width',initialScale:1,themeColor:'#090B13'};
 export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><head>
  <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin=""/>
  {/* eslint-disable-next-line @next/next/no-page-custom-font */}

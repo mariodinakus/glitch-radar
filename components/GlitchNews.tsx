@@ -14,6 +14,7 @@ import GlobalBriefing from '@/components/GlobalBriefing';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
 import {glitchScore} from '@/lib/glitch-score';
+import MobileAppControls from '@/components/MobileAppControls';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -68,7 +69,11 @@ const I={
  trend:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="m3 17 6-6 4 4 8-8M15 7h6v6"/></svg>,
  refresh:<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
 };
-function Mark(){return <svg width="32" height="32" viewBox="0 0 64 64" fill="none" aria-hidden="true"><defs><linearGradient id="gmk" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse"><stop stopColor="#F3D58A"/><stop offset="1" stopColor="#B8862B"/></linearGradient></defs><circle cx="32" cy="32" r="22" stroke="url(#gmk)" strokeWidth="3.5"/><ellipse cx="32" cy="32" rx="9" ry="22" stroke="url(#gmk)" strokeWidth="2.2"/><path d="M12 24h40M12 40h40" stroke="url(#gmk)" strokeWidth="2.2"/><rect x="6" y="28.5" width="54" height="7" fill="#07080B" className="mk-cut"/><rect x="17" y="30" width="44" height="4" rx="1" fill="#F3D58A"/><rect x="4" y="30" width="9" height="4" rx="1" fill="#B8862B"/><circle cx="51" cy="11" r="3.2" fill="#EF5B5B"/></svg>}
+function Mark(){return <svg width="32" height="32" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+ <circle cx="32" cy="32" r="23" stroke="#E2B857" strokeWidth="2.5" strokeDasharray="117 22" transform="rotate(-24 32 32)"/>
+ <path d="M21.5 19.5c3.2-3.6 7-5.3 12-5.3 5.5 0 9.9 2.1 12.3 4.9M45.7 31.5H33.3m12.4 0V43c-4.1 4.2-8.7 6.2-13.9 6.2-9.6 0-17-7.2-17-17.2 0-3.7 1-6.7 2.5-9.4" stroke="#E2B857" strokeWidth="4" strokeLinecap="square" strokeLinejoin="round"/>
+ <path d="M10 38.7h13.8M36 25.6h18.5" stroke="#FF526D" strokeWidth="3" strokeLinecap="round"/><circle cx="51.2" cy="10.7" r="3.2" fill="#FF4E6C"/>
+ </svg>;}
 
 /* ───────────── small UI pieces ───────────── */
 function Pic({src,alt,story,className,eager}:{src?:string;alt:string;story:Story;className?:string;eager?:boolean}){
@@ -276,12 +281,29 @@ export default function GlitchNews(){
   const h=new URLSearchParams(location.search);const s=h.get('s') as Section|null;if(s&&SECTIONS.includes(s))setSection(s);const l=h.get('topic');if(l&&getStoryline(l))setLine(l);},[]);
  useEffect(()=>store(PREFS_KEY,prefs),[prefs]);
 
+ const inflight=useRef<AbortController|null>(null);
+ const latestStamp=useRef('');
  const fetchFeed=useCallback(async()=>{
-  try{const r=await fetch('/api/feed',{cache:'no-store'});if(!r.ok)throw Error();const d=await r.json() as {signals:Signal[];generatedAt:string};
-   setSignals(d.signals||[]);setUpdated(d.generatedAt);setState('ready');}
-  catch{setState(s=>s==='ready'?'ready':'error')}
+  if(inflight.current||!navigator.onLine)return;
+  const controller=new AbortController();inflight.current=controller;
+  const timeout=setTimeout(()=>controller.abort(),12000);
+  try{
+   const r=await fetch('/api/feed',{cache:'no-store',signal:controller.signal});
+   if(!r.ok)throw Error('feed');
+   const d=await r.json() as {signals:Signal[];generatedAt:string};
+   if(d.generatedAt!==latestStamp.current){latestStamp.current=d.generatedAt;setSignals(d.signals||[])}
+   setUpdated(d.generatedAt);setState('ready');
+  }catch{setState(s=>s==='ready'?'ready':'error')}
+  finally{clearTimeout(timeout);if(inflight.current===controller)inflight.current=null}
  },[]);
- useEffect(()=>{fetchFeed();const id=setInterval(fetchFeed,5*60000);return()=>clearInterval(id)},[fetchFeed]);
+ useEffect(()=>{
+  const tick=()=>{if(document.visibilityState==='visible')void fetchFeed()};
+  tick();
+  const id=setInterval(tick,5*60*1000);
+  document.addEventListener('visibilitychange',tick);
+  window.addEventListener('online',tick);
+  return()=>{clearInterval(id);document.removeEventListener('visibilitychange',tick);window.removeEventListener('online',tick);inflight.current?.abort()};
+ },[fetchFeed]);
  useEffect(()=>{let live=true;fetch('/api/trends?region=WORLD').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[]);
 
  useEffect(()=>{if(section!=='markets'&&section!=='wars')return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
@@ -291,7 +313,7 @@ export default function GlitchNews(){
  const ogBusy=useRef(false);
  useEffect(()=>{
   if(ogBusy.current||!stories.length)return;
-  const need=stories.slice(0,80).filter(s=>!s.image&&!(s.id in og)).map(s=>({s,url:[s.headline,...s.reports].find(r=>!isGoogle(r))?.url})).slice(0,10);
+  const need=stories.slice(0,40).filter(s=>!s.image&&!(s.id in og)).map(s=>({s,url:[s.headline,...s.reports].find(r=>!isGoogle(r))?.url})).slice(0,4);
   if(!need.length)return;ogBusy.current=true;
   Promise.all(need.map(async({s,url})=>{if(!url)return [s.id,null] as const;try{const r=await fetch('/api/og?url='+encodeURIComponent(url));const d=await r.json() as {image:string|null};return [s.id,d.image] as const}catch{return [s.id,null] as const}}))
    .then(rows=>setOg(o=>{const n={...o,...Object.fromEntries(rows)};store(OG_KEY,Object.fromEntries(Object.entries(n).slice(-400)));return n}))
@@ -334,6 +356,7 @@ export default function GlitchNews(){
     <label className="gn-search">{I.search}<input value={q} onChange={e=>setQ(e.target.value)} placeholder={t.search}/>{q&&<button onClick={()=>setQ('')} aria-label="clear">{I.x}</button>}</label>
     <div className="gn-tools">
      <span className="live"><i/>{t.live}{updated&&<em>{new Date(updated).toLocaleTimeString(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})}</em>}</span>
+     <MobileAppControls/>
      <button className={'icon'+(section==='saved'?' on':'')} onClick={()=>go('saved')} aria-label={t.saved}>{I.bm(section==='saved')}{prefs.saved.length>0&&<sup>{prefs.saved.length}</sup>}</button>
      
     </div>

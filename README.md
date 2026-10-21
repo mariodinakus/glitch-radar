@@ -35,3 +35,20 @@ Public-source coverage depends on upstream feed availability. Optional Google Cl
 ## Trust model
 
 The editorial interpretation, relationships and conditional ripples are heuristics based on source headlines and excerpts. They are **not** independently verified journalism, claims of confirmed economic effects, actual probabilities, or financial advice. See the original story and compare primary sources before drawing conclusions.
+
+## GLITCH RADAR phone app
+
+The same deployment is an installable Progressive Web App (PWA), not a native App Store binary. Open https://glitch-radar-github.vercel.app on Android (Chrome) or iOS (Safari), then choose **Install** or **Share → Add to Home Screen**. It opens without browser chrome with a dedicated GLITCH RADAR icon.
+
+### Automatic updates and smooth operation
+- GitHub main is the single code source; Vercel Git integration builds new production deployments automatically when authorized/configured.
+- The service worker checks for updates after launch, when the app returns to the foreground, and every 15 minutes while open. New worker activation reloads the app once, preventing stale shell/code mixes.
+- News and API endpoints are never served from a stale offline cache. Slow feed requests time out in 12 seconds, never overlap, and polling pauses in background tabs. A lightweight offline message appears without a network.
+- Devices still need connectivity for live news. Server/network failures cannot be entirely eliminated.
+
+### Optional push notifications (Android and iPhone)
+- Install **web-push** dependencies with `npm install`, and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `CRON_SECRET` in Vercel Project Environment Variables. Generate keys once with `npx web-push generate-vapid-keys`. Never commit the private key.
+- Set `VAPID_SUBJECT` to the app's canonical HTTPS URL or your contact mailto address.
+- In the app, tap **Alerts → Enable push alerts**. Permission is requested only on demand. iPhone/iPad require iOS 16.4+ and installation to the Home Screen.
+- Push alerts are sent by the existing `/api/cron/notify` scheduler for significant score ≥74 signals. With a Vercel Hobby account the existing scheduler is **daily**, not breaking-news instant. For real-time alerts use a suitably authorized, more frequent scheduler on an eligible paid plan or external job.
+- Upstash stores opt-in device push subscriptions for up to 90 days; **Disable push alerts** unsubscribes. Telegram alert delivery is preserved when configured.
