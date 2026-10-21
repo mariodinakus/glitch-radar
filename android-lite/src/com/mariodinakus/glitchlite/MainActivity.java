@@ -100,10 +100,10 @@ public class MainActivity extends Activity {
     results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);pad(results,14,12);
     feedScroll.addView(results);base.addView(feedScroll,new LinearLayout.LayoutParams(-1,0,1));
     LinearLayout nav=new LinearLayout(this);nav.setBackgroundColor(CARD);
-    for(String name:new String[]{"Radar","Latest","Saved","Desk","Profile"}){
-      TextView item=label(name,12,WHITE,false);item.setGravity(Gravity.CENTER);pad(item,6,16);
+    for(String section:new String[]{"Radar","Latest","Saved","Desk","Profile"}){
+      TextView item=label(section,12,WHITE,false);item.setGravity(Gravity.CENTER);pad(item,6,16);
       nav.addView(item,new LinearLayout.LayoutParams(0,dp(54),1));
-      item.setOnClickListener(v->{tab=name;render();});
+      item.setOnClickListener(v->{tab=section;render();});
     }
     base.addView(nav);
     render();
