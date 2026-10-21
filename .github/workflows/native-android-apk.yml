@@ -1,0 +1,56 @@
+name: GLITCH RADAR - Fast Native Android APK
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-lite/**'
+      - '.github/workflows/native-android-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Generate official GLITCH icon PNG
+        run: |
+          npm install --prefix mobile --no-audit --no-fund
+          node mobile/scripts/make-assets.mjs
+          mkdir -p android-lite/res/drawable-nodpi android-lite/build/classes android-lite/build/dex
+          cp mobile/assets/icon.png android-lite/res/drawable-nodpi/icon.png
+      - name: Compile and package native Android APK without Gradle or Expo
+        working-directory: android-lite
+        run: |
+          set -euxo pipefail
+          SDK="$ANDROID_HOME"
+          PLATFORM="$(find "$SDK/platforms" -mindepth 1 -maxdepth 1 -type d -name 'android-*' | sort -V | tail -1)"
+          BT="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          echo "Using $PLATFORM and $BT"
+          test -f "$PLATFORM/android.jar"
+          "$BT/aapt2" compile --dir res -o build/resources.zip
+          "$BT/aapt2" link --proto-format -o build/temporary-proto.apk -I "$PLATFORM/android.jar" --manifest AndroidManifest.xml --min-sdk-version 24 --target-sdk-version 33 build/resources.zip
+          "$BT/aapt2" link -o build/unsigned.apk -I "$PLATFORM/android.jar" --manifest AndroidManifest.xml --min-sdk-version 24 --target-sdk-version 33 build/resources.zip
+          javac -source 8 -target 8 -encoding UTF-8 -classpath "$PLATFORM/android.jar" -d build/classes src/com/mariodinakus/glitchlite/MainActivity.java
+          "$BT/d8" --lib "$PLATFORM/android.jar" --min-api 24 --output build/dex $(find build/classes -name '*.class')
+          zip -q -j build/unsigned.apk build/dex/classes.dex
+          "$BT/zipalign" -f -p 4 build/unsigned.apk build/aligned.apk
+          keytool -genkeypair -v -keystore build/preview.jks -alias glitch -keyalg RSA -keysize 2048 -validity 3650 -storepass android -keypass android -dname "CN=GLITCH RADAR Preview" -noprompt
+          "$BT/apksigner" sign --ks build/preview.jks --ks-pass pass:android --key-pass pass:android --out GLITCH-RADAR-Android.apk build/aligned.apk
+          "$BT/apksigner" verify --verbose GLITCH-RADAR-Android.apk
+          unzip -l GLITCH-RADAR-Android.apk | grep -E 'classes.dex|resources.arsc|AndroidManifest.xml'
+          ls -lh GLITCH-RADAR-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GLITCH-RADAR-INSTALLABLE-APK
+          path: android-lite/GLITCH-RADAR-Android.apk
+          if-no-files-found: error
+          retention-days: 30
