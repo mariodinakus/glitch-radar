@@ -13,6 +13,7 @@ import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
+import {glitchScore} from '@/lib/glitch-score';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -92,10 +93,34 @@ function Meta({story,lang,t}:{story:Story;lang:Lang;t:Copy}){
  const n=story.sources.length;
  return <div className="meta"><PublisherStack story={story}/><span className="m-src">{shortSource(story.headline.source)}</span>{n>1&&<span className="m-count">+{n-1} {t.sources}</span>}<span className="m-dot">·</span><time>{ago(story.lastAt,lang)}</time></div>;
 }
+function GlitchChip({story,lang}:{story:Story;lang:Lang}){
+ const g=useMemo(()=>glitchScore(story),[story]);
+ if(g.level==='none')return null;
+ const tip=g.reasons.map(r=>lang==='el'?r.el:r.en).join(' · ')+(lang==='el'?' — ένδειξη προς έλεγχο, όχι απόδειξη.':' — a signal to review, not proof.');
+ return <span className={'gchip gchip-'+g.level} title={tip} aria-label={'GLITCH '+g.score+'. '+tip}><i/>GLITCH <b>{g.score}</b></span>;
+}
 function Kind({story,t,lang}:{story:Story;t:Copy;lang:Lang}){
  const line=getStoryline(story.storylines[0]||'');
  const label=story.kind!=='other'?t.kinds[story.kind]:line?(lang==='el'?line.el:line.en):t[story.section as keyof Copy] as string;
- return <span className={'kind k-'+story.kind}>{story.level==='top'&&<b className="pulse"/>}{label}</span>;
+ return <><span className={'kind k-'+story.kind}>{story.level==='top'&&<b className="pulse"/>}{label}</span><GlitchChip story={story} lang={lang}/></>;
+}
+function WarGlitch({stories,lang,title,onOpen}:{stories:Story[];lang:Lang;title:(s:Story)=>string;onOpen:(s:Story)=>void}){
+ const el=lang==='el';
+ const rows=useMemo(()=>stories.map(s=>({s,g:glitchScore(s)})).filter(x=>x.g.score>0||x.g.origin).sort((a,b)=>b.g.score-a.g.score||b.g.reasons.length-a.g.reasons.length).slice(0,4),[stories]);
+ if(!rows.length)return null;
+ const hhmm=(d:string)=>new Date(d).toLocaleTimeString(el?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+ return <section className="war-glitch" aria-label={el?'Glitch στον πόλεμο':'Glitch in this war'}>
+  <header><span className="wg-eyebrow">◉ BLACK CAT / WAR</span><h3>{el?'Πού δεν συμφωνεί η αφήγηση':'Where the narrative does not add up'}<em>.</em></h3>
+   <p>{el?'Αντίγραφα τίτλων, αντικρουόμενοι αριθμοί και ποιος το έβγαλε πρώτος — μόνο από τη ροή που παρακολουθούμε. Ενδείξεις, όχι αποδείξεις.':'Echoed headlines, conflicting figures and who reported first — from the monitored feed only. Signals, not proof.'}</p></header>
+  <div className="wg-grid">{rows.map(({s,g})=><article key={s.id} className="wg-card">
+   <div className="wg-top"><span className={'gchip gchip-'+(g.level==='none'?'watch':g.level)}><i/>GLITCH <b>{g.score}</b></span></div>
+   <strong>{title(s)}</strong>
+   {g.reasons.length>0&&<ul>{g.reasons.map((r,i)=><li key={i}>{el?r.el:r.en}</li>)}</ul>}
+   {g.counts.length>1&&<div className="wg-counts">{g.counts.slice(0,4).map((c,i)=><a key={i} href={c.url} target="_blank" rel="noopener noreferrer"><b>{c.value}</b> {c.unit}<span>{c.source} ↗</span></a>)}</div>}
+   {g.origin&&<small>{el?'Πρώτο στη ροή: ':'First in feed: '}<b>{g.origin.source}</b> · {hhmm(g.origin.at)} · {g.origin.followers} {el?'μέσα ακολούθησαν σε 2 ώρες':'outlets followed within 2h'}</small>}
+   <button onClick={()=>onOpen(s)}>{el?'Σύγκριση ρεπορτάζ':'Compare coverage'} →</button>
+  </article>)}</div>
+ </section>;
 }
 
 /* ───────────── indicators ───────────── */
@@ -176,6 +201,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
    <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ροή ειδήσεων':'WAR ROOM · recent reporting'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
     <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
   {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
+  <WarGlitch stories={cur.stories} lang={lang} title={title} onOpen={ctx.openStory}/>
   <section className="war-field-report" aria-label={el?'Ειδήσεις από το μέτωπο':'Frontline reporting'}>
     <header><strong>{el?'Απώλειες, έδαφος και μάχες':'Losses, territory and battles'}</strong>
       <p>{el?'Μόνο αναφορές με πηγή από το τελευταίο τετραήμερο. Ενδέχεται να είναι ισχυρισμοί εμπλεκομένων — άνοιξε το δημοσίευμα για έλεγχο. Δεν είναι επαληθευμένα αθροίσματα, χάρτης ελέγχου ή πλήρης πολεμική καταγραφή.':'Sourced news reports from the last four days. Claims may be disputed. These are not verified cumulative totals, a territorial-control map or an exhaustive conflict record.'}</p>
