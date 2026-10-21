@@ -29,6 +29,11 @@ jobs:
         run: npm run typecheck
       - name: Prebuild native Android sources
         run: npx expo prebuild --platform android --no-install --clean
+      - name: Diagnose Expo native modules
+        run: |
+          npm ls expo expo-modules-autolinking expo-modules-core || true
+          npx expo-modules-autolinking resolve --platform android --json > /tmp/glitch-autolinking.json || true
+          node -e "const fs=require('fs');try { const d=JSON.parse(fs.readFileSync('/tmp/glitch-autolinking.json','utf8')); console.log('Resolved Expo native projects:', JSON.stringify(d.modules?.map((x,i)=>({i,name:x.packageName||x.name,projects:x.projects?.map(p=>({name:p.name,publication:p.publication}))})),null,2)) }catch(e){console.log('Expo module diagnostic unavailable:',e.message)}"
       - name: Compile installable APK
         run: |
           cd android
