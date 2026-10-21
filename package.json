@@ -1,6 +1,6 @@
 {
   "name": "glitch-world-intelligence",
-  "version": "10.0.0",
+  "version": "10.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "lucide-react": "^0.468.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "@supabase/supabase-js": "^2.49.10"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

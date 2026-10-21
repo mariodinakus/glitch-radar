@@ -12,19 +12,19 @@
   "theme_color": "#090B13",
   "icons": [
     {
-      "src": "/api/icon-v2/192?v=4",
+      "src": "/api/icon-v2/192?v=5",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icon-v2/512?v=4",
+      "src": "/api/icon-v2/512?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/api/icon-v2/512?v=4",
+      "src": "/api/icon-v2/512?v=5",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

@@ -15,6 +15,7 @@ import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
 import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
+import UserProfile from '@/components/UserProfile';
 
 /* ───────────── copy ───────────── */
 type Lang='el'|'en';
@@ -356,6 +357,7 @@ export default function GlitchNews(){
     <label className="gn-search">{I.search}<input value={q} onChange={e=>setQ(e.target.value)} placeholder={t.search}/>{q&&<button onClick={()=>setQ('')} aria-label="clear">{I.x}</button>}</label>
     <div className="gn-tools">
      <span className="live"><i/>{t.live}{updated&&<em>{new Date(updated).toLocaleTimeString(lang==='el'?'el-GR':'en-GB',{hour:'2-digit',minute:'2-digit',hour12:false})}</em>}</span>
+     <UserProfile/>
      <MobileAppControls/>
      <button className={'icon'+(section==='saved'?' on':'')} onClick={()=>go('saved')} aria-label={t.saved}>{I.bm(section==='saved')}{prefs.saved.length>0&&<sup>{prefs.saved.length}</sup>}</button>
      

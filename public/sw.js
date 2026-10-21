@@ -1,5 +1,5 @@
 /* GLITCH RADAR service worker: fast online app, safe offline fallback, push and seamless releases. */
-const VERSION='glitch-radar-v12';
+const VERSION='glitch-radar-v13';
 const SHELL=['/icon.svg','/manifest.webmanifest'];
 self.addEventListener('install',event=>{
  event.waitUntil(Promise.allSettled(SHELL.map(async path=>{
@@ -33,7 +33,7 @@ self.addEventListener('push',event=>{
  const title=typeof data.title==='string'?data.title:'GLITCH RADAR · New signal';
  const body=typeof data.body==='string'?data.body:'A new signal is ready.';
  const path=typeof data.url==='string'&&data.url.startsWith('/')&&!data.url.startsWith('//')?data.url:'/';
- event.waitUntil(self.registration.showNotification(title,{body,icon:'/api/icon-v2/192?v=4',badge:'/api/icon-v2/192?v=4',tag:typeof data.tag==='string'?data.tag:'glitch-signal',renotify:false,data:{url:path}}));
+ event.waitUntil(self.registration.showNotification(title,{body,icon:'/api/icon-v2/192?v=5',badge:'/api/icon-v2/192?v=5',tag:typeof data.tag==='string'?data.tag:'glitch-signal',renotify:false,data:{url:path}}));
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();

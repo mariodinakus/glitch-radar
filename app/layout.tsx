@@ -5,8 +5,8 @@ import './conflict-atlas.css';
 export const metadata:Metadata={
  title:'GLITCH RADAR — The Black Cat News Detector',
  description:'GLITCH finds observable inconsistencies and source echoes in global English-language reporting, with keyless Black Cat analysis and source-linked War Room.',
- applicationName:'GLITCH RADAR',manifest:'/manifest.webmanifest?v=4',
- icons:{icon:[{url:'/api/icon-v2/192?v=4',sizes:'192x192',type:'image/png'},{url:'/icon.svg?v=4',type:'image/svg+xml'}],apple:[{url:'/api/icon-v2/180?v=4',sizes:'180x180',type:'image/png'}]},
+ applicationName:'GLITCH RADAR',manifest:'/manifest.webmanifest?v=5',
+ icons:{icon:[{url:'/api/icon-v2/192?v=5',sizes:'192x192',type:'image/png'},{url:'/icon.svg?v=5',type:'image/svg+xml'}],apple:[{url:'/api/icon-v2/180?v=5',sizes:'180x180',type:'image/png'}]},
  appleWebApp:{capable:true,title:'GLITCH RADAR',statusBarStyle:'black-translucent'}
 };
 export const viewport:Viewport={width:'device-width',initialScale:1,themeColor:'#090B13'};
