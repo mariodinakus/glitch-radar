@@ -13,6 +13,24 @@ export type MatrixFinding={
 };
 export const SNAPSHOT_KEY='glitch.matrix.headlines.v1';
 export const CHANGES_KEY='glitch.matrix.changes.v1';
+export type RevisionAssessment={level:'substantive'|'routine';reason:string;confidence:'medium'|'low'};
+/** Heuristic on titles observed from the SAME RSS entry. Never a verified webpage edit. */
+export function assessRevision(before:string,after:string):RevisionAssessment{
+ const a=headlineFingerprint(before),b=headlineFingerprint(after);
+ const words=(s:string)=>new Set(s.split(' ').filter(x=>x.length>=3&&!/^\\d+(?:[.,]\\d+)?$/.test(x)));
+ const old=words(a),next=words(b);
+ const union=new Set([...old,...next]);
+ const overlap=[...old].filter(x=>next.has(x)).length;
+ const shift=union.size?1-overlap/union.size:0;
+ const nums=(s:string)=>(s.match(/\\d+(?:[.,]\\d+)?/g)||[]).map(x=>Number(x.replace(',','.')));
+ const na=nums(a),nb=nums(b);
+ const smallCorrection=na.length===1&&nb.length===1&&na[0]!==nb[0]&&Math.abs(na[0]-nb[0])<=0.5&&Math.max(na[0],nb[0])<=10;
+ if(smallCorrection&&shift<.24)return {level:'routine',reason:'Small numeric or precision update',confidence:'low'};
+ if(shift<.24&&a!==b)return {level:'routine',reason:'Limited wording or timing update',confidence:'low'};
+ if(shift>=.3)return {level:'substantive',reason:'Substantial change in headline wording',confidence:'medium'};
+ if(na.join('|')!==nb.join('|')&&na.length&&nb.length)return {level:'substantive',reason:'Numbers changed in headline (context unverified)',confidence:'low'};
+ return {level:'routine',reason:'Minor update in feed headline',confidence:'low'};
+}
 
 export function canonicalArticle(url:string):string|null{
  try{

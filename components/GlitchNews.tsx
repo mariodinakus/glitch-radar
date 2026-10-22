@@ -13,6 +13,7 @@ import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
+import NarrativeDNA from '@/components/NarrativeDNA';
 import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
@@ -420,9 +421,9 @@ export default function GlitchNews(){
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
-     <BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
-     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <Hero slides={hero} {...ctx}/>
+     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
+     <BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
       <section className="col-main">
@@ -717,6 +718,7 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      <button className="btn" onClick={share}>{I.share}{t.share}</button>
      {story.storylines[0]&&<button className="btn ghost" onClick={()=>{toggle('mute',story.storylines[0]);onClose()}}>{I.eyeOff}{t.less}</button>}
     </div>
+    <NarrativeDNA story={story} lang={lang}/>
     <PublisherBubbles story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
     <Analysis story={story} lang={lang} plainTitle={title(story)} plainSummary={sum(story)}/>
     <section className="cov">
