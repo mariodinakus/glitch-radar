@@ -32,11 +32,11 @@ export const storylines:Storyline[]=[
 const storylineById=Object.fromEntries(storylines.map(s=>[s.id,s]));
 export const getStoryline=(id:string)=>storylineById[id] as Storyline|undefined;
 
-export type Section='foryou'|'top'|'wars'|'markets'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'society'|'saved';
+export type Section='foryou'|'top'|'wars'|'markets'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'society'|'saved'|'investigate';
 
 export type Story=StoryCase & {
  image?:string;kind:EventClass;importance:number;level:'top'|'major'|'watch';
- storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'|'wars'|'markets'|'society'>;
+ storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'|'wars'|'markets'|'society'|'investigate'>;
 };
 
 const GREEK_SOURCES=/^(ΕΡΤ|Ναυτεμπορική|Πρώτο Θέμα|Καθημερινή|in\.gr)/u;
@@ -74,13 +74,25 @@ function similar(g:Group,keys:string[],actors:string[],t:number):boolean{
 }
 
 function sectionFor(lead:Signal,lines:string[],greek:boolean):Story['section']{
+ // Classify the reported event, not merely the RSS channel where it was found.
+ const h=lead.title.toLocaleLowerCase();
  const c=lead.category;
  if(c==='sports')return 'sports';
  if(greek&&!lines.some(l=>['mideast','ukraine','usa','china','africa','latam'].includes(l)))return 'greece';
+ const conflict=/\b(ukrain\w*|russia\w*|kyiv|moscow|kremlin|gaza|israel\w*|iran\w*|tehran|sudan\w*|airstrikes?|ceasefire|missile (?:strike|attack)|war in|civil war|hostages?)\b/i;
+ const climate=/\b(climate change|global warming|emissions?|coral reefs?|floods?|flooding|wildfires?|heatwaves?|hurricanes?|typhoons?|cyclones?|droughts?|storms?|earthquakes?|volcan\w*|disaster|extreme weather)\b/i;
+ const technology=/\b(artificial intelligence|a\.?i\.? (?:model|agent|company|system)|openai|anthropic|chatgpt|semiconductors?|nvidia|data cent(?:er|re)s?|cybersecurity|software|robotics?|chips?)\b/i;
+ const finance=/\b(stocks?|shares?|profits?|earnings|revenue|quarterly results?|merger|acquisition|inflation|central banks?|interest rates?|gdp|recession|layoffs?|job cuts?|tariffs?|market selloff|debt crisis)\b/i;
+ const science=/\b(nasa|esa|spacecraft|astronauts?|lunar|moon mission|mars mission|meteor shower|telescope|scientists? discover|researchers? find)\b/i;
+ if(climate.test(h))return 'climate';
+ if(conflict.test(h))return 'world';
+ if(finance.test(h))return 'economy';
+ if(technology.test(h))return 'tech';
+ if(science.test(h))return 'science';
  if(c==='ai'||c==='tech')return 'tech';
  if(c==='science'||c==='space'||c==='health')return 'science';
- if(c==='climate'||c==='energy'||c==='nature'||c==='earth')return 'climate';
- if(c==='economy')return 'economy';
+ if(c==='climate'||c==='nature'||c==='earth')return 'climate';
+ if(c==='economy'||c==='energy')return 'economy';
  return 'world';
 }
 

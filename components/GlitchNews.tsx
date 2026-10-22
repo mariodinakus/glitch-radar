@@ -13,6 +13,9 @@ import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
+import NarrativeDNA from '@/components/NarrativeDNA';
+import {BlindspotBoard} from '@/components/BlindspotBoard';
+import type {BlindspotReport} from '@/lib/blindspots';
 import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
@@ -22,7 +25,7 @@ import {getGlitchClient,cleanPrefs} from '@/lib/glitch-auth';
 type Lang='el'|'en';
 const T={
  en:{
-  foryou:'For you',top:'Top',wars:'Wars',markets:'Markets',society:'Society & Politics',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
+  foryou:'For you',top:'Top',investigate:'Investigate',wars:'Wars',markets:'Markets',society:'Society & Politics',more:'More stories',world:'World',economy:'Economy',tech:'AI & Tech',greece:'Greece',science:'Science',climate:'Climate',sports:'Sport',latest:'Latest',saved:'Saved',
   bigThemes:'The big stories of the world',bigThemesSub:'What is moving the planet right now — by volume of coverage',
   topStories:'Top stories',topSub:'Ranked by weight & breadth of coverage',
   mostCovered:'Most covered',trends:'What people search',latestNews:'Just in',
@@ -39,7 +42,7 @@ const T={
  }
 };
 type Copy=typeof T.en;
-const SECTIONS:Section[]=['top','foryou','wars','world','society','economy','markets','tech','science','climate','sports','latest'];
+const SECTIONS:Section[]=['top','investigate','foryou','wars','world','society','economy','markets','tech','science','climate','sports','latest'];
 
 /* ───────────── helpers ───────────── */
 const isGoogle=(s:Signal)=>s.url.includes('news.google.');
@@ -265,6 +268,7 @@ function Paged({stories,timeline,...ctx}:Ctx&{stories:Story[];timeline?:boolean}
 type TrendItem={id:string;name:string;traffic:string|null;url:string;relatedHeadlines:string[]};
 export default function GlitchNews(){
  const [signals,setSignals]=useState<Signal[]>([]);
+ const [blindspots,setBlindspots]=useState<BlindspotReport|undefined>(undefined);
  const [state,setState]=useState<'loading'|'ready'|'error'>('loading');
  const [updated,setUpdated]=useState<string>('');
  const [section,setSection]=useState<Section>('top');
@@ -330,9 +334,9 @@ export default function GlitchNews(){
   try{
    const r=await fetch('/api/feed',{cache:'no-store',signal:controller.signal});
    if(!r.ok)throw Error('feed');
-   const d=await r.json() as {signals:Signal[];generatedAt:string};
+   const d=await r.json() as {signals:Signal[];generatedAt:string;blindspots?:BlindspotReport};
    if(d.generatedAt!==latestStamp.current){latestStamp.current=d.generatedAt;setSignals(d.signals||[])}
-   setUpdated(d.generatedAt);setState('ready');
+   setBlindspots(d.blindspots);setUpdated(d.generatedAt);setState('ready');
   }catch{setState(s=>s==='ready'?'ready':'error')}
   finally{clearTimeout(timeout);if(inflight.current===controller)inflight.current=null}
  },[]);
@@ -420,9 +424,9 @@ export default function GlitchNews(){
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
-     <BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
-     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <Hero slides={hero} {...ctx}/>
+     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
+     <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
       <section className="col-main">
@@ -446,6 +450,7 @@ export default function GlitchNews(){
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
+    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/></div>:
     section==='world'?<><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
@@ -717,6 +722,7 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      <button className="btn" onClick={share}>{I.share}{t.share}</button>
      {story.storylines[0]&&<button className="btn ghost" onClick={()=>{toggle('mute',story.storylines[0]);onClose()}}>{I.eyeOff}{t.less}</button>}
     </div>
+    <NarrativeDNA story={story} lang={lang}/>
     <PublisherBubbles story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
     <Analysis story={story} lang={lang} plainTitle={title(story)} plainSummary={sum(story)}/>
     <section className="cov">
