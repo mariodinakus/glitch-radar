@@ -6,7 +6,7 @@ export async function archiveCommand(args:(string|number)[]):Promise<unknown>{
  const controller=new AbortController();
  const timeout=setTimeout(()=>controller.abort(),7500);
  try{
-  const r=await fetch(base.replace(/\\/$/,'') ,{
+  const r=await fetch((base.endsWith('/')?base.slice(0,-1):base) ,{
    method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
    body:JSON.stringify(args),cache:'no-store',signal:controller.signal
   });
