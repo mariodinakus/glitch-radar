@@ -15,9 +15,20 @@ const written=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.str
 export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:Props){
  const el=lang==='el';
  const [changes,setChanges]=useState<HeadlineChange[]>([]);
+ const [archive,setArchive]=useState<HeadlineChange[]>([]);
+ const [auditAt,setAuditAt]=useState<string|null>(null);
  const [mode,setMode]=useState<Mode>('all');
  const [expanded,setExpanded]=useState(false);
  const findings=useMemo(()=>detectMatrixPatterns(stories),[stories]);
+ useEffect(()=>{
+  let alive=true;
+  fetch('/api/archive',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
+   if(!alive||!data?.available)return;
+   setArchive(Array.isArray(data.events)?data.events:[]);
+   setAuditAt(typeof data.auditedAt==='string'?data.auditedAt:null);
+  }).catch(()=>{});
+  return ()=>{alive=false};
+ },[]);
  useEffect(()=>{
   if(!signals.length)return;
   // Only changes we have personally observed in this browser are recorded.
@@ -31,8 +42,12 @@ export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:
   written(CHANGES_KEY,merged);
   setChanges(merged);
  },[signals]);
- const materialChanges=useMemo(()=>changes.filter(c=>assessRevision(c.before,c.after).level==='substantive'),[changes]);
- const routineCount=changes.length-materialChanges.length;
+ const materialChanges=useMemo(()=>{
+  const merged=new Map<string,HeadlineChange>();
+  for(const c of [...archive,...changes])if(c&&c.before&&c.after&&assessRevision(c.before,c.after).level==='substantive')merged.set(c.id+'|'+c.after,c);
+  return [...merged.values()].sort((a,b)=>Date.parse(a.lastSeen)-Date.parse(b.lastSeen));
+ },[archive,changes]);
+ const routineCount=changes.filter(c=>assessRevision(c.before,c.after).level!=='substantive').length;
  const byId=useMemo(()=>new Map(stories.map(s=>[s.id,s])),[stories]);
  const all=[...materialChanges.slice().reverse().map(c=>({type:'changed' as const,id:c.id+'|'+c.after,change:c})),
    ...findings.map(f=>({type:f.kind as 'repeat'|'number'|'lonely',id:f.id,finding:f}))];
@@ -52,6 +67,7 @@ export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:
    </div>
    <div className="bc-counter"><Cat size={25}/><strong>{materialChanges.length+findings.length}</strong><span>{label('ενδείξεις προς εξέταση','signals to review')}</span></div>
   </header>
+  {auditAt&&<p className="bc-routine">SERVER ARCHIVE · {label('Τελευταίο κοινό στιγμιότυπο','Latest shared snapshot')}: {date(auditAt)} · {label('η παρακολούθηση γίνεται στην προγραμματισμένη εκτέλεση, όχι συνεχώς','scheduled sampling, not continuous monitoring')}</p>}
   <div className="bc-filterbar" role="group" aria-label={label('Φίλτρα ενδείξεων','Finding filters')}>
    {modes.map(([k,a,b])=><button key={k} className={mode===k?'on':''} onClick={()=>{setMode(k);setExpanded(false)}}>{el?a:b}<span>{k==='all'?materialChanges.length+findings.length:cnt(k)}</span></button>)}
   </div>

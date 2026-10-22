@@ -54,7 +54,7 @@ export function updateHeadlineHistory(previous:HeadlineRecord[],now:Signal[],dat
  const changes:HeadlineChange[]=[];
  for(const s of now){
   const u=canonicalArticle(s.url);
-  if(!u||!s.source||!s.title||s.title.length<12||u.includes('news.google.com'))continue;
+  if(!u||!s.source||!s.title||s.title.length<12||u.includes('news.google.com')||/\/(alerts-watches-and-warnings|category\/|feed\/|tag\/|live-updates)(?:\/|$)/i.test(u))continue;
   const id=s.source+'|'+u;
   const was=indexed.get(id);
   const old=was?headlineFingerprint(was.title):'';
