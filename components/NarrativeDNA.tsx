@@ -37,7 +37,7 @@ export default function NarrativeDNA({story,lang,revisions=[]}:Props){
  const date=(iso:string)=>new Date(iso).toLocaleString(lang==='el'?'el-GR':'en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
  return <section className="ndna" aria-label="Narrative DNA">
   <span className="ndna-kicker">GLITCH / NARRATIVE DNA</span>
-  <h2>{t('Το DNA της αφήγησης','The narrative's DNA')}</h2>
+  <h2>{t('Το DNA της αφήγησης','Narrative DNA')}</h2>
   <p className="ndna-note">{t('Ποιος δημοσίευσε στο διαθέσιμο δείγμα, ποια λέξη επέλεξε κάθε μέσο και ποιοι τίτλοι αναθεωρήθηκαν. Όλα συνδέονται με πηγές.','Who published in this feed sample, how headlines differ between outlets, and which stored headline versions changed. Every observation is source-linked.')}</p>
   <div className="ndna-metrics">
    <div><strong>{rows.length}</strong><span>{t('διακριτοί εκδότες','distinct outlets')}</span></div>
