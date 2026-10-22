@@ -14,6 +14,11 @@ import GlobalBriefing from '@/components/GlobalBriefing';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
 import NarrativeDNA from '@/components/NarrativeDNA';
+import GlitchTimeline from '@/components/GlitchTimeline';
+import StoryCoverageHeatmap from '@/components/StoryCoverageHeatmap';
+import {storyRevisions} from '@/lib/investigation';
+import {CHANGES_KEY} from '@/lib/matrix-detection';
+import type {HeadlineChange} from '@/lib/matrix-detection';
 import {BlindspotBoard} from '@/components/BlindspotBoard';
 import type {BlindspotReport} from '@/lib/blindspots';
 import {glitchScore} from '@/lib/glitch-score';
@@ -450,7 +455,7 @@ export default function GlitchNews(){
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
-    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/></div>:
+    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/></div>:
     section==='world'?<><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
@@ -693,6 +698,23 @@ function Analysis({story,lang,plainTitle,plainSummary}:{story:Story;lang:Lang;pl
 /* ───────────── story sheet ───────────── */
 function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];onClose:()=>void;onPick:(l:string)=>void}){
  const {t,lang,title,sum,rtitle,rsum,withImg,prefs,toggle}=ctx;
+ const [changes,setChanges]=useState<HeadlineChange[]>([]);
+ const [archiveAvailable,setArchiveAvailable]=useState(false);
+ useEffect(()=>{
+  let live=true;
+  try{
+   const stored=JSON.parse(localStorage.getItem(CHANGES_KEY)||'[]') as unknown;
+   setChanges(Array.isArray(stored)?stored.filter(x=>x&&typeof x.url==='string').slice(-75):[]);
+  }catch{setChanges([])}
+  setArchiveAvailable(false);
+  void fetch('/api/archive',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{
+   if(!live||!data)return;
+   setArchiveAvailable(data.available===true);
+   if(Array.isArray(data.events))setChanges(prev=>[...prev,...data.events].slice(-260));
+  }).catch(()=>{});
+  return()=>{live=false};
+ },[story.id]);
+ const revisions=useMemo(()=>storyRevisions(story,changes),[story,changes]);
  useEffect(()=>{const k=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',k);const o=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.removeEventListener('keydown',k);document.body.style.overflow=o}},[onClose]);
  const sm=sum(story);const mix=leanMix(story.sources);const total=story.sources.length;
  const related=all.filter(s=>s.id!==story.id&&(s.storylines.some(l=>story.storylines.includes(l))||s.actorIds.some(a=>story.actorIds.includes(a)))).map(s=>({s,sc:s.storylines.filter(l=>story.storylines.includes(l)).length*2+s.actorIds.filter(a=>story.actorIds.includes(a)).length})).sort((a,b)=>b.sc-a.sc||Date.parse(b.s.lastAt)-Date.parse(a.s.lastAt)).slice(0,8).map(x=>x.s);
@@ -722,7 +744,9 @@ function Sheet({story,all,onClose,onPick,...ctx}:Ctx&{story:Story;all:Story[];on
      <button className="btn" onClick={share}>{I.share}{t.share}</button>
      {story.storylines[0]&&<button className="btn ghost" onClick={()=>{toggle('mute',story.storylines[0]);onClose()}}>{I.eyeOff}{t.less}</button>}
     </div>
-    <NarrativeDNA story={story} lang={lang}/>
+    <NarrativeDNA story={story} lang={lang} revisions={revisions}/>
+    <GlitchTimeline story={story} lang={lang} revisions={revisions} archiveAvailable={archiveAvailable}/>
+    <StoryCoverageHeatmap stories={all} story={story} lang={lang}/>
     <PublisherBubbles story={story} lang={lang} rtitle={rtitle} rsum={rsum}/>
     <Analysis story={story} lang={lang} plainTitle={title(story)} plainSummary={sum(story)}/>
     <section className="cov">
