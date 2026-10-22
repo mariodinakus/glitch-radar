@@ -32,11 +32,11 @@ export const storylines:Storyline[]=[
 const storylineById=Object.fromEntries(storylines.map(s=>[s.id,s]));
 export const getStoryline=(id:string)=>storylineById[id] as Storyline|undefined;
 
-export type Section='foryou'|'top'|'wars'|'markets'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'society'|'saved';
+export type Section='foryou'|'top'|'wars'|'markets'|'world'|'economy'|'tech'|'greece'|'science'|'climate'|'sports'|'latest'|'society'|'saved'|'investigate';
 
 export type Story=StoryCase & {
  image?:string;kind:EventClass;importance:number;level:'top'|'major'|'watch';
- storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'|'wars'|'markets'|'society'>;
+ storylines:string[];greek:boolean;section:Exclude<Section,'foryou'|'top'|'latest'|'saved'|'wars'|'markets'|'society'|'investigate'>;
 };
 
 const GREEK_SOURCES=/^(ΕΡΤ|Ναυτεμπορική|Πρώτο Θέμα|Καθημερινή|in\.gr)/u;

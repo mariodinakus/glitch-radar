@@ -7,12 +7,12 @@ import {CHANGES_KEY,SNAPSHOT_KEY,assessRevision,detectMatrixPatterns,updateHeadl
 import type {HeadlineRecord,HeadlineChange,MatrixFinding} from '@/lib/matrix-detection';
 
 type Lang='el'|'en';
-type Props={signals:Signal[];stories:Story[];lang:Lang;onOpen:(s:Story)=>void;titleFor:(s:Story)=>string};
+type Props={signals:Signal[];stories:Story[];lang:Lang;onOpen:(s:Story)=>void;titleFor:(s:Story)=>string;compact?:boolean;onAll?:()=>void};
 type Mode='all'|'changed'|'repeat'|'number'|'lonely';
 const cache=<T,>(key:string,initial:T):T=>{try{const raw=localStorage.getItem(key);return raw?JSON.parse(raw) as T:initial}catch{return initial}};
 const written=(key:string,value:unknown)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
 
-export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:Props){
+export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor,compact=false,onAll}:Props){
  const el=lang==='el';
  const [changes,setChanges]=useState<HeadlineChange[]>([]);
  const [archive,setArchive]=useState<HeadlineChange[]>([]);
@@ -52,7 +52,7 @@ export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:
  const all=[...materialChanges.slice().reverse().map(c=>({type:'changed' as const,id:c.id+'|'+c.after,change:c})),
    ...findings.map(f=>({type:f.kind as 'repeat'|'number'|'lonely',id:f.id,finding:f}))];
  const sorted=mode==='all'?all:all.filter(x=>x.type===mode);
- const shown=expanded?sorted.slice(0,18):sorted.slice(0,6);
+ const shown=expanded?sorted.slice(0,18):sorted.slice(0,compact?3:6);
  const cnt=(k:Mode)=>k==='changed'?materialChanges.length:findings.filter(f=>f.kind===k).length;
  const label=(elText:string,enText:string)=>el?elText:enText;
  const date=(dateStr:string)=>new Date(dateStr).toLocaleString(el?'el-GR':'en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -93,8 +93,9 @@ export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor}:
     label('Δεν έχουμε εντοπίσει ακόμη αλλαγή στον ίδιο τίτλο/URL σε αυτή τη συσκευή. Η σύγκριση αρχίζει αφού το GLITCH αποθηκεύσει το πρώτο στιγμιότυπο και ξαναφορτώσει τη ροή.',
     'No same-URL headline revision has been observed on this device. First a snapshot must be saved, then the feed must be fetched again.'):
     label('Δεν υπάρχουν ενδείξεις αυτής της κατηγορίας στο διαθέσιμο δείγμα.','No matching finding in the monitored sample.')}</p>}
-  {!expanded&&sorted.length>6&&<button className="bc-more" onClick={()=>setExpanded(true)}>{label('Περισσότερα ευρήματα','More findings')} ({sorted.length-6}) ↓</button>}
+  {!expanded&&sorted.length>(compact?3:6)&&<button className="bc-more" onClick={()=>setExpanded(true)}>{label('Περισσότερα ευρήματα','More findings')} ({sorted.length-6}) ↓</button>}
   {expanded&&<button className="bc-more" onClick={()=>setExpanded(false)}>{label('Λιγότερα','Show fewer')} ↑</button>}
+  {compact&&onAll&&<button className="bc-explore" onClick={onAll}>{label('Άνοιξε όλο το ραντάρ & τα κενά κάλυψης','Open the full investigation & coverage radar')} ↗</button>}
   {routineCount>0&&<p className="bc-routine">{routineCount} {label('αλλαγές χαμηλής σημασίας δεν μετρήθηκαν ως σημαντικά ευρήματα.','low-significance updates excluded from notable findings.')}</p>}
   <footer className="bc-foot"><Info size={16}/>
    <span>{label('Σημαντικό: η «μαύρη γάτα» δείχνει διαφορά ανάμεσα σε δύο εκδόσεις της ροής που αποθηκεύτηκαν σε αυτόν τον browser — όχι επαληθευμένη αλλαγή στην ιστοσελίδα του εκδότη. Αντίγραφα και διαφορετικά ποσοστά μπορεί να έχουν απολύτως αθώες εξηγήσεις. Δεν υπάρχει παρακολούθηση στο παρασκήνιο ή καθολική βάση ιστορικού.',
