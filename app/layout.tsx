@@ -2,6 +2,8 @@ import type {Metadata,Viewport} from 'next';
 import './glitch-news.css';
 import './society.css';
 import './conflict-atlas.css';
+import './investigation.css';
+import './investigation-extra.css';
 export const metadata:Metadata={
  title:'GLITCH RADAR — The Black Cat News Detector',
  description:'GLITCH finds observable inconsistencies and source echoes in global English-language reporting, with keyless Black Cat analysis and source-linked War Room.',
