@@ -99,7 +99,7 @@ function sectionFor(lead:Signal,lines:string[],greek:boolean):Story['section']{
  if(technology.test(h))return 'tech';
  if(science.test(h))return 'science';
  if(c==='ai'||c==='tech')return 'tech';
- if(c==='science'||c==='space'||c==='health')return 'science';
+ if(c==='science'||c==='space')return 'science';
  if(c==='climate'||c==='nature'||c==='earth')return 'climate';
  if(c==='economy'||c==='energy')return 'economy';
  return 'world';
