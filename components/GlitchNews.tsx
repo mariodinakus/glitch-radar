@@ -11,6 +11,8 @@ import type {IndicatorGroup} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
+import {WorldSituationRoom} from '@/components/WorldSituationRoom';
+import {buildWorldCases} from '@/lib/world-pulse';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
 import NarrativeDNA from '@/components/NarrativeDNA';
@@ -376,6 +378,7 @@ export default function GlitchNews(){
 
  /* derived lists */
  const visible=useMemo(()=>stories.filter(s=>!s.storylines.some(l=>prefs.mute.includes(l))),[stories,prefs.mute]);
+ const mapCases=useMemo(()=>buildWorldCases(signals,72,80),[signals]);
  const hero=useMemo(()=>{const pick=diverseTop(visible.filter(s=>s.section!=='sports'&&s.section!=='greece'),6,{needImage:true,perLine:1});return pick.length>=3?pick:diverseTop(visible,6,{perLine:1})},[visible]);
  const heroIds=useMemo(()=>new Set(hero.map(h=>h.id)),[hero]);
  const themes=useMemo(()=>storylineSummaries(visible),[visible]);
@@ -429,6 +432,12 @@ export default function GlitchNews(){
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
+     <div className="gn-jumpbar" aria-label={lang==='el'?'Άμεση πρόσβαση στις αναλύσεις':'Quick intelligence navigation'}>
+      <div className="gn-jumpbar-intro"><span>GLITCH / COMMAND CENTER</span><strong>{lang==='el'?'Μην διαβάζεις τα πάντα. Βρες τι μετράει.':'Less noise. More signal.'}</strong></div>
+      <button onClick={()=>go('world')}><b>01 · WORLD</b><strong>{lang==='el'?'Διαδραστικός χάρτης':'Interactive globe'}</strong><span>{visible.filter(s=>s.section==='world').length} {lang==='el'?'ιστορίες στο δείγμα':'sample stories'} →</span></button>
+      <button onClick={()=>go('investigate')}><b>02 · BLACK CAT</b><strong>{lang==='el'?'Έρευνα & αλλαγές':'Investigate & compare'}</strong><span>{lang==='el'?'Κοινό ιστορικό RSS όπου υπάρχει':'Shared RSS history when available'} →</span></button>
+      <button onClick={()=>go('economy')}><b>03 · ECONOMY</b><strong>{lang==='el'?'Οικονομικές εξελίξεις':'Economic developments'}</strong><span>{visible.filter(s=>s.section==='economy').length} {lang==='el'?'ιστορίες':'stories'} →</span></button>
+     </div>
      <Hero slides={hero} {...ctx}/>
      <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
@@ -456,7 +465,7 @@ export default function GlitchNews(){
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
     section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/></div>:
-    section==='world'?<><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
+    section==='world'?<><WorldSituationRoom cases={mapCases} lang={lang} titleFor={s=>s.title} summaryFor={s=>s.summary} onOpen={c=>{const linked=stories.find(s=>s.reports.some(r=>c.reports.some(cr=>cr.id===r.id)));if(linked)openStory(linked);else window.open(c.headline.url,'_blank','noopener,noreferrer')}}/><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:

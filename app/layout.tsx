@@ -2,6 +2,7 @@ import type {Metadata,Viewport} from 'next';
 import './glitch-news.css';
 import './society.css';
 import './conflict-atlas.css';
+import './situation.css';
 import './investigation.css';
 import './investigation-extra.css';
 export const metadata:Metadata={
