@@ -1,6 +1,7 @@
 import type {Category,Signal,SourceStatus} from './types';
 import {rssField,rssPlainText,googleNewsPreview} from './rss-text';
 import {isEnglishForeignOutlet} from './source-policy';
+import {classifyNews} from './news-category';
 
 type NewsSource={name:string;url:string;category:Category;limit:number};
 const feeds:NewsSource[]=[
@@ -116,10 +117,6 @@ function imageFromItem(item:string):{imageUrl?:string;imageCredit?:string}{
 const hash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return (h>>>0).toString(36)};
 const safeUrl=(s:string)=>{try{const x=new URL(s);if(x.protocol==='https:')return x.toString()}catch{}return null};
 const important=/\b(first ever|first time|record[- ]breaking|unprecedented|breakthrough|discovered|discovery|rare|mystery|mysterious|historic|surprise|unexpected|warning|emergency|alert|massive|major|crisis|scientists discover|new evidence|astonishing|shock|unusual|incredible|global|historic high|all-time high)\b/i;
-const aiPattern=/\b(artificial intelligence|generative ai|machine learning|chatgpt|openai|deepmind|anthropic|llm|large language model|robotics|humanoid robot|ai model|ai-powered|ai agents?)\b/i;
-const climatePattern=/\b(climate|heatwave|warming|emissions|carbon|drought|flooding|wildfire|temperature record|ocean heat)\b/i;
-const energyPattern=/\b(energy|renewables|nuclear|fusion|oil|gas|solar power|wind power|electricity grid|power station|hydrogen)\b/i;
-function classify(base:Category,title:string,summary:string):Category{const txt=title+' '+summary;if(base==='tech'&&aiPattern.test(txt))return 'ai';if(base==='science'&&climatePattern.test(txt))return 'climate';if(base==='climate'&&energyPattern.test(txt)&&!climatePattern.test(txt))return 'energy';if(base==='economy'&&energyPattern.test(title))return 'energy';return base}
 // A keyword appearing inside a film title or a review is NOT a breaking geopolitical event.
 const cultureNotBreaking=/\b(review|theatre|theater|film|movie|trailer|series|novel|book review|album|concert|drama|thriller|fiction|game|entertainment|art exhibit|box office)\b|κριτική|ταινία|θεατρικ|σειρά|μυθιστόρημα|βιβλίο|παράσταση|θέατρο/iu;
 const protestHeadline=/\b(protests?|protesters?|demonstrat(?:ion|ions|ors|or)|mass march|riots?|political unrest|general strike|anti-government rally)\b|διαδηλ|διαμαρτυρ|συλλαλητ|απεργ|αντικυβερνητικ/iu;
@@ -147,7 +144,7 @@ async function readFeed(src:NewsSource):Promise<Signal[]>{const ctl=new AbortCon
   const publisher=src.name.startsWith('Google News /')?field(t,'source'):''; 
   const attribution=publisher?publisher.slice(0,95):src.name;
   if(!isEnglishForeignOutlet(attribution,title,link))return null;
-  const cat=classify(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
+  const cat=classifyNews(src.category,title,description);const media=imageFromItem(t);const score=priority(title,timestamp);const level:Signal['level']=score>=90?'critical':score>=73?'high':'elevated';
   return {id:'rss-'+hash(src.name+link),category:cat,title,summary:description||'The publisher provides no detailed preview. Open the original report for context.',score,level,timestamp:new Date(timestamp).toISOString(),source:attribution,url:link,...media,details:[`Published by: ${attribution}`,`Discovered via: ${src.name}`,`Feed: ${src.url}`,`Original publication: ${dateRaw}`],metricLabel:'COVERAGE',metricValue:'NEW ARTICLE',reason:'Editorial discovery weight based on recency and headline wording; keyword matching does not verify unusualness, severity or factual accuracy.',confidence:'publisher' as const} as Signal;
  }).filter((x):x is Signal=>x!==null).slice(0,src.limit)
  }finally{clearTimeout(timer)}}

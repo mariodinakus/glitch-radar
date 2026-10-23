@@ -90,16 +90,16 @@ export default function BlackCatDetector({signals,stories,lang,onOpen,titleFor,c
     </div>
    </article>))}</div>:
    <p className="bc-empty">{mode==='changed'?
-    label('Δεν έχουμε εντοπίσει ακόμη αλλαγή στον ίδιο τίτλο/URL σε αυτή τη συσκευή. Η σύγκριση αρχίζει αφού το GLITCH αποθηκεύσει το πρώτο στιγμιότυπο και ξαναφορτώσει τη ροή.',
-    'No same-URL headline revision has been observed on this device. First a snapshot must be saved, then the feed must be fetched again.'):
+    label('Δεν έχουν εντοπιστεί αλλαγές τίτλων στο διαθέσιμο κοινό αρχείο ή στη συσκευή. Το κοινό αρχείο ενημερώνεται μόνο κατά την προγραμματισμένη δειγματοληψία, εφόσον είναι ενεργοποιημένο.',
+    'No headline revisions were found in the available shared archive or on this device. The shared archive updates only during scheduled samples, when configured.'):
     label('Δεν υπάρχουν ενδείξεις αυτής της κατηγορίας στο διαθέσιμο δείγμα.','No matching finding in the monitored sample.')}</p>}
   {!expanded&&sorted.length>(compact?3:6)&&<button className="bc-more" onClick={()=>setExpanded(true)}>{label('Περισσότερα ευρήματα','More findings')} ({sorted.length-6}) ↓</button>}
   {expanded&&<button className="bc-more" onClick={()=>setExpanded(false)}>{label('Λιγότερα','Show fewer')} ↑</button>}
   {compact&&onAll&&<button className="bc-explore" onClick={onAll}>{label('Άνοιξε όλο το ραντάρ & τα κενά κάλυψης','Open the full investigation & coverage radar')} ↗</button>}
   {routineCount>0&&<p className="bc-routine">{routineCount} {label('αλλαγές χαμηλής σημασίας δεν μετρήθηκαν ως σημαντικά ευρήματα.','low-significance updates excluded from notable findings.')}</p>}
   <footer className="bc-foot"><Info size={16}/>
-   <span>{label('Σημαντικό: η «μαύρη γάτα» δείχνει διαφορά ανάμεσα σε δύο εκδόσεις της ροής που αποθηκεύτηκαν σε αυτόν τον browser — όχι επαληθευμένη αλλαγή στην ιστοσελίδα του εκδότη. Αντίγραφα και διαφορετικά ποσοστά μπορεί να έχουν απολύτως αθώες εξηγήσεις. Δεν υπάρχει παρακολούθηση στο παρασκήνιο ή καθολική βάση ιστορικού.',
-   'Important: Black Cat compares two feed versions saved in this browser, not independently verified publisher-page revisions. Similar headlines and different percentages may have innocent explanations. There is no background monitoring or globally shared archive.')}</span>
+   <span>{label('Σημαντικό: Το Black Cat συγκρίνει στιγμιότυπα RSS που έχουν αποθηκευτεί στη συσκευή και, όταν είναι διαθέσιμο, στο κοινό αρχείο server. Η προγραμματισμένη δειγματοληψία δεν είναι συνεχής παρακολούθηση ούτε επιβεβαίωση αλλαγής στην ιστοσελίδα του εκδότη. Παρόμοιοι τίτλοι ή διαφορετικά ποσοστά μπορεί να έχουν αθώες εξηγήσεις.',
+   'Important: Black Cat compares RSS snapshots saved on this device and, when available, in a shared server archive. Scheduled samples are not continuous monitoring or verification of publisher-page edits. Similar headlines and different figures may have innocent explanations.')}</span>
   </footer>
  </section>;
 }

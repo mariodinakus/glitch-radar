@@ -62,15 +62,23 @@ function tokens(title:string):string[]{
  // light stemming so "strikes"/"strike", "Iranian"/"Iran" collapse
  return [...new Set(words.map(w=>w.length>6?w.slice(0,6):w.replace(/(ies|es|s)$/,'')))];
 }
-type Group={reports:Signal[];keys:Set<string>;actors:Set<string>;t:number};
-function similar(g:Group,keys:string[],actors:string[],t:number):boolean{
- if(Math.abs(g.t-t)>48*3600000)return false;
- const common=keys.filter(k=>g.keys.has(k)).length;
- if(common<2)return false;
- const jac=common/new Set([...g.keys,...keys]).size;
- const sharedActor=actors.length===0||g.actors.size===0||actors.some(a=>g.actors.has(a));
- if(!sharedActor)return false;
- return jac>=.22||common>=4;
+type Group={reports:Signal[];keys:Set<string>;actors:Set<string>;t:number;anchorKeys:Set<string>;anchorCompanies:Set<string>};
+/**
+ * Conservative story-cluster matching. A group's accumulated keywords can be
+ * broad after many reports: require agreement with the first report too.
+ * Distinct explicitly named companies are not treated as the same incident.
+ */
+function similar(g:Group,keys:string[],actors:string[],t:number,companies:string[]):boolean{
+ if(Math.abs(g.t-t)>36*3600000)return false;
+ if(companies.length&&g.anchorCompanies.size&&!companies.some(c=>g.anchorCompanies.has(c)))return false;
+ const sharedActors=actors.length===0||g.actors.size===0||actors.some(a=>g.actors.has(a));
+ if(!sharedActors)return false;
+ const shared=keys.filter(k=>g.keys.has(k)).length;
+ const anchored=keys.filter(k=>g.anchorKeys.has(k)).length;
+ if(shared<3||anchored<3)return false;
+ const groupOverlap=shared/new Set([...g.keys,...keys]).size;
+ const anchorOverlap=anchored/new Set([...g.anchorKeys,...keys]).size;
+ return anchorOverlap>=.34&&(groupOverlap>=.25||anchored>=5);
 }
 
 function sectionFor(lead:Signal,lines:string[],greek:boolean):Story['section']{
@@ -86,7 +94,8 @@ function sectionFor(lead:Signal,lines:string[],greek:boolean):Story['section']{
  const science=/\b(nasa|esa|spacecraft|astronauts?|lunar|moon mission|mars mission|meteor shower|telescope|scientists? discover|researchers? find)\b/i;
  if(climate.test(h))return 'climate';
  if(conflict.test(h))return 'world';
- if(finance.test(h))return 'economy';
+ if(c==='health')return 'science';
+ if(finance.test(h)&&!/\b(clinical|vaccine|hospital|patients?|cancer|melanoma|surgeons?)\b/i.test(h))return 'economy';
  if(technology.test(h))return 'tech';
  if(science.test(h))return 'science';
  if(c==='ai'||c==='tech')return 'tech';
@@ -120,14 +129,15 @@ export function buildStories(signals:Signal[],now=Date.now()):Story[]{
   const norm=s.title.toLocaleLowerCase().replace(/\s+-\s+[^-]+$/,'').trim();
   if(seen.has(s.source+'|'+norm))continue;seen.add(s.source+'|'+norm);
   const keys=tokens(s.title.replace(/\s+-\s+[^-]{2,60}$/,''));
-  const actors=actorsMentioned(s).map(a=>a.id);
+  const actors=actorsMentioned({title:s.title,summary:''}).map(a=>a.id);
+  const companies=actors.filter(a=>a.startsWith('m:'));
   const t=Date.parse(s.timestamp);
   // Only compare with groups that share at least one key (inverted index keeps this fast at 1,500+ items).
   const cand=new Set<number>();for(const k of keys)for(const gi of index.get(k)||[])cand.add(gi);
   let g:Group|undefined;let gi=-1;
-  for(const i of [...cand].sort((a,b)=>a-b)){if(similar(groups[i],keys,actors,t)){g=groups[i];gi=i;break}}
+  for(const i of [...cand].sort((a,b)=>a-b)){if(similar(groups[i],keys,actors,t,companies)){g=groups[i];gi=i;break}}
   if(g){if(g.reports.length<30){g.reports.push(s);if(g.reports.length<=4)keys.forEach(k=>{if(!g!.keys.has(k)){g!.keys.add(k);index.set(k,[...(index.get(k)||[]),gi])}});actors.forEach(a=>g!.actors.add(a));}}
-  else{groups.push({reports:[s],keys:new Set(keys),actors:new Set(actors),t});const ni=groups.length-1;for(const k of keys)index.set(k,[...(index.get(k)||[]),ni]);}
+  else{groups.push({reports:[s],keys:new Set(keys),actors:new Set(actors),t,anchorKeys:new Set(keys),anchorCompanies:new Set(companies)});const ni=groups.length-1;for(const k of keys)index.set(k,[...(index.get(k)||[]),ni]);}
  }
  return groups.map(g=>{
   const reports=g.reports;
