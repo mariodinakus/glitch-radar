@@ -1,6 +1,6 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import type {Signal} from '@/lib/types';
+import type {Signal,SourceStatus} from '@/lib/types';
 import {buildStories,diverseTop,forYou,leanMix,leanOf,storylineSummaries,storylines,getStoryline} from '@/lib/stories';
 import type {Lean,Prefs,Section,Story,StorylineSummary} from '@/lib/stories';
 import {conflictSummaries} from '@/lib/conflicts';
@@ -26,6 +26,9 @@ import type {BlindspotReport} from '@/lib/blindspots';
 import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
+import EconomyHealthDesk from '@/components/EconomyHealthDesk';
+import ChangeRadar from '@/components/ChangeRadar';
+import SourceHealthPanel from '@/components/SourceHealthPanel';
 import {getGlitchClient,cleanPrefs} from '@/lib/glitch-auth';
 
 /* ───────────── copy ───────────── */
@@ -276,6 +279,7 @@ type TrendItem={id:string;name:string;traffic:string|null;url:string;relatedHead
 export default function GlitchNews(){
  const [signals,setSignals]=useState<Signal[]>([]);
  const [blindspots,setBlindspots]=useState<BlindspotReport|undefined>(undefined);
+ const [sourceStatuses,setSourceStatuses]=useState<SourceStatus[]>([]);
  const [state,setState]=useState<'loading'|'ready'|'error'>('loading');
  const [updated,setUpdated]=useState<string>('');
  const [section,setSection]=useState<Section>('top');
@@ -341,9 +345,9 @@ export default function GlitchNews(){
   try{
    const r=await fetch('/api/feed',{cache:'no-store',signal:controller.signal});
    if(!r.ok)throw Error('feed');
-   const d=await r.json() as {signals:Signal[];generatedAt:string;blindspots?:BlindspotReport};
+   const d=await r.json() as {signals:Signal[];generatedAt:string;blindspots?:BlindspotReport;sources?:SourceStatus[]};
    if(d.generatedAt!==latestStamp.current){latestStamp.current=d.generatedAt;setSignals(d.signals||[])}
-   setBlindspots(d.blindspots);setUpdated(d.generatedAt);setState('ready');
+   setBlindspots(d.blindspots);setSourceStatuses(d.sources||[]);setUpdated(d.generatedAt);setState('ready');
   }catch{setState(s=>s==='ready'?'ready':'error')}
   finally{clearTimeout(timeout);if(inflight.current===controller)inflight.current=null}
  },[]);
@@ -436,8 +440,10 @@ export default function GlitchNews(){
       <div className="gn-jumpbar-intro"><span>GLITCH / COMMAND CENTER</span><strong>{lang==='el'?'Μην διαβάζεις τα πάντα. Βρες τι μετράει.':'Less noise. More signal.'}</strong></div>
       <button onClick={()=>go('world')}><b>01 · WORLD</b><strong>{lang==='el'?'Διαδραστικός χάρτης':'Interactive globe'}</strong><span>{visible.filter(s=>s.section==='world').length} {lang==='el'?'ιστορίες στο δείγμα':'sample stories'} →</span></button>
       <button onClick={()=>go('investigate')}><b>02 · BLACK CAT</b><strong>{lang==='el'?'Έρευνα & αλλαγές':'Investigate & compare'}</strong><span>{lang==='el'?'Κοινό ιστορικό RSS όπου υπάρχει':'Shared RSS history when available'} →</span></button>
-      <button onClick={()=>go('economy')}><b>03 · ECONOMY</b><strong>{lang==='el'?'Οικονομικές εξελίξεις':'Economic developments'}</strong><span>{visible.filter(s=>s.section==='economy').length} {lang==='el'?'ιστορίες':'stories'} →</span></button>
+      <button onClick={()=>go('economy')}><b>03 · ECONOMY</b><strong>World economy health</strong><span>GDP · PRICES · JOBS →</span></button>
      </div>
+     <ChangeRadar stories={visible} onOpen={openStory}/>
+     <EconomyHealthDesk compact onExpand={()=>go('economy')}/>
      <Hero slides={hero} {...ctx}/>
      <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
@@ -464,12 +470,13 @@ export default function GlitchNews(){
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
-    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/></div>:
+    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/><SourceHealthPanel sources={sourceStatuses} generatedAt={updated}/></div>:
     section==='world'?<><WorldSituationRoom cases={mapCases} lang={lang} titleFor={s=>s.title} summaryFor={s=>s.summary} onOpen={c=>{const linked=stories.find(s=>s.reports.some(r=>c.reports.some(cr=>cr.id===r.id)));if(linked)openStory(linked);else window.open(c.headline.url,'_blank','noopener,noreferrer')}}/><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:
-    section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
+    section==='economy'?<><EconomyHealthDesk/><SectionView heading={t.economy} stories={bySection('economy')} themes={themes.filter(x=>x.stories.some(s=>s.section==='economy')).slice(0,8)} onPick={l=>go('economy',l)} {...ctx}/></>:
+     section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
     section==='latest'?<ListView heading={t.latest} stories={latest} {...ctx}/>:
     section==='saved'?<ListView heading={t.saved} stories={stories.filter(s=>prefs.saved.includes(s.id))} empty={t.emptySaved} {...ctx}/>:
     <SectionView heading={t[section]} stories={bySection(section)} themes={themes.filter(x=>x.stories.some(s=>s.section===section)).slice(0,8)} onPick={l=>go(section,l)} {...ctx}/>

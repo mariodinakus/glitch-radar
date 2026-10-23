@@ -3,6 +3,7 @@ import './glitch-news.css';
 import './society.css';
 import './conflict-atlas.css';
 import './situation.css';
+import './economy-observatory.css';
 import './investigation.css';
 import './investigation-extra.css';
 export const metadata:Metadata={

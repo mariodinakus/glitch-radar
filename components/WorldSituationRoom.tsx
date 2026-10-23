@@ -53,7 +53,7 @@ export function WorldSituationRoom({cases,lang,titleFor,summaryFor,onOpen}:Props
     <div className="situation-map-caption"><span><Globe2 size={16}/>{trans(lang,'ΧΑΡΤΗΣ ΠΑΓΚΟΣΜΙΩΝ ΕΙΔΗΣΕΩΝ','WORLD NEWS MAP')}</span><button onClick={()=>setExpanded(true)}><Expand size={15}/>{trans(lang,'Μεγέθυνση','Expand')}</button></div>
     <WorldGlobe signals={mapSignals} onChoose={hit} selected={selected||undefined} compact countryMentions language={lang}/>
     <div className="situation-pin-strip">
-     {hotspots.length?hotspots.slice(0,7).map(p=><button key={p.key} onClick={()=>setSelected(p.story.id)} className={selected===p.key?'active':''}><MapPin size={12}/>{lang==='el'?p.location.el:p.location.en}</button>):
+     {hotspots.length?hotspots.slice(0,7).map(p=><button key={p.key} onClick={()=>setSelected(p.story.id)} className={selected===p.story.id?'active':''}><MapPin size={12}/>{lang==='el'?p.location.el:p.location.en}</button>):
       <p>{trans(lang,'Δεν υπάρχουν ειδήσεις με αναγνωρίσιμη αναφορά χώρας στο τρέχον δείγμα.','No country-referenced event markers in the current feed sample.')}</p>}
     </div>
    </div>
