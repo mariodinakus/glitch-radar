@@ -64,7 +64,7 @@ export function extractWdiHistory(
   const ids=[o.countryiso3code,o.country?.id].map(x=>(x||'').toUpperCase());
   return o.indicator?.id===code&&ids.some(id=>aliases.includes(id))
    &&typeof o.value==='number'&&Number.isFinite(o.value)
-   &&/^\\d{4}$/.test(o.date||'')&&Number(o.date)<=latestYear
+   &&String(o.date||'').length===4&&Number.isInteger(Number(o.date))&&Number(o.date)<=latestYear
    &&Number(o.date)>=latestYear-10;
  }).map(o=>({year:Number(o.date),value:o.value as number}))
   .sort((a,b)=>b.year-a.year)
