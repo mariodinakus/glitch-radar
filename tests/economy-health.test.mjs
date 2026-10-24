@@ -44,3 +44,16 @@ test('World Bank provider aggregate codes map to WLD and Euro area',async()=>{
  assert.deepEqual(extractWdiHistory(rows,'CHN','FP.CPI.TOTL.ZG',2026),[{year:2024,value:0.2}]);
  assert.equal(extractWdiHistory(rows,'GRC','FP.CPI.TOTL.ZG',2026).length,0);
 });
+
+test('ISO-2 fallback and duplicated annual records produce one real observation per year',async()=>{
+ const {extractWdiHistory}=await import('../lib/economy-health.ts');
+ const rows=[
+  {country:{id:'US'},indicator:{id:'NY.GDP.MKTP.KD.ZG'},date:'2025',value:2.3},
+  {country:{id:'US'},indicator:{id:'NY.GDP.MKTP.KD.ZG'},date:'2025',value:2.3},
+  {country:{id:'US'},indicator:{id:'NY.GDP.MKTP.KD.ZG'},date:'2024',value:2.0},
+  {country:{id:'GR'},indicator:{id:'NY.GDP.MKTP.KD.ZG'},date:'2025',value:null}
+ ];
+ const history=extractWdiHistory(rows,'USA','NY.GDP.MKTP.KD.ZG',2026);
+ assert.deepEqual(history,[{year:2025,value:2.3},{year:2024,value:2}]);
+ assert.deepEqual(extractWdiHistory(rows,'GRC','NY.GDP.MKTP.KD.ZG',2026),[]);
+});
