@@ -13,7 +13,7 @@ export type MacroCode=(typeof MACRO_INDICATORS)[number]['code'];
 export type MacroStatus='good'|'watch'|'bad'|'unknown';
 export type MacroObservation={year:number;value:number};
 export type MacroRow={code:MacroCode;history:MacroObservation[];current:MacroObservation|null;previous:MacroObservation|null};
-export type MacroResponse={updatedAt:string;source:string;regions:Record<MacroRegion,MacroRow[]>;methodology:string};
+export type MacroResponse={updatedAt:string;source:string;regions:Record<MacroRegion,MacroRow[]>;methodology:string;missingIndicators?:MacroCode[]};
 export type MacroAssessment={status:MacroStatus;reason:string;trend:'improving'|'deteriorating'|'flat'|'unknown';stale:boolean};
 export function assessMacro(code:MacroCode,current:MacroObservation|null,previous:MacroObservation|null,now:number):MacroAssessment{
  if(!current||!Number.isFinite(current.value))return {status:'unknown',reason:'No official observation published.',trend:'unknown',stale:false};
@@ -36,4 +36,38 @@ export function summarizeMacro(rows:MacroRow[],now:number){
  const counts={good:0,watch:0,bad:0,unknown:0};
  for(const r of rows)counts[assessMacro(r.code,r.current,r.previous,now).status]++;
  return {counts,available:rows.length-counts.unknown};
+}
+/** World Bank sends country.id in ISO-2 / provider aggregate codes,
+ * while the dashboard routes use ISO-3 codes. Use both explicitly.
+ * Examples: USA => US, GRC => GR, WLD => 1W, EMU => XC.
+ */
+export type WorldBankDatum={
+ country?:{id?:string;value?:string};
+ countryiso3code?:string;
+ indicator?:{id?:string};
+ date?:string;
+ value?:number|null;
+};
+const WORLD_BANK_ALIASES:Record<MacroRegion,string[]>={
+ WLD:['WLD','1W'],
+ USA:['USA','US'],
+ EMU:['EMU','XC'],
+ CHN:['CHN','CN'],
+ GRC:['GRC','GR']
+};
+export function extractWdiHistory(
+ observations:WorldBankDatum[],region:MacroRegion,code:MacroCode,latestYear:number
+):MacroObservation[]{
+ const aliases=WORLD_BANK_ALIASES[region];
+ const years=new Set<number>();
+ return observations.filter(o=>{
+  const ids=[o.countryiso3code,o.country?.id].map(x=>(x||'').toUpperCase());
+  return o.indicator?.id===code&&ids.some(id=>aliases.includes(id))
+   &&typeof o.value==='number'&&Number.isFinite(o.value)
+   &&/^\\d{4}$/.test(o.date||'')&&Number(o.date)<=latestYear
+   &&Number(o.date)>=latestYear-10;
+ }).map(o=>({year:Number(o.date),value:o.value as number}))
+  .sort((a,b)=>b.year-a.year)
+  .filter(o=>years.has(o.year)?false:(years.add(o.year),true))
+  .slice(0,9);
 }

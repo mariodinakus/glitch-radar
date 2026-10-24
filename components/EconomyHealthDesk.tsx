@@ -37,6 +37,7 @@ export default function EconomyHealthDesk({compact=false,onExpand}:Props){
   {loading&&!data&&<div className="eh-loading"><RefreshCcw size={15}/> Retrieving official annual figures…</div>}
   {failed&&!data&&<div className="eh-error"><ShieldAlert size={18}/> Official macro data unavailable. No synthetic figures substituted. <button onClick={()=>void retry()}>Retry</button></div>}
   {data&&<>
+   {!!data.missingIndicators?.length&&<div className="eh-error" role="status"><ShieldAlert size={17}/> Some published series are temporarily unavailable ({data.missingIndicators.length} of {MACRO_INDICATORS.length}). Existing official readings remain visible. <button onClick={()=>void retry()}>Retry</button></div>}
    {!compact&&<div className="eh-regions" role="group" aria-label="Economy selection">{MACRO_REGIONS.map(r=><button key={r.code} className={r.code===region?'active':''} aria-pressed={r.code===region} onClick={()=>setRegion(r.code)}>{r.label}</button>)}</div>}
    <div className="eh-overview"><div><small>{compact?'WORLD':'REGION / '+MACRO_REGIONS.find(r=>r.code===region)?.label.toUpperCase()}</small><strong>{headline}</strong><p>Screening guide — never a composite economic-health index, probability or forecast.</p></div>
     <div className="eh-counts">{(['good','watch','bad','unknown'] as MacroStatus[]).map(k=><div className={'eh-count eh-'+k} key={k}><b>{summary.counts[k]}</b><span>{labels[k]}</span></div>)}</div>
