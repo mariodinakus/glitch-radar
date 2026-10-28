@@ -18,7 +18,7 @@ const patterns:Rule[]=[
  {kind:'ai',lens:'ai',rx:/\b(?:new ai model|ai model release|semiconductor restrictions?|chip export restrictions?|ai breakthrough|ai regulation|ai law|major cyberattack|cyberattack on|artificial intelligence regulation|artificial intelligence breakthrough)\b|τεχνητ[ήής] νοημοσύν.*(?:νόμ|κανονισμ)|ημιαγωγ.*περιορισμ/iu,weight:23,reason:'major technology or regulation in the headline'},
  {kind:'other',lens:'health',rx:/\b(?:pandemic|public health emergency|disease outbreak|virus outbreak|epidemic|vaccine approval)\b|πανδημ|επιδημί/iu,weight:25,reason:'public health development in the headline'}
 ];
-const noise=/^(?:opinion|column|editorial|podcast|review|analysis):|\b(?:reviews?|takeaways|celebrity|star signs|horoscope|streaming show|music video|sports scores|best \d+|top \d+)\b|\b(?:uefa|fifa|premier league|europa league)\b.{0,80}\b(?:match|game|tournament)\b|γνώμη|τηλεοπτικ[ήής] σειρά|ζώδι/iu;
+const noise=/^(?:opinion|column|editorial|podcast|review|analysis):|\b(?:reviews?|takeaways|celebrity|star signs|horoscope|streaming show|music video|sports scores|best \d+|top \d+|war room|world war (?:i{1,3}|1|2|one|two)|first world war|second world war|wwi|wwii)\b|\b(?:what['’]s|what is) behind\b|\bwhat comes next\b|\b(?:uefa|fifa|premier league|europa league)\b.{0,80}\b(?:match|game|tournament)\b|γνώμη|τηλεοπτικ[ήής] σειρά|ζώδι/iu;
 const eventTypeFromTopic=(t:string):EventClass=>{
  if(t==='conflict')return 'conflict';if(t==='protest')return 'protest';if(t==='disaster')return 'disaster';if(t==='economy'||t==='energy')return 'economy';if(t==='technology')return 'ai';return 'other';
 };
