@@ -65,7 +65,11 @@
 .situation-spotlight-content>p{font-size:12px;color:#d6e2e4;line-height:1.75;margin:0 0 15px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .situation-spotlight-sources{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .situation-spotlight-sources strong{font-size:10px;color:#ffb391;margin-right:4px}
-.situation-spotlight-sources>span{border:1px solid #ffffff50;color:#e7eeee;background:#ffffff17;padding:5px 7px;border-radius:5px;font-size:10px;font-weight:760}
+.situation-spotlight-sources>a{border:1px solid #ffffff70;color:#f5ffff;background:#ffffff17;padding:7px 9px;border-radius:5px;font-size:10px;font-weight:760;text-decoration:none}
+.situation-spotlight-sources>a:hover,.situation-spotlight-sources>a:focus-visible{background:#ffffff36;text-decoration:underline}
+.situation-why{border-left:2px solid #f6ad8c;padding:0 0 0 10px;margin:0 0 15px}
+.situation-why strong{font-size:9px;letter-spacing:.08em;color:#ffd1b8}
+.situation-why p{font-size:11px;line-height:1.55;color:#edf5f4;margin:5px 0 0}
 .situation-story-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:19px}
 .situation-story-actions>button{display:flex;align-items:center;gap:8px;background:#f39876;border:0;border-radius:7px;color:#182d35;font-size:11px;font-weight:950;padding:12px 14px}
 .situation-story-actions>button:hover{background:#ffb693}
@@ -92,7 +96,7 @@
 .situation-expanded .globe-stage{min-height:390px}
 .situation-expanded .globe-stage canvas{width:min(100%,510px)}
 @media(max-width:1150px){.situation-hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,.87fr)}.situation-spotlight{min-height:505px}.situation-brief-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.globe-stage{min-height:270px}.globe-stage canvas{width:min(100%,360px)}}
-@media(max-width:960px){.situation-hero-grid{grid-template-columns:1fr}.situation-globe-column{min-height:0}.situation-spotlight{border-left:0;border-top:1px solid #3c5964;min-height:380px}.situation-spotlight-content h3{font-size:30px}.globe-stage{min-height:360px}.globe-stage canvas{width:min(100%,460px)}}
+@media(max-width:960px){.situation-hero-grid{grid-template-columns:1fr}.situation-globe-column{min-height:0}.situation-spotlight{order:-1;border-left:0;border-bottom:1px solid #3c5964;min-height:380px}.situation-spotlight-content h3{font-size:30px}.globe-stage{min-height:360px}.globe-stage canvas{width:min(100%,460px)}}
 @media(max-width:760px){.situation-heading{padding:19px 15px}.situation-heading-row{display:block}.situation-heading-row h2{font-size:29px}.situation-heading-row>span{display:block;margin:4px 0 10px}.situation-heading>p{font-size:10px}.situation-map-caption{padding:13px 13px 0}.globe-stage{min-height:320px}.globe-stage canvas{width:min(100%,400px)}.situation-spotlight{min-height:420px}.situation-spotlight-content{padding:19px}.situation-spotlight-content h3{font-size:26px}.situation-briefing{padding:15px 12px}.situation-brief-title{display:block}.situation-brief-title>small{display:block;margin-top:8px}.situation-brief-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.situation-brief-photo{height:95px}.situation-expanded .globe-stage{min-height:310px}.situation-expanded .globe-stage canvas{width:min(100%,425px)}.discover-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.discover-tabs button{font-size:10px;gap:4px;padding:12px 5px}.discover-tabs button svg{width:13px;height:13px}}
 @media(max-width:450px){.globe-stage{min-height:290px}.globe-stage canvas{width:min(100%,330px)}.globe-topline>span{display:none}.situation-spotlight{min-height:455px}.situation-spotlight-content h3{font-size:24px}.situation-spotlight-content>p{-webkit-line-clamp:3}.situation-brief-photo{height:86px}.situation-brief-copy>strong{font-size:10px}.situation-brief-copy{padding:9px}.situation-brief-title>span{font-size:9px}.situation-expanded .globe-stage canvas{width:min(100%,340px)}.situation-expanded .globe-stage{min-height:260px}.discover-tabs button{flex-direction:column;gap:4px;padding:8px 3px}}
 @media(prefers-reduced-motion:reduce){.situation-brief-cards *{transition:none!important}}

@@ -12,7 +12,7 @@ import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
 import {WorldSituationRoom} from '@/components/WorldSituationRoom';
-import {buildWorldCases} from '@/lib/world-pulse';
+import {rankMajorEvents} from '@/lib/major-events';
 import {tidyNewsExcerpt} from '@/lib/translation-quality';
 import BlackCatDetector from '@/components/BlackCatDetector';
 import NarrativeDNA from '@/components/NarrativeDNA';
@@ -382,14 +382,14 @@ export default function GlitchNews(){
 
  /* derived lists */
  const visible=useMemo(()=>stories.filter(s=>!s.storylines.some(l=>prefs.mute.includes(l))),[stories,prefs.mute]);
- const mapCases=useMemo(()=>buildWorldCases(signals,72,80),[signals]);
- const hero=useMemo(()=>{const pick=diverseTop(visible.filter(s=>s.section!=='sports'&&s.section!=='greece'),6,{needImage:true,perLine:1});return pick.length>=3?pick:diverseTop(visible,6,{perLine:1})},[visible]);
+ const important=useMemo(()=>rankMajorEvents(visible,120),[visible]);
+ const hero=useMemo(()=>diverseTop(important,6,{perLine:1}),[important]);
  const heroIds=useMemo(()=>new Set(hero.map(h=>h.id)),[hero]);
  const themes=useMemo(()=>storylineSummaries(visible),[visible]);
- const top=useMemo(()=>{const list=diverseTop(visible.filter(s=>s.section!=='sports'),30,{exclude:heroIds,perLine:4});const img=list.filter(s=>s.image||og[s.id]),txt=list.filter(s=>!(s.image||og[s.id]));return [...img.slice(0,10),...txt,...img.slice(10)]},[visible,heroIds,og]);
+ const top=useMemo(()=>diverseTop(important,30,{exclude:heroIds,perLine:4}),[important,heroIds]);
  const shown=useMemo(()=>new Set([...heroIds,...top.slice(0,22).map(s=>s.id)]),[heroIds,top]);
  const railOf=useCallback((sec:Section)=>{const l=visible.filter(s=>s.section===sec&&!shown.has(s.id)).slice(0,18);return [...l.filter(s=>withImg(s)),...l.filter(s=>!withImg(s))].slice(0,14)},[visible,shown,withImg]);
- const mostCovered=useMemo(()=>[...visible].filter(s=>s.sources.length>1).sort((a,b)=>b.sources.length-a.sources.length||b.importance-a.importance).slice(0,6),[visible]);
+ const mostCovered=useMemo(()=>[...important].filter(s=>s.sources.length>1).sort((a,b)=>b.sources.length-a.sources.length||b.importance-a.importance).slice(0,6),[important]);
  const latest=useMemo(()=>[...visible].sort((a,b)=>Date.parse(b.lastAt)-Date.parse(a.lastAt)),[visible]);
  const bySection=useCallback((sec:Section)=>visible.filter(s=>s.section===sec),[visible]);
  const mine=useMemo(()=>forYou(stories,prefs),[stories,prefs]);
@@ -435,6 +435,7 @@ export default function GlitchNews(){
     <SearchView hits={searchHits} q={q} {...ctx}/>:
     line?<StorylineView id={line} stories={visible.filter(s=>s.storylines.includes(line))} onBack={()=>go(section)} {...ctx}/>:
     section==='top'?<>
+     <WorldSituationRoom cases={visible} lang={lang} titleFor={cleanTitle} summaryFor={s=>tidyNewsExcerpt(cleanSummary(s.summary),cleanTitle(s))} onOpen={c=>{const linked=stories.find(s=>s.id===c.id);if(linked)openStory(linked)}}/>
      <div className="manifesto"><span className="g-glitch big" data-t="GLITCH">GLITCH</span><p>{lang==='el'?<>Στο Matrix, το <b>glitch</b> είναι η στιγμή που βλέπεις τον κώδικα πίσω από την «πραγματικότητα». Εδώ βλέπεις <b>ποιος</b> γράφει κάθε είδηση, <b>πώς</b> την πλαισιώνει και <b>τι</b> αφήνει έξω.</>:<>In the Matrix, a <b>glitch</b> is the moment you see the code behind “reality”. Here you see <b>who</b> writes each story, <b>how</b> they frame it and <b>what</b> they leave out.</>}</p></div>
      <div className="gn-jumpbar" aria-label={lang==='el'?'Άμεση πρόσβαση στις αναλύσεις':'Quick intelligence navigation'}>
       <div className="gn-jumpbar-intro"><span>GLITCH / COMMAND CENTER</span><strong>{lang==='el'?'Μην διαβάζεις τα πάντα. Βρες τι μετράει.':'Less noise. More signal.'}</strong></div>
@@ -442,10 +443,10 @@ export default function GlitchNews(){
       <button onClick={()=>go('investigate')}><b>02 · BLACK CAT</b><strong>{lang==='el'?'Έρευνα & αλλαγές':'Investigate & compare'}</strong><span>{lang==='el'?'Κοινό ιστορικό RSS όπου υπάρχει':'Shared RSS history when available'} →</span></button>
       <button onClick={()=>go('economy')}><b>03 · ECONOMY</b><strong>World economy health</strong><span>GDP · PRICES · JOBS →</span></button>
      </div>
-     <ChangeRadar stories={visible} onOpen={openStory}/>
-     <EconomyHealthDesk compact onExpand={()=>go('economy')}/>
      <Hero slides={hero} {...ctx}/>
-     <GlobalBriefing compact stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
+     <GlobalBriefing compact stories={important} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
+     <ChangeRadar stories={important} onOpen={openStory}/>
+     <EconomyHealthDesk compact onExpand={()=>go('economy')}/>
      <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
@@ -471,7 +472,7 @@ export default function GlitchNews(){
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
     section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/><SourceHealthPanel sources={sourceStatuses} generatedAt={updated}/></div>:
-    section==='world'?<><WorldSituationRoom cases={mapCases} lang={lang} titleFor={s=>s.title} summaryFor={s=>s.summary} onOpen={c=>{const linked=stories.find(s=>s.reports.some(r=>c.reports.some(cr=>cr.id===r.id)));if(linked)openStory(linked);else window.open(c.headline.url,'_blank','noopener,noreferrer')}}/><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
+    section==='world'?<><WorldSituationRoom cases={visible} lang={lang} titleFor={cleanTitle} summaryFor={s=>tidyNewsExcerpt(cleanSummary(s.summary),cleanTitle(s))} onOpen={c=>{const linked=stories.find(s=>s.id===c.id);if(linked)openStory(linked)}}/><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:
