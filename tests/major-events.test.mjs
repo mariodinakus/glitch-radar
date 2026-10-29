@@ -54,7 +54,8 @@ test('recent lifestyle, company and opinion headlines cannot fill the major-even
   caseFor('tech','OpenAI launches a new emoji for office workers','technology',1,['BBC','Reuters','Guardian']),
   caseFor('review','Review: a new novel about war and politics','other',1,['BBC','Reuters','Guardian']),
   caseFor('historic','World War I bombs and grenades uncovered by melting glaciers','conflict',1,['BBC']),
-  caseFor('figurative','OpenAI launches election war room to track interference','technology',1,['BBC'])
+  caseFor('figurative','OpenAI launches election war room to track interference','technology',1,['BBC']),
+  caseFor('seaweed','Mexico declares war on seaweed on its beaches','other',1,['BBC'])
  ];
  const significant=caseFor('rate','Central bank cuts interest rates','economy');
  assert.deepEqual(rankMajorEvents([...ordinary,significant],12,now).map(x=>x.id),[significant.id]);

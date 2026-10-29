@@ -52,7 +52,7 @@ export function WorldSituationRoom({cases,lang,titleFor,summaryFor,onOpen}:Props
   window.addEventListener('keydown',key);
   return()=>window.removeEventListener('keydown',key);
  },[expanded]);
- const type=classNames[selectedInfo?.kind||'other'][lang==='el'?0:1];
+ const type=selectedInfo?.lens==='energy'?trans(lang,'ΕΝΕΡΓΕΙΑ','ENERGY'):selectedInfo?.lens==='tension'?trans(lang,'ΕΝΤΑΣΕΙΣ','TENSIONS'):classNames[selectedInfo?.kind||'other'][lang==='el'?0:1];
  const featured=top.slice(0,6);
  const photo=focus?.headline.imageUrl||focus?.reports.find(r=>r.imageUrl)?.imageUrl;
  const sourceLinks=(focus?.reports||[]).filter((r,i,all)=>
@@ -77,7 +77,7 @@ export function WorldSituationRoom({cases,lang,titleFor,summaryFor,onOpen}:Props
     {photo?<img key={photo} src={photo} alt="" loading="eager" onError={e=>{e.currentTarget.style.display='none'}}/>:<div className="situation-photoless"><Globe2 size={80} strokeWidth={.75}/></div>}
     <div className="situation-spotlight-shade"/>
     {focus?<div className="situation-spotlight-content">
-     <div className="situation-story-label"><span>{selectedInfo?.lens==='energy'?trans(lang,'ΕΝΕΡΓΕΙΑ','ENERGY'):type}</span><small>{time(focus.lastAt,lang)}</small></div>
+     <div className="situation-story-label"><span>{type}</span><small>{time(focus.lastAt,lang)}</small></div>
      <h3>{titleFor(focus.headline)}</h3>
      <p>{summaryFor(focus.headline)}</p>
      {selectedInfo?.lens&&<div className="situation-why"><strong>{trans(lang,'ΓΙΑΤΙ ΤΟ ΠΑΡΑΚΟΛΟΥΘΟΥΜΕ','WHY WE WATCH IT')}</strong><p>{whyWatch[selectedInfo.lens][lang==='el'?0:1]} {trans(lang,'Δες την πηγή για τις πραγματικές συνέπειες.','See the source for the actual effects.')}</p></div>}
@@ -90,7 +90,7 @@ export function WorldSituationRoom({cases,lang,titleFor,summaryFor,onOpen}:Props
    <div className="situation-brief-title"><span><Flame size={15}/>{trans(lang,'ΕΞΕΛΙΞΕΙΣ ΠΟΥ ΠΑΡΑΚΟΛΟΥΘΟΥΜΕ','DEVELOPMENTS TO WATCH')}</span><small>{trans(lang,'Επιλογή από τίτλους, χρονική εγγύτητα και αριθμό εκδοτών','Ranked from headlines, freshness and sampled publisher breadth')}</small></div>
    <div className="situation-brief-cards">{featured.map((c,i)=><button key={c.id} className={focus?.id===c.id?'active':''} onClick={()=>setSelected(c.id)}>
     <div className="situation-brief-photo">{c.headline.imageUrl?<img src={c.headline.imageUrl} alt="" loading="lazy" onError={e=>{e.currentTarget.style.display='none'}}/>:<Globe2 size={27}/>}<span>{String(i+1).padStart(2,'0')}</span></div>
-    <div className="situation-brief-copy"><small>{majorEventSignal(c).lens==='energy'?trans(lang,'ΕΝΕΡΓΕΙΑ','ENERGY'):classNames[majorEventSignal(c).kind][lang==='el'?0:1]}</small><strong>{titleFor(c.headline)}</strong><span>{majorEventSignal(c).publisherCount} {majorEventSignal(c).publisherCount===1?trans(lang,'εκδότης','publisher'):trans(lang,'εκδότες','publishers')} <ArrowRight size={13}/></span></div>
+    <div className="situation-brief-copy"><small>{majorEventSignal(c).lens==='energy'?trans(lang,'ΕΝΕΡΓΕΙΑ','ENERGY'):majorEventSignal(c).lens==='tension'?trans(lang,'ΕΝΤΑΣΕΙΣ','TENSIONS'):classNames[majorEventSignal(c).kind][lang==='el'?0:1]}</small><strong>{titleFor(c.headline)}</strong><span>{majorEventSignal(c).publisherCount} {majorEventSignal(c).publisherCount===1?trans(lang,'εκδότης','publisher'):trans(lang,'εκδότες','publishers')} <ArrowRight size={13}/></span></div>
    </button>)}</div>
   </div>
   <p className="situation-methodology">{trans(lang,'Αυτόματη επιλογή με βάση τον τίτλο, τη χρονική εγγύτητα και τους εκδότες του διαθέσιμου δείγματος. Δεν αποτελεί επαληθευμένη μέτρηση αντίκτυπου. Οι εικόνες προέρχονται από ειδησεογραφικές ροές όπου διατίθενται.','Automatically selected from headline wording, recency and publishers in the available sample. This is not a verified measure of impact. Images come from news feeds where available.')}</p>
