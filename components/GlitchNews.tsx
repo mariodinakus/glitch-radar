@@ -28,6 +28,7 @@ import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
 import EconomyHealthDesk from '@/components/EconomyHealthDesk';
 import ChangeRadar from '@/components/ChangeRadar';
+import IntelligenceSuite from '@/components/IntelligenceSuite';
 import SourceHealthPanel from '@/components/SourceHealthPanel';
 import {getGlitchClient,cleanPrefs} from '@/lib/glitch-auth';
 
@@ -471,7 +472,7 @@ export default function GlitchNews(){
      <Rail heading={t.science} stories={railOf('science')} onAll={()=>go('science')} {...ctx}/>
      <Rail heading={t.climate} stories={railOf('climate')} onAll={()=>go('climate')} {...ctx}/>
     </>:
-    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/><SourceHealthPanel sources={sourceStatuses} generatedAt={updated}/></div>:
+    section==='investigate'?<div className="investigate-hub"><div className="sec-head"><div><h2>Investigate the narrative</h2><p>Track measurable changes, compare headlines and examine possible coverage gaps. Signals are not verdicts.</p></div></div><IntelligenceSuite stories={visible} onOpen={openStory}/><BlackCatDetector signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/><StoryCoverageHeatmap stories={visible} lang={lang} onOpen={openStory}/><BlindspotBoard report={blindspots} language={lang}/><SourceHealthPanel sources={sourceStatuses} generatedAt={updated}/></div>:
     section==='world'?<><WorldSituationRoom cases={visible} lang={lang} titleFor={cleanTitle} summaryFor={s=>tidyNewsExcerpt(cleanSummary(s.summary),cleanTitle(s))} onOpen={c=>{const linked=stories.find(s=>s.id===c.id);if(linked)openStory(linked)}}/><GlobalBriefing stories={visible} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/><SectionView heading={t.world} stories={bySection('world')} themes={themes.filter(x=>x.stories.some(s=>s.section==='world')).slice(0,8)} onPick={l=>go('world',l)} {...ctx}/></>:
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
