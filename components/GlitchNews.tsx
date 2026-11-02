@@ -6,8 +6,7 @@ import type {Lean,Prefs,Section,Story,StorylineSummary} from '@/lib/stories';
 import {conflictSummaries} from '@/lib/conflicts';
 import {PublisherBubbles,StorySequence,PublisherStack,cleanSummary} from '@/components/Publishers';
 import type {ConflictSummary} from '@/lib/conflicts';
-import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
-import type {IndicatorGroup} from '@/lib/indicators';
+import {indicatorBySymbol} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
@@ -28,6 +27,7 @@ import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
 import EconomyHealthDesk from '@/components/EconomyHealthDesk';
 import MarketIntelligence from '@/components/MarketIntelligence';
+import MacroNowStrip from '@/components/MacroNowStrip';
 import ChangeRadar from '@/components/ChangeRadar';
 import IntelligenceSuite from '@/components/IntelligenceSuite';
 import SourceHealthPanel from '@/components/SourceHealthPanel';
@@ -145,22 +145,21 @@ function WarGlitch({stories,lang,title,onOpen}:{stories:Story[];lang:Lang;title:
  </section>;
 }
 
-/* ───────────── indicators ───────────── */
+/* ───────────── market quotes ───────────── */
 type Quote={symbol:string;price:number|null;prev:number|null;change:number|null;currency:string|null;time:string|null;spark:number[]};
-const fmt=(q:Quote)=>{const i=indicatorBySymbol(q.symbol);if(q.price===null)return '—';const d=i?.digits??(q.price>=1000?0:2);
- const n=q.price.toLocaleString('el-GR',{minimumFractionDigits:d,maximumFractionDigits:d});return i?.unit==='%'?n+'%':i?.unit==='¢'?n+'¢':(i?.unit||'')+n};
-const chg=(q:Quote)=>q.change===null?'':(q.change>0?'+':'')+q.change.toFixed(2)+'%';
-function Spark({data,up}:{data:number[];up:boolean}){
- if(data.length<3)return null;const mn=Math.min(...data),mx=Math.max(...data),r=mx-mn||1;
- const pts=data.map((v,i)=>`${(i/(data.length-1)*100).toFixed(1)},${(30-(v-mn)/r*28-1).toFixed(1)}`).join(' ');
- return <svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={pts} fill="none" stroke={up?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>;
-}
-const GROUPS:{g:IndicatorGroup;el:string;en:string}[]=[{g:'indices',el:'Χρηματιστήρια',en:'Stock markets'},{g:'energy',el:'Ενέργεια',en:'Energy'},{g:'metals',el:'Μέταλλα & αγροτικά',en:'Metals & agri'},{g:'fx',el:'Νομίσματα',en:'Currencies / FX'},{g:'crypto',el:'Κρυπτονομίσματα',en:'Cryptocurrency'},{g:'risk',el:'Επιτόκια & φόβος',en:'Rates & fear'}];
-function IndicatorCard({q,lang}:{q:Quote;lang:Lang}){
- const i=indicatorBySymbol(q.symbol);const up=(q.change??0)>=0;
- return <a className="ind" href={'https://finance.yahoo.com/quote/'+encodeURIComponent(q.symbol)} target="_blank" rel="noreferrer">
-  <div className="ind-top"><span>{lang==='el'?i?.el:i?.en}</span><em className={up?'up':'down'}>{chg(q)}</em></div>
-  <b>{fmt(q)}</b><Spark data={q.spark} up={(q.spark.at(-1)??0)>=(q.spark[0]??0)}/>
+
+function WarIndicatorCard({q}:{q:Quote}){
+ const ind=indicatorBySymbol(q.symbol);
+ const d=ind?.digits??(q.price!==null&&q.price>=1000?0:2);
+ const price=q.price===null?'—':(ind?.unit==='%'?'':ind?.unit||'')+q.price.toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d})+(ind?.unit==='%'?'%':'');
+ const trend=q.change===null?'':(q.change>0?'+':'')+q.change.toFixed(2)+'%';
+ const valid=q.spark.filter(x=>Number.isFinite(x));
+ const mn=valid.length?Math.min(...valid):0,mx=valid.length?Math.max(...valid):1,range=mx-mn||1;
+ const points=valid.length>2?valid.map((n,i)=>((i/(valid.length-1))*100).toFixed(1)+','+(28-(n-mn)/range*26).toFixed(1)).join(' '):null;
+ return <a className="ind" href={'https://finance.yahoo.com/quote/'+encodeURIComponent(q.symbol)} target="_blank" rel="noopener noreferrer">
+  <div className="ind-top"><span>{ind?.en||q.symbol}</span><em className={(q.change??0)>=0?'up':'down'}>{trend}</em></div>
+  <b>{price}</b>
+  {points&&<svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={points} fill="none" stroke={(q.change??0)>=0?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>}
  </a>;
 }
 type PM={id:string;venue:string;question:string;probability:number;sourceUrl:string;volume24h:number|null};
@@ -179,13 +178,10 @@ function MarketsView({quotes,stories,...ctx}:Ctx&{quotes:Quote[];stories:Story[]
  const {lang}=ctx;const pm=usePredictionMarkets();
  const econ=stories.filter(s=>s.section==='economy'||s.storylines.includes('energy')||s.storylines.includes('economy')).slice(0,40);
  return <div className="view">
-  <div className="view-head"><h1>{ctx.t.markets}</h1><span>Market data may be delayed · timestamps per quote</span></div>
+  <div className="view-head"><h1>{ctx.t.markets}</h1><span>One market dashboard · source-linked · timestamped quotes</span></div>
   <MarketIntelligence quotes={quotes}/>
-  {!quotes.length&&<div className="ax-wait"><i/><i/><i/><span>…</span></div>}
-  {GROUPS.map(({g,el,en})=>{const qs=INDICATORS.filter(i=>i.group===g).map(i=>quotes.find(q=>q.symbol===i.symbol)).filter((q):q is Quote=>!!q&&q.price!==null);
-   return qs.length?<section key={g} className="ind-group"><h2>{lang==='el'?el:en}</h2><div className="ind-grid">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div></section>:null})}
-  {pm.length>0&&<section className="ind-group"><h2>{lang==='el'?'Τι προεξοφλούν οι αγορές προβλέψεων':'What prediction markets price in'}</h2><PMList items={pm.slice(0,10)} lang={lang}/></section>}
-  <section className="ind-group"><h2>{lang==='el'?'Ειδήσεις αγορών & οικονομίας':'Markets & economy news'}</h2><Paged stories={econ} {...ctx}/></section>
+  {pm.length>0&&<section className="ind-group"><h2>Prediction markets</h2><PMList items={pm.slice(0,10)} lang={lang}/></section>}
+  <section className="ind-group"><h2>Markets & economy news</h2><Paged stories={econ} {...ctx}/></section>
  </div>;
 }
 
@@ -223,7 +219,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
   <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
    <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ροή ειδήσεων':'WAR ROOM · recent reporting'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
     <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
-  {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
+  {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><WarIndicatorCard key={q.symbol} q={q}/>)}</div>}
   <WarGlitch stories={cur.stories} lang={lang} title={title} onOpen={ctx.openStory}/>
   <section className="war-field-report" aria-label={el?'Ειδήσεις από το μέτωπο':'Frontline reporting'}>
     <header><strong>{el?'Απώλειες, έδαφος και μάχες':'Losses, territory and battles'}</strong>
@@ -485,7 +481,6 @@ export default function GlitchNews(){
      <Hero slides={hero} {...ctx}/>
      <GlobalBriefing compact stories={important} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <ChangeRadar stories={important} onOpen={openStory}/>
-     <EconomyHealthDesk compact onExpand={()=>go('economy')}/>
      <MarketIntelligence compact quotes={quotes} onExpand={()=>go('markets')}/>
      <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
@@ -516,7 +511,7 @@ export default function GlitchNews(){
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:
-    section==='economy'?<><MarketIntelligence quotes={quotes}/><EconomyHealthDesk/><SectionView heading={t.economy} stories={bySection('economy')} themes={themes.filter(x=>x.stories.some(s=>s.section==='economy')).slice(0,8)} onPick={l=>go('economy',l)} {...ctx}/></>:
+    section==='economy'?<><MacroNowStrip/><EconomyHealthDesk/><SectionView heading={t.economy} stories={bySection('economy')} themes={themes.filter(x=>x.stories.some(s=>s.section==='economy')).slice(0,8)} onPick={l=>go('economy',l)} {...ctx}/></>:
      section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
     section==='latest'?<ListView heading={t.latest} stories={latest} {...ctx}/>:
     section==='saved'?<ListView heading={t.saved} stories={stories.filter(s=>prefs.saved.includes(s.id))} empty={t.emptySaved} {...ctx}/>:
