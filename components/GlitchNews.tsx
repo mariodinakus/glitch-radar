@@ -6,6 +6,7 @@ import type {Lean,Prefs,Section,Story,StorylineSummary} from '@/lib/stories';
 import {conflictSummaries} from '@/lib/conflicts';
 import {PublisherBubbles,StorySequence,PublisherStack,cleanSummary} from '@/components/Publishers';
 import type {ConflictSummary} from '@/lib/conflicts';
+import {indicatorBySymbol} from '@/lib/indicators';
 import {SocietyDashboard} from '@/components/SocietyDashboard';
 import ConflictAtlas from '@/components/ConflictAtlas';
 import GlobalBriefing from '@/components/GlobalBriefing';
@@ -146,6 +147,21 @@ function WarGlitch({stories,lang,title,onOpen}:{stories:Story[];lang:Lang;title:
 
 /* ───────────── market quotes ───────────── */
 type Quote={symbol:string;price:number|null;prev:number|null;change:number|null;currency:string|null;time:string|null;spark:number[]};
+
+function WarIndicatorCard({q}:{q:Quote}){
+ const ind=indicatorBySymbol(q.symbol);
+ const d=ind?.digits??(q.price!==null&&q.price>=1000?0:2);
+ const price=q.price===null?'—':(ind?.unit==='%'?'':ind?.unit||'')+q.price.toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d})+(ind?.unit==='%'?'%':'');
+ const trend=q.change===null?'':(q.change>0?'+':'')+q.change.toFixed(2)+'%';
+ const valid=q.spark.filter(x=>Number.isFinite(x));
+ const mn=valid.length?Math.min(...valid):0,mx=valid.length?Math.max(...valid):1,range=mx-mn||1;
+ const points=valid.length>2?valid.map((n,i)=>((i/(valid.length-1))*100).toFixed(1)+','+(28-(n-mn)/range*26).toFixed(1)).join(' '):null;
+ return <a className="ind" href={'https://finance.yahoo.com/quote/'+encodeURIComponent(q.symbol)} target="_blank" rel="noopener noreferrer">
+  <div className="ind-top"><span>{ind?.en||q.symbol}</span><em className={(q.change??0)>=0?'up':'down'}>{trend}</em></div>
+  <b>{price}</b>
+  {points&&<svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={points} fill="none" stroke={(q.change??0)>=0?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>}
+ </a>;
+}
 type PM={id:string;venue:string;question:string;probability:number;sourceUrl:string;volume24h:number|null};
 function usePredictionMarkets(){
  const [m,setM]=useState<PM[]>([]);
@@ -203,7 +219,7 @@ function WarsView({stories,quotes,...ctx}:Ctx&{stories:Story[];quotes:Quote[]}){
   <div className="line-hero war-hero">{cover&&<Pic src={withImg(cover)} alt="" story={cover} eager/>}<div className="line-shade"/>
    <div className="line-copy"><span className="war-live"><i/>{el?'WAR ROOM · ροή ειδήσεων':'WAR ROOM · recent reporting'}</span><h1>{el?c.el:c.en}</h1><p>{el?c.descEl:c.descEn}</p>
     <div className="war-stats"><span><b>{cur.last24}</b>{el?'ιστορίες 24ώρου':'stories / 24h'}</span><span><b>{cur.stories.length}</b>{el?'ιστορίες 4 ημερών':'stories / 4 days'}</span><span><b>{cur.sources}</b>{t.sources}</span></div></div></div>
-  {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div>}
+  {qs.length>0&&<div className="ind-grid war-ind">{qs.map(q=><WarIndicatorCard key={q.symbol} q={q}/>)}</div>}
   <WarGlitch stories={cur.stories} lang={lang} title={title} onOpen={ctx.openStory}/>
   <section className="war-field-report" aria-label={el?'Ειδήσεις από το μέτωπο':'Frontline reporting'}>
     <header><strong>{el?'Απώλειες, έδαφος και μάχες':'Losses, territory and battles'}</strong>
