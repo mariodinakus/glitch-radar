@@ -59,3 +59,10 @@
 .root .quote,.root .signal,.root .event,.root .macroCard{box-shadow:inset 0 1px rgba(255,255,255,.025)}
 .root :is(button,a):focus-visible{outline:2px solid var(--gold,#e2b857);outline-offset:3px}
 .root a:hover{color:var(--tx,#efece6)}
+
+/* One quote grid for every market category. The old duplicate grid is removed. */
+.marketFilters{display:flex;gap:7px;flex-wrap:wrap;margin:19px 0 4px}
+.marketFilters button{border:1px solid var(--line,rgba(255,255,255,.12));border-radius:999px;background:var(--card2,#15161d);color:var(--tx2,#b9b7b1);padding:8px 12px;font-size:11px;font-weight:750;white-space:nowrap;transition:background .2s,border-color .2s}
+.marketFilters button:hover{border-color:var(--gold,#e2b857);color:var(--tx,#efece6)}
+.marketFilters .marketFilterActive{border-color:var(--gold,#e2b857);color:#0a0b0e;background:var(--gold,#e2b857)}
+@media(max-width:700px){.marketFilters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px}.marketFilters button{flex:none}}
