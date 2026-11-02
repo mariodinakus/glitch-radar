@@ -97,7 +97,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
     <div className={css.signal}><small>ILLUSTRATIVE RANGE</small><b>{formatPrice(selection,scenario.low)} – {formatPrice(selection,scenario.high)}</b><span>{forecastDays} {(/^(BTC|ETH|SOL)-USD$/.test(selection)?'calendar days':'trading sessions')} · NOT a probability interval</span></div>
     <div className={css.signal}><small>RECENT MOMENTUM</small><b>{model.direction==='up'?'UPWARD':model.direction==='down'?'DOWNWARD':'MIXED'}</b><span>Daily historical volatility: {number(model.volatilityPct)}%</span></div>
    </div>:<div className={css.empty}><ShieldAlert size={16}/> Current, sufficient price history is unavailable for this symbol. No forecast displayed.</div>}
-   <p className={css.disclaimer}>Method: last 5 daily log returns (momentum, capped at one daily historical standard deviation), 10–21 daily returns (volatility), ±1.645σ√h as an illustrative range. Not backtested or calibrated; news, gaps and market regime changes can invalidate it. 5 sessions are not necessarily 5 calendar days. Not financial advice.</p>
+   <p className={css.disclaimer}>Method: last 5 daily log returns (momentum, capped at one daily historical standard deviation), 10–21 daily returns (volatility), ±1.645 × stdev × √h as an illustrative range. Not backtested or calibrated; news, gaps and market regime changes can invalidate it. 5 sessions are not necessarily 5 calendar days. Not financial advice.</p>
   </div>}
   <div className={css.calendar}>
    <div className={css.sectionHeading}>
