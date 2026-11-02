@@ -27,6 +27,7 @@ import {glitchScore} from '@/lib/glitch-score';
 import MobileAppControls from '@/components/MobileAppControls';
 import UserProfile from '@/components/UserProfile';
 import EconomyHealthDesk from '@/components/EconomyHealthDesk';
+import MarketIntelligence from '@/components/MarketIntelligence';
 import ChangeRadar from '@/components/ChangeRadar';
 import IntelligenceSuite from '@/components/IntelligenceSuite';
 import SourceHealthPanel from '@/components/SourceHealthPanel';
@@ -154,7 +155,7 @@ function Spark({data,up}:{data:number[];up:boolean}){
  const pts=data.map((v,i)=>`${(i/(data.length-1)*100).toFixed(1)},${(30-(v-mn)/r*28-1).toFixed(1)}`).join(' ');
  return <svg className="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points={pts} fill="none" stroke={up?'var(--green)':'var(--red)'} strokeWidth="1.6" vectorEffect="non-scaling-stroke"/></svg>;
 }
-const GROUPS:{g:IndicatorGroup;el:string;en:string}[]=[{g:'indices',el:'Χρηματιστήρια',en:'Stock markets'},{g:'energy',el:'Ενέργεια',en:'Energy'},{g:'metals',el:'Μέταλλα & αγροτικά',en:'Metals & agri'},{g:'fx',el:'Νομίσματα & crypto',en:'FX & crypto'},{g:'risk',el:'Επιτόκια & φόβος',en:'Rates & fear'}];
+const GROUPS:{g:IndicatorGroup;el:string;en:string}[]=[{g:'indices',el:'Χρηματιστήρια',en:'Stock markets'},{g:'energy',el:'Ενέργεια',en:'Energy'},{g:'metals',el:'Μέταλλα & αγροτικά',en:'Metals & agri'},{g:'fx',el:'Νομίσματα',en:'Currencies / FX'},{g:'crypto',el:'Κρυπτονομίσματα',en:'Cryptocurrency'},{g:'risk',el:'Επιτόκια & φόβος',en:'Rates & fear'}];
 function IndicatorCard({q,lang}:{q:Quote;lang:Lang}){
  const i=indicatorBySymbol(q.symbol);const up=(q.change??0)>=0;
  return <a className="ind" href={'https://finance.yahoo.com/quote/'+encodeURIComponent(q.symbol)} target="_blank" rel="noreferrer">
@@ -178,7 +179,8 @@ function MarketsView({quotes,stories,...ctx}:Ctx&{quotes:Quote[];stories:Story[]
  const {lang}=ctx;const pm=usePredictionMarkets();
  const econ=stories.filter(s=>s.section==='economy'||s.storylines.includes('energy')||s.storylines.includes('economy')).slice(0,40);
  return <div className="view">
-  <div className="view-head"><h1>{ctx.t.markets}</h1><span>{lang==='el'?'Live δείκτες · καθυστέρηση ~15′':'Live indicators · ~15-min delay'}</span></div>
+  <div className="view-head"><h1>{ctx.t.markets}</h1><span>Market data may be delayed · timestamps per quote</span></div>
+  <MarketIntelligence quotes={quotes}/>
   {!quotes.length&&<div className="ax-wait"><i/><i/><i/><span>…</span></div>}
   {GROUPS.map(({g,el,en})=>{const qs=INDICATORS.filter(i=>i.group===g).map(i=>quotes.find(q=>q.symbol===i.symbol)).filter((q):q is Quote=>!!q&&q.price!==null);
    return qs.length?<section key={g} className="ind-group"><h2>{lang==='el'?el:en}</h2><div className="ind-grid">{qs.map(q=><IndicatorCard key={q.symbol} q={q} lang={lang}/>)}</div></section>:null})}
@@ -362,7 +364,7 @@ export default function GlitchNews(){
  },[fetchFeed]);
  useEffect(()=>{let live=true;fetch('/api/trends?region=WORLD').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.trends)setTrends(d.trends.slice(0,8))}).catch(()=>{});return()=>{live=false}},[]);
 
- useEffect(()=>{if(section!=='markets'&&section!=='wars')return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
+ useEffect(()=>{if(!['top','markets','wars','economy'].includes(section))return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
  const stories=useMemo(()=>buildStories(signals),[signals]);
  // og:image enrichment for stories without a picture
  const withImg=useCallback((s:Story)=>s.image||og[s.id]||undefined,[og]);
@@ -448,6 +450,7 @@ export default function GlitchNews(){
      <GlobalBriefing compact stories={important} lang={lang} titleFor={title} onOpen={openStory} onWars={()=>go('wars')} updatedAt={updated}/>
      <ChangeRadar stories={important} onOpen={openStory}/>
      <EconomyHealthDesk compact onExpand={()=>go('economy')}/>
+     <MarketIntelligence compact quotes={quotes} onExpand={()=>go('markets')}/>
      <BlackCatDetector compact onAll={()=>go('investigate')} signals={signals} stories={visible} lang={lang} titleFor={title} onOpen={openStory}/>
      <Themes themes={themes} onPick={l=>go(section,l)} {...ctx}/>
      <div className="split">
@@ -477,7 +480,7 @@ export default function GlitchNews(){
     section==='wars'?<WarsView stories={visible} quotes={quotes} {...ctx}/>:
     section==='markets'?<MarketsView quotes={quotes} stories={visible} {...ctx}/>:
      section==='society'?<SocietyDashboard lang={lang}/>:
-    section==='economy'?<><EconomyHealthDesk/><SectionView heading={t.economy} stories={bySection('economy')} themes={themes.filter(x=>x.stories.some(s=>s.section==='economy')).slice(0,8)} onPick={l=>go('economy',l)} {...ctx}/></>:
+    section==='economy'?<><MarketIntelligence quotes={quotes}/><EconomyHealthDesk/><SectionView heading={t.economy} stories={bySection('economy')} themes={themes.filter(x=>x.stories.some(s=>s.section==='economy')).slice(0,8)} onPick={l=>go('economy',l)} {...ctx}/></>:
      section==='foryou'?<ForYouView stories={mine} onPickLine={l=>go('foryou',l)} {...ctx}/>:
     section==='latest'?<ListView heading={t.latest} stories={latest} {...ctx}/>:
     section==='saved'?<ListView heading={t.saved} stories={stories.filter(s=>prefs.saved.includes(s.id))} empty={t.emptySaved} {...ctx}/>:
