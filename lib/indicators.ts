@@ -24,24 +24,9 @@ export const INDICATORS:Indicator[]=[
  {symbol:'USDJPY=X',el:'USD/JPY',en:'USD/JPY',group:'fx',digits:2},
  {symbol:'GBPUSD=X',el:'GBP/USD',en:'GBP/USD',group:'fx',digits:4},
  {symbol:'EURGBP=X',el:'EUR/GBP',en:'EUR/GBP',group:'fx',digits:4},
- {symbol:'BTC-USD',el:'Bitcoin',en:'Bitcoin',group:'crypto',unit:'
- {symbol:'^TNX',el:'Ομόλογο ΗΠΑ 10ετές',en:'US 10Y yield',group:'risk',unit:'%',digits:2,ticker:true},
- {symbol:'^VIX',el:'VIX (φόβος)',en:'VIX (fear)',group:'risk',ticker:true}
-];
-export const indicatorBySymbol=(s:string)=>INDICATORS.find(i=>i.symbol===s);
-,digits:0,ticker:true},
- {symbol:'ETH-USD',el:'Ethereum',en:'Ethereum',group:'crypto',unit:'
- {symbol:'^TNX',el:'Ομόλογο ΗΠΑ 10ετές',en:'US 10Y yield',group:'risk',unit:'%',digits:2,ticker:true},
- {symbol:'^VIX',el:'VIX (φόβος)',en:'VIX (fear)',group:'risk',ticker:true}
-];
-export const indicatorBySymbol=(s:string)=>INDICATORS.find(i=>i.symbol===s);
-,digits:0,ticker:true},
- {symbol:'SOL-USD',el:'Solana',en:'Solana',group:'crypto',unit:'
- {symbol:'^TNX',el:'Ομόλογο ΗΠΑ 10ετές',en:'US 10Y yield',group:'risk',unit:'%',digits:2,ticker:true},
- {symbol:'^VIX',el:'VIX (φόβος)',en:'VIX (fear)',group:'risk',ticker:true}
-];
-export const indicatorBySymbol=(s:string)=>INDICATORS.find(i=>i.symbol===s);
-,digits:2},
+ {symbol:'BTC-USD',el:'Bitcoin',en:'Bitcoin',group:'crypto',unit:'$',digits:0,ticker:true},
+ {symbol:'ETH-USD',el:'Ethereum',en:'Ethereum',group:'crypto',unit:'$',digits:0,ticker:true},
+ {symbol:'SOL-USD',el:'Solana',en:'Solana',group:'crypto',unit:'$',digits:2},
  {symbol:'^TNX',el:'Ομόλογο ΗΠΑ 10ετές',en:'US 10Y yield',group:'risk',unit:'%',digits:2,ticker:true},
  {symbol:'^VIX',el:'VIX (φόβος)',en:'VIX (fear)',group:'risk',ticker:true}
 ];
