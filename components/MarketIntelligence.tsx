@@ -1,7 +1,8 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
 import {Activity,ArrowRight,CalendarDays,Clock3,ExternalLink,RefreshCw,ShieldAlert,TrendingUp} from 'lucide-react';
-import {indicatorBySymbol} from '@/lib/indicators';
+import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
+import type {IndicatorGroup} from '@/lib/indicators';
 import {marketOutlook,type MarketQuote} from '@/lib/market-outlook';
 import type {CalendarEvent} from '@/lib/economic-calendar';
 import css from './MarketIntelligence.module.css';
@@ -9,8 +10,12 @@ import MacroNowStrip from './MacroNowStrip';
 
 type Props={quotes:MarketQuote[];compact?:boolean;onExpand?:()=>void};
 type CalendarResponse={generatedAt:string;horizonDays:number;events:CalendarEvent[];sources:{name:string;status:'ok'|'unavailable';url:string}[];methodology:string};
-const FOCUS=['^GSPC','^STOXX50E','GD.AT','BZ=F','TTF=F','EURUSD=X','BTC-USD','ETH-USD'];
+const FOCUS=['^GSPC','^STOXX50E','BZ=F','EURUSD=X','BTC-USD','ETH-USD'];
 const EXPANDED=['^GSPC','^IXIC','^STOXX50E','GD.AT','BZ=F','CL=F','TTF=F','GC=F','EURUSD=X','USDJPY=X','BTC-USD','ETH-USD','SOL-USD'];
+const MARKET_FILTERS:{id:'featured'|'all'|IndicatorGroup;label:string}[]=[
+ {id:'featured',label:'Key movers'},{id:'indices',label:'Stock indices'},{id:'energy',label:'Energy'},{id:'metals',label:'Commodities'},
+ {id:'fx',label:'Currencies'},{id:'crypto',label:'Crypto'},{id:'risk',label:'Rates & risk'},{id:'all',label:'All markets'}
+];
 const FORECAST_SYMBOLS=['^GSPC','^STOXX50E','GD.AT','BZ=F','CL=F','EURUSD=X','BTC-USD','ETH-USD','SOL-USD'];
 const number=(v:number,digits=2)=>v.toLocaleString('en-GB',{minimumFractionDigits:digits,maximumFractionDigits:digits});
 function formatPrice(symbol:string,v:number):string{
@@ -30,6 +35,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState(false);
  const [horizon,setHorizon]=useState<7|30|45>(7);
+ const [marketGroup,setMarketGroup]=useState<'featured'|'all'|IndicatorGroup>('featured');
  const [selection,setSelection]=useState<string>('^GSPC');
  const [forecastDays,setForecastDays]=useState<1|5>(5);
  const [now,setNow]=useState(0);
@@ -59,7 +65,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
  const scenario=model?.paths.find(p=>p.horizon===forecastDays);
  const upcoming=useMemo(()=>calendar?.events.filter(e=>Date.parse(e.at)>now-60000&&Date.parse(e.at)<now+horizon*86400000).slice(0,compact?3:14)||[],[calendar,horizon,compact,now]);
  const availableSources=calendar?.sources.filter(s=>s.status==='ok').length??0;
- const chosen=compact?FOCUS:EXPANDED;
+ const chosen=compact?FOCUS:marketGroup==='featured'?EXPANDED:marketGroup==='all'?INDICATORS.map(i=>i.symbol):INDICATORS.filter(i=>i.group===marketGroup).map(i=>i.symbol);
  return <section className={css.root} aria-label="GLITCH Market Intelligence">
   <div className={css.heading}>
    <div>
@@ -69,6 +75,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
    </div>
    {compact&&onExpand&&<button className={css.expand} onClick={onExpand}>Explore markets <ArrowRight size={15}/></button>}
   </div>
+  {!compact&&<div className={css.marketFilters} role="group" aria-label="Market categories">{MARKET_FILTERS.map(filter=><button key={filter.id} aria-pressed={marketGroup===filter.id} className={marketGroup===filter.id?css.marketFilterActive:''} onClick={()=>setMarketGroup(filter.id)}>{filter.label}</button>)}</div>}
   <div className={css.quoteGrid}>
    {chosen.map(symbol=>{
     const q=quoteMap.get(symbol);const name=indicatorBySymbol(symbol)?.en||symbol;
