@@ -366,6 +366,42 @@ export default function GlitchNews(){
 
  useEffect(()=>{if(!['top','markets','wars','economy'].includes(section))return;let live=true;const get=()=>fetch('/api/indicators').then(r=>r.ok?r.json():null).then(d=>{if(live&&d?.quotes)setQuotes(d.quotes)}).catch(()=>{});get();const id=setInterval(get,5*60000);return()=>{live=false;clearInterval(id)}},[section]);
  const stories=useMemo(()=>buildStories(signals),[signals]);
+ // English-first editorial presentation. Translate a bounded sample of Greek
+ // feed headlines/excerpts using the app's existing server endpoint. Originals
+ // remain accessible at publisher URLs; failed translations never invent copy.
+ const [englishCopy,setEnglishCopy]=useState<Record<string,{title:string;summary?:string}>>({});
+ const englishAttempted=useRef(new Set<string>());
+ useEffect(()=>{
+  if(!stories.length||englishAttempted.current.size>=20)return;
+  const pending=stories.slice(0,45).filter(st=>hasGreek(cleanTitle(st.headline))&&!englishAttempted.current.has(st.id))
+   .slice(0,Math.max(0,20-englishAttempted.current.size));
+  if(!pending.length)return;
+  pending.forEach(st=>englishAttempted.current.add(st.id));
+  let live=true;const controller=new AbortController();
+  const run=async()=>{
+   for(let i=0;i<pending.length;i+=4){
+    if(!live)return;
+    const batch=pending.slice(i,i+4);
+    try{
+     const r=await fetch('/api/translate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({target:'en',items:batch.map(st=>({id:st.id,title:cleanTitle(st.headline),summary:summaryOf(st).slice(0,260)}))}),
+      signal:controller.signal
+     });
+     if(!r.ok)continue;
+     const d=await r.json() as {items?:Array<{id:string;title:string;summary:string;translated:boolean}>};
+     const accepted:Record<string,{title:string;summary?:string}>={};
+     for(const item of d.items||[]){
+      if(!batch.some(st=>st.id===item.id)||!item.title||hasGreek(item.title)||item.title.length<6)continue;
+      accepted[item.id]={title:item.title,...(item.summary&&!hasGreek(item.summary)?{summary:item.summary}:{})};
+     }
+     if(live&&Object.keys(accepted).length)setEnglishCopy(prev=>({...prev,...accepted}));
+    }catch{if(controller.signal.aborted)return}
+   }
+  };
+  void run();
+  return()=>{live=false;controller.abort()};
+ },[stories]);
  // og:image enrichment for stories without a picture
  const withImg=useCallback((s:Story)=>s.image||og[s.id]||undefined,[og]);
  const ogBusy=useRef(false);
@@ -378,8 +414,8 @@ export default function GlitchNews(){
    .finally(()=>{ogBusy.current=false});
  },[stories,og]);
 
- const title=useCallback((st:Story)=>cleanTitle(st.headline),[]);
- const sum=useCallback((st:Story)=>tidyNewsExcerpt(summaryOf(st),cleanTitle(st.headline)),[]);
+ const title=useCallback((st:Story)=>englishCopy[st.id]?.title||cleanTitle(st.headline),[englishCopy]);
+ const sum=useCallback((st:Story)=>englishCopy[st.id]?.summary||tidyNewsExcerpt(summaryOf(st),cleanTitle(st.headline)),[englishCopy]);
  const rsum=useCallback((r:Signal)=>r.summary&&!GOOGLE_PLACEHOLDER.test(r.summary)?tidyNewsExcerpt(cleanSummary(r.summary),cleanTitle(r)).slice(0,320):'',[]);
  const rtitle=useCallback((r:Signal)=>cleanTitle(r),[]);
 
