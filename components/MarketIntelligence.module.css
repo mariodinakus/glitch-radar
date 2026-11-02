@@ -46,3 +46,11 @@
 .empty,.warning{display:flex;align-items:center;gap:8px;padding:12px 14px;border-radius:10px;background:var(--soft,#f3f6f6);color:var(--muted,#607378);font-size:12px;margin-top:12px}
 .warning{background:rgba(230,160,36,.08);border:1px solid rgba(230,160,36,.25)}
 @media(max-width:700px){.root{padding:15px;margin:16px 0}.quoteGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.scenario{grid-template-columns:1fr}.event{grid-template-columns:99px minmax(0,1fr) 12px;gap:8px;padding:11px}.eventDate strong,.eventText>strong{font-size:11px}.eventText>small{display:none}}
+
+.macro{margin-top:24px;padding-top:24px;border-top:1px solid var(--line,#dfe6e9)}
+.macroGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(166px,1fr));gap:9px;margin-top:14px}
+.macroCard{display:flex;flex-direction:column;gap:9px;text-decoration:none;background:var(--soft,#f3f6f6);border:1px solid var(--line,#dfe6e9);border-radius:12px;padding:14px;color:var(--ink,#182631)}
+.macroCard:hover{border-color:var(--accent,#26715a)}
+.macroCard>strong{font-size:24px;letter-spacing:-.04em}
+.macroLabel{font-size:11px;font-weight:780;line-height:1.5}
+.macroCard>small{color:var(--muted,#607378);font-size:10px;line-height:1.45}
