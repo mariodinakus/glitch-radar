@@ -5,6 +5,7 @@ import {indicatorBySymbol} from '@/lib/indicators';
 import {marketOutlook,type MarketQuote} from '@/lib/market-outlook';
 import type {CalendarEvent} from '@/lib/economic-calendar';
 import css from './MarketIntelligence.module.css';
+import MacroNowStrip from './MacroNowStrip';
 
 type Props={quotes:MarketQuote[];compact?:boolean;onExpand?:()=>void};
 type CalendarResponse={generatedAt:string;horizonDays:number;events:CalendarEvent[];sources:{name:string;status:'ok'|'unavailable';url:string}[];methodology:string};
@@ -18,7 +19,7 @@ function formatPrice(symbol:string,v:number):string{
  const value=number(v,digits);
  return spec?.unit==='%'?value+'%':spec?.unit==='¢'?value+'¢':(spec?.unit||'')+value;
 }
-const dateDisplay=(iso:string,precise=true)=>new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',...(precise?{hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(iso));
+const dateDisplay=(iso:string,precise=true)=>new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',timeZone:'Europe/Athens',...(precise?{hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(iso));
 const countdown=(at:string,now:number)=>{
  if(!now)return '—';
  const minutes=Math.max(0,Math.ceil((Date.parse(at)-now)/60000));
@@ -84,6 +85,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
     </a>;
    })}
   </div>
+  <MacroNowStrip compact={compact}/>
   {!compact&&<div className={css.forecast}>
    <div className={css.sectionHeading}>
     <div><span className={css.eyebrow}><TrendingUp size={13}/> FORECAST RADAR / EXPERIMENTAL</span><h3>Statistical scenarios, not certainties</h3></div>
@@ -99,7 +101,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
   </div>}
   <div className={css.calendar}>
    <div className={css.sectionHeading}>
-    <div><span className={css.eyebrow}><CalendarDays size={13}/> OFFICIAL ECONOMIC CALENDAR</span><h3>Coming up next</h3><p>Πότε δημοσιεύονται τα επόμενα σημαντικά στοιχεία — τοπική ώρα συσκευής.</p></div>
+    <div><span className={css.eyebrow}><CalendarDays size={13}/> OFFICIAL ECONOMIC CALENDAR</span><h3>Coming up next</h3><p>Πότε δημοσιεύονται τα επόμενα σημαντικά στοιχεία — ώρα Ελλάδας (Europe/Athens).</p></div>
     {!compact&&<div className={css.switch}>{([7,30,45] as const).map(days=><button key={days} className={horizon===days?css.active:''} aria-pressed={horizon===days} onClick={()=>setHorizon(days)}>{days}d</button>)}</div>}
    </div>
    {calendar&&<div className={css.sourceLine}><Clock3 size={13}/> {availableSources}/{calendar.sources.length} official schedules available · Checked {dateDisplay(calendar.generatedAt)}</div>}
