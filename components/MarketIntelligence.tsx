@@ -12,18 +12,18 @@ type CalendarResponse={generatedAt:string;horizonDays:number;events:CalendarEven
 const FOCUS=['^GSPC','^STOXX50E','GD.AT','BZ=F','TTF=F','EURUSD=X','BTC-USD','ETH-USD'];
 const EXPANDED=['^GSPC','^IXIC','^STOXX50E','GD.AT','BZ=F','CL=F','TTF=F','GC=F','EURUSD=X','USDJPY=X','BTC-USD','ETH-USD','SOL-USD'];
 const FORECAST_SYMBOLS=['^GSPC','^STOXX50E','GD.AT','BZ=F','CL=F','EURUSD=X','BTC-USD','ETH-USD','SOL-USD'];
-const number=(v:number,digits=2)=>v.toLocaleString('el-GR',{minimumFractionDigits:digits,maximumFractionDigits:digits});
+const number=(v:number,digits=2)=>v.toLocaleString('en-GB',{minimumFractionDigits:digits,maximumFractionDigits:digits});
 function formatPrice(symbol:string,v:number):string{
  const spec=indicatorBySymbol(symbol);
  const digits=spec?.digits??(v>=1000?0:v<10?4:2);
  const value=number(v,digits);
  return spec?.unit==='%'?value+'%':spec?.unit==='¢'?value+'¢':(spec?.unit||'')+value;
 }
-const dateDisplay=(iso:string,precise=true)=>new Intl.DateTimeFormat('el-GR',{day:'2-digit',month:'short',timeZone:'Europe/Athens',...(precise?{hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(iso));
+const dateDisplay=(iso:string,precise=true)=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',timeZone:'Europe/Athens',...(precise?{hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(iso));
 const countdown=(at:string,now:number)=>{
  if(!now)return '—';
  const minutes=Math.max(0,Math.ceil((Date.parse(at)-now)/60000));
- return minutes<60?'σε '+minutes+'′':minutes<1440?'σε '+Math.floor(minutes/60)+'ω '+minutes%60+'′':'σε '+Math.ceil(minutes/1440)+' ημέρες';
+ return minutes<60?'in '+minutes+'m':minutes<1440?'in '+Math.floor(minutes/60)+'h '+minutes%60+'m':'in '+Math.ceil(minutes/1440)+'d';
 };
 export default function MarketIntelligence({quotes,compact=false,onExpand}:Props){
  const [calendar,setCalendar]=useState<CalendarResponse|null>(null);
@@ -65,7 +65,7 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
    <div>
     <span className={css.eyebrow}><Activity size={13}/> GLITCH / MARKET INTELLIGENCE</span>
     <h2>{compact?'Markets & what’s next':'Markets. Signals. What comes next.'}<em>.</em></h2>
-    <p>{compact?'Δείκτες αγορών και οι αμέσως επόμενες σημαντικές οικονομικές ανακοινώσεις.':'Χρηματιστήρια · πετρέλαιο & φυσικό αέριο · νομίσματα · crypto · επίσημες ανακοινώσεις · στατιστικά σενάρια'}</p>
+    <p>{compact?'Market prices and the next major economic releases.':'Stocks · oil & gas · currencies · crypto · official releases · statistical scenarios'}</p>
    </div>
    {compact&&onExpand&&<button className={css.expand} onClick={onExpand}>Explore markets <ArrowRight size={15}/></button>}
   </div>
@@ -97,11 +97,11 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
     <div className={css.signal}><small>ILLUSTRATIVE RANGE</small><b>{formatPrice(selection,scenario.low)} – {formatPrice(selection,scenario.high)}</b><span>{forecastDays} {(/^(BTC|ETH|SOL)-USD$/.test(selection)?'calendar days':'trading sessions')} · NOT a probability interval</span></div>
     <div className={css.signal}><small>RECENT MOMENTUM</small><b>{model.direction==='up'?'UPWARD':model.direction==='down'?'DOWNWARD':'MIXED'}</b><span>Daily historical volatility: {number(model.volatilityPct)}%</span></div>
    </div>:<div className={css.empty}><ShieldAlert size={16}/> Current, sufficient price history is unavailable for this symbol. No forecast displayed.</div>}
-   <p className={css.disclaimer}>Method: last 5 daily log returns (momentum, capped at one daily historical standard deviation), 10–21 daily returns (volatility), ±1.645σ√h as an illustrative range. Not backtested or calibrated; news, gaps and market regime changes can invalidate it. 5 sessions are not necessarily 5 calendar days. Δεν αποτελεί επενδυτική σύσταση.</p>
+   <p className={css.disclaimer}>Method: last 5 daily log returns (momentum, capped at one daily historical standard deviation), 10–21 daily returns (volatility), ±1.645 × stdev × √h as an illustrative range. Not backtested or calibrated; news, gaps and market regime changes can invalidate it. 5 sessions are not necessarily 5 calendar days. Not financial advice.</p>
   </div>}
   <div className={css.calendar}>
    <div className={css.sectionHeading}>
-    <div><span className={css.eyebrow}><CalendarDays size={13}/> OFFICIAL ECONOMIC CALENDAR</span><h3>Coming up next</h3><p>Πότε δημοσιεύονται τα επόμενα σημαντικά στοιχεία — ώρα Ελλάδας (Europe/Athens).</p></div>
+    <div><span className={css.eyebrow}><CalendarDays size={13}/> OFFICIAL ECONOMIC CALENDAR</span><h3>Coming up next</h3><p>See when the next major releases are scheduled — Athens time (Europe/Athens).</p></div>
     {!compact&&<div className={css.switch}>{([7,30,45] as const).map(days=><button key={days} className={horizon===days?css.active:''} aria-pressed={horizon===days} onClick={()=>setHorizon(days)}>{days}d</button>)}</div>}
    </div>
    {calendar&&<div className={css.sourceLine}><Clock3 size={13}/> {availableSources}/{calendar.sources.length} official schedules available · Checked {dateDisplay(calendar.generatedAt)}</div>}
