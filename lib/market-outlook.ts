@@ -4,7 +4,7 @@
  * 20-session historical volatility. Bands are illustrative scenario ranges,
  * not calibrated probabilities or prediction intervals.
  */
-export type MarketQuote={symbol:string;price:number|null;time:string|null;spark:number[]};
+export type MarketQuote={symbol:string;price:number|null;time:string|null;spark:number[];change?:number|null};
 export type Outlook={symbol:string;asOf:string;observations:number;volatilityPct:number;momentumPct:number;direction:'up'|'down'|'flat';paths:{horizon:1|5;center:number;low:number;high:number}[];method:'momentum-vol-v1'};
 export function marketOutlook(q:MarketQuote,now=new Date()):Outlook|null{
  const history=q.spark.filter(x=>Number.isFinite(x)&&x>0).slice(-22);
