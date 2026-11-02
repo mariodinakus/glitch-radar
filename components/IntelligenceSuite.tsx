@@ -31,7 +31,7 @@ export default function IntelligenceSuite({stories,onOpen}:{stories:Story[];onOp
   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:9,marginBottom:13}}>
    {[[String(sourceCount),'OBSERVED PUBLISHERS'],[String(stories.length),'STORY CLUSTERS'],[String(singleSource),'SINGLE-SOURCE STORIES'],[topShare+'%','TOP 5 SOURCE SHARE']].map(([value,label])=><div key={label} style={{padding:13,borderRadius:11,border:'1px solid #64748b55'}}><strong style={{fontSize:23}}>{value}</strong><div style={{fontSize:10,opacity:.65,marginTop:4}}>{label}</div></div>)}
   </div>
-  <input aria-label="Search intelligence stories" placeholder="Search events / Αναζήτηση γεγονότων" value={query} onChange={e=>setQuery(e.target.value)} style={{width:'100%',padding:12,borderRadius:9,border:'1px solid #64748b66',background:'transparent',color:'inherit',boxSizing:'border-box'}}/>
+  <input aria-label="Search intelligence stories" placeholder="Search events or publishers" value={query} onChange={e=>setQuery(e.target.value)} style={{width:'100%',padding:12,borderRadius:9,border:'1px solid #64748b66',background:'transparent',color:'inherit',boxSizing:'border-box'}}/>
   <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 0'}}>
     <label htmlFor="intel-sort" style={{fontSize:12}}>Rank by</label>
     <select id="intel-sort" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} style={{padding:8,borderRadius:8,background:'#1b2740',color:'white',border:'1px solid #64748b66'}}><option value="impact">Editorial importance</option><option value="breadth">Publisher breadth</option><option value="recent">Latest update</option></select>
