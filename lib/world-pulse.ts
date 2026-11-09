@@ -41,6 +41,9 @@ const countries:Lex[]=[
  ['al','Αλβανία',/\b(albania|albanian|tirana)\b|αλβανί|τίρανα/iu],
  ['rs','Σερβία',/\b(serbia|serbian|belgrade)\b|σερβί|βελιγράδι/iu],
  ['br','Βραζιλία',/\b(brazil|brazilian|brasilia)\b|βραζιλ/iu],
+ ['ye','Υεμένη',/\b(yemen|yemeni|sanaa|sana.a|houthis?)\b|υεμέν|σαναά|χούθι/iu],
+ ['nz','Νέα Ζηλανδία',/\b(new zealand|new zealander|wellington|auckland)\b|νέα ζηλανδ|ουέλινγκτον/iu],
+ ['py','Παραγουάη',/\b(paraguay|paraguayan|asunci[oó]n)\b|παραγουά/iu],
  ['sa','Σαουδική Αραβία',/\b(saudi arabia|saudi|riyadh)\b|σαουδικ/iu],
  ['ae','ΗΑΕ',/\b(uae|emirates|abu dhabi)\b|εμιράτ/iu],
  ['eg','Αίγυπτος',/\b(egypt|egyptian|cairo)\b|αίγυπτ|κάιρο/iu]
