@@ -1,3 +1,11 @@
+/** Distinguish a published release period from the time our API was checked. */
+export function isMacroPeriodOutdated(period:string,asOf:number,months=4):boolean{
+ const m=/^(20\d{2})-(0[1-9]|1[0-2])$/.exec(period);
+ if(!m||!Number.isFinite(asOf)||asOf<=0)return true;
+ const date=new Date(asOf);
+ const delta=(date.getUTCFullYear()-Number(m[1]))*12+date.getUTCMonth()+1-Number(m[2]);
+ return delta>=months||delta< -1;
+}
 export type MacroNowRow={id:string;title:string;value:number;unit:'%'|'thousand';period:string;source:'BLS'|'ECB';previous:number|null;description:string;sourceUrl:string};
 type BlsObservation={year:string;period:string;value:string};
 type BlsSeries={seriesID:string;data:BlsObservation[]};

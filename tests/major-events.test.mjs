@@ -86,3 +86,28 @@ test('the first developments mix event types without adding unrelated headlines'
  assert.ok(first.includes('conflict'));
  assert.ok(first.includes('energy'));
 });
+
+test('market movements referencing oil or elections are not major world events',()=>{
+ const marketOil=caseFor('market-oil','Dow futures rally nearly 500 points as oil prices drop; traders brace for data and earnings: Live updates','economy');
+ const marketElection=caseFor('market-election','Treasury Rally Gets New Boost as Election Hammers the AI Trade','technology');
+ assert.equal(majorEventSignal(marketOil,now).eligible,false);
+ assert.equal(majorEventSignal(marketElection,now).eligible,false);
+ assert.deepEqual(rankMajorEvents([marketOil,marketElection],6,now),[]);
+});
+
+test('real election results and energy supply cuts remain eligible',()=>{
+ const vote=caseFor('real-election','Election results announced as stocks rally following historic vote','politics');
+ const opec=caseFor('real-energy','Oil prices rise after OPEC announces production cuts','economy');
+ assert.equal(majorEventSignal(vote,now).eligible,true);
+ assert.equal(majorEventSignal(opec,now).eligible,true);
+});
+
+test('Yemen and New Zealand appear as country mentions without inventing event coordinates',()=>{
+ const yemen=caseFor('yemen','Saudi airstrikes on homes near Yemen’s capital kill 33 people','conflict');
+ yemen.actorIds=['c:sa','c:ye'];
+ const nz=caseFor('nz','New Zealand election results announced after nationwide vote','politics');
+ nz.actorIds=['c:nz'];
+ const pins=globeHotspots([yemen,nz],10,now);
+ assert.ok(pins.some(p=>p.location.id==='c:ye'));
+ assert.ok(pins.some(p=>p.location.id==='c:nz'));
+});

@@ -19,6 +19,11 @@ const patterns:Rule[]=[
  {kind:'other',lens:'health',rx:/\b(?:pandemic|public health emergency|disease outbreak|virus outbreak|epidemic|vaccine approval)\b|πανδημ|επιδημί/iu,weight:25,reason:'public health development in the headline'}
 ];
 const noise=/^(?:opinion|column|editorial|podcast|review|analysis):|\b(?:reviews?|takeaways|celebrity|star signs|horoscope|streaming show|music video|sports scores|best \d+|top \d+|war room|world war (?:i{1,3}|1|2|one|two)|first world war|second world war|wwi|wwii)\b|\bwar (?:on|against) (?:seaweed|plastic|drugs|crime|cancer|obesity|poverty|inflation|bugs?)\b|\b(?:what['’]s|what is) behind\b|\bwhat comes next\b|\b(?:uefa|fifa|premier league|europa league)\b.{0,80}\b(?:match|game|tournament)\b|γνώμη|τηλεοπτικ[ήής] σειρά|ζώδι/iu;
+// A market recap can contain words such as "election" or "oil prices" without
+// reporting an election result or an energy-supply event. It belongs in Markets,
+// not the editorially selected world-event radar.
+const tradingHeadline=/\b(?:dow|nasdaq|s&p(?:\s*500)?|wall street|stocks?|shares?|futures?|treasur(?:y|ies)|bond(?:s| yields?)?|investors?|traders?|earnings|equities|oil prices?)\b.{0,110}\b(?:rall(?:y|ies|ied)|surge|jump|climb|rise|drop|fall|slide|plunge|sink|gain|loss|decline|rebound|brace|hammer|trade|slip)\b|\b(?:rall(?:y|ies|ied)|surge|jump|climb|rise|drop|fall|slide|plunge|sink|gain|loss|decline|rebound)\b.{0,110}\b(?:futures?|stocks?|shares?|investors?|traders?|oil prices?|treasur(?:y|ies)|wall street|dow|nasdaq)\b/iu;
+const underlyingEvent=/\b(?:election results?|referendum results?|votes? counted|ballots? counted|voters? head|polls? (?:close|open)|elected (?:president|prime minister)|government collapse|impeachment|military coup|peace talks|ceasefire|invasion|airstrikes?|missile attacks?|pipeline shutdown|oil embargo|oil supply disrupted|production cuts?|opec|central bank|interest rate decision|rate (?:cuts?|hikes?)|economic sanctions|tariffs?|earthquake|flooding|wildfire)\b/iu;
 const eventTypeFromTopic=(t:string):EventClass=>{
  if(t==='conflict')return 'conflict';if(t==='protest')return 'protest';if(t==='disaster')return 'disaster';if(t==='economy'||t==='energy')return 'economy';if(t==='technology')return 'ai';return 'other';
 };
@@ -30,7 +35,7 @@ export function majorEventSignal(c:StoryCase,now=Date.now()):SignalInfo{
  const sources=new Set(c.reports.map(r=>publisherKey(r.source)?.toLowerCase()).filter(Boolean)).size;
  const age=(now-Date.parse(c.lastAt))/3600000;
  const timely=Number.isFinite(age)&&age>=-1&&age<=96;
- const excluded=noise.test(text)||c.headline.category==='sports'||c.headline.category==='culture';
+ const excluded=noise.test(text)||(tradingHeadline.test(text)&&!underlyingEvent.test(text))||c.headline.category==='sports'||c.headline.category==='culture';
  const eligible=Boolean(matched)&&!excluded&&timely&&sources>0;
  const freshness=Number.isFinite(age)?Math.max(0,1-Math.max(0,age)/96)*14:0;
  const breadth=Math.min(4,sources)*3;
@@ -73,6 +78,7 @@ export const countryPositions:Record<string,CountryPosition>=Object.fromEntries(
  ['tw','Ταϊβάν','Taiwan',23.7,121],['in','Ινδία','India',22,79],['pk','Πακιστάν','Pakistan',30,69],
  ['jp','Ιαπωνία','Japan',36,138],['kr','Νότια Κορέα','South Korea',36,128],['kp','Βόρεια Κορέα','North Korea',40,127],
  ['sd','Σουδάν','Sudan',15,30],['al','Αλβανία','Albania',41,20],['rs','Σερβία','Serbia',44,21],['br','Βραζιλία','Brazil',-10,-52],
+ ['ye','Υεμένη','Yemen',15.55,48.5],['nz','Νέα Ζηλανδία','New Zealand',-41,174],['py','Παραγουάη','Paraguay',-23,-58],
  ['sa','Σαουδική Αραβία','Saudi Arabia',24,45],['ae','ΗΑΕ','United Arab Emirates',24,54],['eg','Αίγυπτος','Egypt',27,30]
  ] as [string,string,string,number,number][]
 ).map(([id,el,en,lat,lon])=>['c:'+id,{id:'c:'+id,el,en,lat,lon}]));

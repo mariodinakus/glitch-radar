@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseBls,parseEcb} from '../lib/macro-now.ts';
+import {parseBls,parseEcb,isMacroPeriodOutdated} from '../lib/macro-now.ts';
 
 test('BLS parser calculates published annual CPI rate, payroll change and unemployment',()=>{
  const months=[];
@@ -27,4 +27,12 @@ test('ECB CSV parser reads the latest verified euro area and Greece readings',()
  assert.equal(rows.length,2);
  assert.equal(rows.find(x=>x.id==='ea-hicp')?.value,2.4);
  assert.equal(rows.find(x=>x.id==='gr-hicp')?.period,'2026-10');
+});
+
+test('a recently checked API must not make an old macro observation look current',()=>{
+ const asOf=Date.parse('2026-11-09T12:00:00Z');
+ assert.equal(isMacroPeriodOutdated('2025-12',asOf),true);
+ assert.equal(isMacroPeriodOutdated('2026-09',asOf),false);
+ assert.equal(isMacroPeriodOutdated('2026-10',asOf),false);
+ assert.equal(isMacroPeriodOutdated('bad',asOf),true);
 });

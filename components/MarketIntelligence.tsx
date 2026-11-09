@@ -4,6 +4,7 @@ import {Activity,ArrowRight,CalendarDays,Clock3,ExternalLink,RefreshCw,ShieldAle
 import {INDICATORS,indicatorBySymbol} from '@/lib/indicators';
 import type {IndicatorGroup} from '@/lib/indicators';
 import {marketOutlook,type MarketQuote} from '@/lib/market-outlook';
+import {quoteFreshness} from '@/lib/quote-freshness';
 import type {CalendarEvent} from '@/lib/economic-calendar';
 import css from './MarketIntelligence.module.css';
 import MacroNowStrip from './MacroNowStrip';
@@ -79,15 +80,19 @@ export default function MarketIntelligence({quotes,compact=false,onExpand}:Props
   <div className={css.quoteGrid}>
    {chosen.map(symbol=>{
     const q=quoteMap.get(symbol);const name=indicatorBySymbol(symbol)?.en||symbol;
-    const changed=q?.change??null;
-    const raw=(q?.time&&now)?now-Date.parse(q.time):null;
-    const stale=raw!==null&&(raw<0||raw>(/^(BTC|ETH|SOL)-USD$/.test(symbol)?48:120)*3600000);
-    return <a className={css.quote} key={symbol} href={'https://finance.yahoo.com/quote/'+encodeURIComponent(symbol)} target="_blank" rel="noopener noreferrer">
+    const freshness=quoteFreshness(symbol,q?.time,now);
+    const isCurrent=freshness==='current';
+    const changed=isCurrent?(q?.change??null):null;
+    const price=freshness==='expired'||freshness==='unavailable'?null:q?.price;
+    const label=isCurrent&&q?.time?dateDisplay(q.time):
+     freshness==='stale'&&q?.time?'OLD · '+dateDisplay(q.time):
+     freshness==='expired'?'EXPIRED':'UNAVAILABLE';
+    return <a className={css.quote} key={symbol} href={'https://finance.yahoo.com/quote/'+encodeURIComponent(symbol)} target="_blank" rel="noopener noreferrer" title={q?.time?'Provider last quote: '+dateDisplay(q.time):'Provider quote time unavailable'}>
      <div className={css.quoteTop}><span>{name}</span><ExternalLink size={11}/></div>
-     <strong>{q?.price!==null&&q?.price!==undefined?formatPrice(symbol,q.price):'—'}</strong>
+     <strong>{price!==null&&price!==undefined?formatPrice(symbol,price):'—'}</strong>
      <div className={css.quoteFoot}>
-      <span className={changed===null?'':changed>=0?css.up:css.down}>{changed===null?'NO DATA':(changed>0?'+':'')+number(changed)+'%'}</span>
-      <span>{!q?.time?'UNAVAILABLE':stale?'STALE':dateDisplay(q.time)}</span>
+      <span className={changed===null?'':changed>=0?css.up:css.down}>{changed===null?(isCurrent?'NO DATA':'NOT LIVE'):(changed>0?'+':'')+number(changed)+'%'}</span>
+      <span>{label}</span>
      </div>
     </a>;
    })}

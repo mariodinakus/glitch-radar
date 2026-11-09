@@ -66,3 +66,6 @@
 .marketFilters button:hover{border-color:var(--gold,#e2b857);color:var(--tx,#efece6)}
 .marketFilters .marketFilterActive{border-color:var(--gold,#e2b857);color:#0a0b0e;background:var(--gold,#e2b857)}
 @media(max-width:700px){.marketFilters{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:6px}.marketFilters button{flex:none}}
+
+/* Distinguish historically published observations from new releases. */
+.oldSeries{font-size:9px;letter-spacing:.08em;font-weight:850;color:var(--gold,#e2b857);border:1px solid rgba(226,184,87,.4);border-radius:5px;padding:3px 6px;width:fit-content}
