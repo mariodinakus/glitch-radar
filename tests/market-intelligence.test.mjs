@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseIcsDate,parseOfficialCalendar,parseBeaJson} from '../lib/economic-calendar.ts';
 import {marketOutlook} from '../lib/market-outlook.ts';
+import {quoteFreshness} from '../lib/quote-freshness.ts';
 
 test('official calendars convert US daylight savings correctly',()=>{
  assert.equal(parseIcsDate('20261106T083000','America/New_York')?.at,'2026-11-06T13:30:00.000Z');
@@ -40,4 +41,14 @@ test('outlook refuses stale and insufficient observations',()=>{
  const stale={symbol:'BTC-USD',price:100,time:'2026-10-20T12:00:00.000Z',spark:Array.from({length:22},(_,i)=>100+i+Math.sin(i))};
  assert.equal(marketOutlook(short,new Date('2026-11-02T13:00:00Z')),null);
  assert.equal(marketOutlook(stale,new Date('2026-11-02T13:00:00Z')),null);
+});
+
+test('stale provider quote timestamps never masquerade as live market moves',()=>{
+ const now=Date.parse('2026-11-09T13:00:00Z');
+ assert.equal(quoteFreshness('^GSPC','2026-11-09T12:00:00Z',now),'current');
+ assert.equal(quoteFreshness('^GSPC','2026-11-01T13:00:00Z',now),'stale');
+ assert.equal(quoteFreshness('BTC-USD','2026-11-06T12:00:00Z',now),'stale');
+ assert.equal(quoteFreshness('^GSPC','2026-09-01T12:00:00Z',now),'expired');
+ assert.equal(quoteFreshness('^GSPC','not-a-date',now),'unavailable');
+ assert.equal(quoteFreshness('^GSPC','2026-11-11T13:00:00Z',now),'unavailable');
 });
