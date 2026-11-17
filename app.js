@@ -146,7 +146,7 @@ function list(){
 }
 function select(code){chosen=code;list();details();scatter();renderExtra()}
 function render(){
- $("kpi-covered").textContent=rows.filter(r=>r.status!=="missing").length||"—";
+ $("kpi-covered").textContent=rows.length?rows.filter(r=>r.status!=="missing").length:"—";
  $("kpi-vibes").textContent=rows.length?rows.filter(r=>r.status==="vibecession").length:"—";
  $("kpi-stress").textContent=rows.length?rows.filter(r=>r.status==="stress").length:"—";
  $("kpi-date").textContent=rows.map(r=>r.latest.conf?.period).filter(Boolean).sort().at(-1)||"—";
@@ -163,7 +163,7 @@ function readCache(){
  }catch{return null;}
 }
 function writeCache(data){
- try{localStorage.setItem(CACHE_KEY,JSON.stringify({savedAt:Date.now(),data}));}catch{}
+ try{localStorage.setItem(CACHE_KEY,JSON.stringify({savedAt:Date.now(),data,sourceDates:Object.fromEntries(Object.entries(metricStates).map(([k,v])=>[k,v.savedAt||null]))}));}catch{}
 }
 function previousChange(series){
  if(!Array.isArray(series)||series.length<2)return null;
@@ -259,7 +259,7 @@ async function load(){
    metricStates[key]={state:"live",savedAt:stamp};
   }else if(cached?.data?.[key]){
    data[key]=cached.data[key];
-   metricStates[key]={state:"cached",savedAt:cached.savedAt};
+   metricStates[key]={state:"cached",savedAt:cached.sourceDates?.[key]||cached.savedAt};
    errors.push(key+" (προσωρινά από προηγούμενη ανάκτηση)");
   }else{
    metricStates[key]={state:"missing"};
