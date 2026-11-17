@@ -81,7 +81,7 @@ function zscore(series,last,key) {
 function calculate(data){
  return countries.map(([code,name,flag])=>{
   const series={},latest={},z={};
-  for(const key of Object.keys(config)){
+  for(const key of ["conf","gdp","hicp","unemp"]){
    series[key]=data[key]?.[code]||[];
    latest[key]=series[key].at(-1)||null;
    z[key]=zscore(series[key],latest[key],key);
