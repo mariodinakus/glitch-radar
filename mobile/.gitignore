@@ -1,9 +1,0 @@
-node_modules/
-.expo/
-android/
-ios/
-assets/*.png
-.env
-.env.*
-!.env.example
-*.apk

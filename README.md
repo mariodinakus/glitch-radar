@@ -1,66 +1,49 @@
-# GLITCH — World Pulse / Consequence Engine
+# VIBECESSION RADAR
 
-**EL / EN** · Next.js 15 · React 19 · Server-side RSS news API
+Responsive, standalone EU economic perception dashboard (vanilla HTML/CSS/JS, zero dependencies).
 
-Not another headline aggregator. A source-linked monitor of world events, countries, organizations and multinational companies.
+## What it shows
 
-## Three intelligence instruments
+- 27 EU countries and their latest official Eurostat observations
+- Experimental economy-versus-consumer-confidence gap (not an official statistic)
+- Country ranking, interactive country deep dive and confidence history
+- Interactive fundamentals/sentiment scatter chart
+- Confidence, GDP, inflation and unemployment, with source-period labels
+- Greek user interface and installable PWA manifest
 
-1. **WORLD DIFF** — recently published or changed coverage since your previous visit, based on the source sample. Does not pretend every new headline represents a changed real-world situation.
-2. **RIPPLE ENGINE** — click through conditional mechanisms by domain (energy, trade, transportation, finance, technology, conflict) and see what evidence would be needed to verify each step. A scenario is *not a prediction*.
-3. **ACTOR ARENA** — discover headline-based mentions and explicit relations between named countries, institutions and companies. Co-mentions do not establish alliances, responsibility or corporate exposure.
+## Data and methodology
 
-Each event has a source timeline, a distinct GLITCH VIEW commentary, named-actor references and original publisher links. Content comes from RSS excerpts and publicly available metadata, not unrestricted full publisher articles.
+The app requests JSON-stat data **directly in the visitor's browser** from the Eurostat dissemination API:
 
-## Deploy: Vercel or Render
+| Indicator | Dataset | Configuration |
+| --- | --- | --- |
+| Consumer confidence | `ei_bsco_m` | `BS-CSMCI`, SA, BAL |
+| Real GDP yearly change | `namq_10_gdp` | `B1GQ`, `CLV_PCH_SM`, SCA |
+| HICP annual inflation | `prc_hicp_manr` | `CP00`, `RCH_A` |
+| Unemployment | `une_rt_m` | TOTAL, T, `PC_ACT`, SA |
 
-- **Current Vercel:** https://glitch-radar-github.vercel.app
-- **Alternative full-stack Render deployment:** [Deploy GLITCH to Render](https://render.com/deploy?repo=https://github.com/mariodinakus/glitch-radar)
+For each country and series, take the latest official value (within a reasonable freshness threshold) and compare it with that country's own observed 2016–2024 baseline, generating a standardised z-score (`(latest − baseline mean) / baseline standard deviation`, clipped to ±3). Define `fundamentals = 0.45 × z(GDP) − 0.30 × z(unemployment) − 0.25 × z(inflation)`. The experimental gap is `fundamentals − z(consumer confidence)`. A country is a *possible vibecession* when `gap ≥ 1.15`, `z(confidence) ≤ −0.45`, and `fundamentals ≥ −0.25`. If confidence and fundamentals are both weak, classify it as macroeconomic pressure rather than a vibecession. Every country needs enough usable observations from all four indicators, or it is left unclassified.
 
-The repository includes a validated Next.js web-service configuration in [render.yaml](./render.yaml). **Render must run this as a Node web service, not a static site**, so that `/api/feed` and `/api/translate` continue to work. The Blueprint uses a free plan and disables automatic deploys; review and approve the new service in your Render account before creating it. Free services may sleep when idle and have usage restrictions. It is a *separate* URL; setting it up does not reassign the original Vercel domain.
+**Interpretation warning:** Cross-frequency macro indicators are not strictly contemporaneous. Consumer surveys can reflect living costs, housing, inequality, personal circumstances, or expectations not fully represented by these four macro indicators. The score is indicative and not statistically validated.
 
-### Local development
+## Development
 
-Requires Node.js 20.9+ (22 recommended):
+Use any static file server, such as:
 
 ```bash
-npm install
-npm run typecheck
-npm run build
-npm run dev
+python -m http.server 8080
 ```
 
-Public-source coverage depends on upstream feed availability. Optional Google Cloud Translation needs the server-side `GOOGLE_TRANSLATE_API_KEY`; the free translation fallback can have availability or quality limits. Never commit credentials or place secrets in `NEXT_PUBLIC_*`.
+Open `http://localhost:8080`. There are no build dependencies. Since the browser fetches the official API, internet access is required.
 
-## Trust model
+## Deploy to Render Static Site
 
-The editorial interpretation, relationships and conditional ripples are heuristics based on source headlines and excerpts. They are **not** independently verified journalism, claims of confirmed economic effects, actual probabilities, or financial advice. See the original story and compare primary sources before drawing conclusions.
+1. Deploy this `vibecession-radar` branch as an independent Render Static Site.
+2. In Render, select **New → Static Site** and connect that GitHub repository.
+3. Build Command: `echo "No build required"`
+4. Publish Directory: `.`
+5. Enable Auto Deploy if desired.
 
-## GLITCH RADAR phone app
+## Important: no synthetic data
 
-The same deployment is an installable Progressive Web App (PWA), not a native App Store binary. Open https://glitch-radar-github.vercel.app on Android (Chrome) or iOS (Safari), then choose **Install** or **Share → Add to Home Screen**. It opens without browser chrome with a dedicated GLITCH RADAR icon.
-
-### Automatic updates and smooth operation
-- GitHub main is the single code source; Vercel Git integration builds new production deployments automatically when authorized/configured.
-- The service worker checks for updates after launch, when the app returns to the foreground, and every 15 minutes while open. New worker activation reloads the app once, preventing stale shell/code mixes.
-- News and API endpoints are never served from a stale offline cache. Slow feed requests time out in 12 seconds, never overlap, and polling pauses in background tabs. A lightweight offline message appears without a network.
-- Devices still need connectivity for live news. Server/network failures cannot be entirely eliminated.
-
-### Optional push notifications (Android and iPhone)
-- Install **web-push** dependencies with `npm install`, and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `CRON_SECRET` in Vercel Project Environment Variables. Generate keys once with `npx web-push generate-vapid-keys`. Never commit the private key.
-- Set `VAPID_SUBJECT` to the app's canonical HTTPS URL or your contact mailto address.
-- In the app, tap **Alerts → Enable push alerts**. Permission is requested only on demand. iPhone/iPad require iOS 16.4+ and installation to the Home Screen.
-- Push alerts are sent by the existing `/api/cron/notify` scheduler for significant score ≥74 signals. With a Vercel Hobby account the existing scheduler is **daily**, not breaking-news instant. For real-time alerts use a suitably authorized, more frequent scheduler on an eligible paid plan or external job.
-- Upstash stores opt-in device push subscriptions for up to 90 days; **Disable push alerts** unsubscribes. Telegram alert delivery is preserved when configured.
-
-## Personal accounts and personalized push alerts (v10.1)
-
-**Current status:** The code is prepared, but the external Supabase project and Vercel environment secrets must be configured by someone with admin access. Browsing works without a login. Do not advertise cloud accounts/push as live until configured and tested.
-
-1. Create a Supabase project. In the SQL editor run [supabase/schema.sql](./supabase/schema.sql) one time. This creates `user_profiles` (row-level security) and server-only `push_subscriptions`. It installs an automatic profile creation trigger on each new Auth user.
-2. In Supabase Auth → URL Configuration, set **Site URL** to `https://glitch-radar-github.vercel.app` and add `https://glitch-radar-github.vercel.app/**` to allowed redirect URLs. Enable Email login and configure a production SMTP provider before broader rollout, because default email quotas are low.
-3. In Vercel Environment Variables for the **glitch-radar-github** project set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Supabase publishable/anon key) and secret `SUPABASE_SERVICE_ROLE_KEY` (server only). Set VAPID keys generated by `npx web-push generate-vapid-keys` and `CRON_SECRET`. These credentials should never go in GitHub.
-4. Redeploy production so the environment variables are included. Create a profile with an email link, choose topics and a signal threshold, and enable push in the installed app. On iOS, iOS 16.4+ Home Screen installation is necessary.
-5. Verify by scheduling / calling the authenticated `/api/cron/notify` endpoint using Vercel. The current `vercel.json` runs a **daily** digest, which is not real-time breaking news on Hobby. A higher-frequency trusted scheduler requires appropriate plan or external securely configured scheduler.
-
-**Security:** Each profile is tied to a Supabase Auth account and can only be read/updated by its owner via RLS. Push subscription writes validate a Supabase access token server-side and the database is service-role only; notification routing honors per-account categories and thresholds. Notifications are sent only to users who opted in. Sign out does not grant a new user access to any other account's profile.
+The UI deliberately starts without score values and only displays results from actual API responses. If Eurostat is unavailable or CORS is blocked, it shows an explicit error rather than invented current numbers.
