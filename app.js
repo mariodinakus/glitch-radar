@@ -4,7 +4,7 @@ const countries=[["AT","Αυστρία","🇦🇹"],["BE","Βέλγιο","🇧�
 const config={
  conf:{code:"ei_bsco_m",params:{freq:"M",indic:"BS-CSMCI",s_adj:"SA",unit:"BAL",sinceTimePeriod:"2016-01"},maxAge:7},
  gdp:{code:"namq_10_gdp",params:{freq:"Q",na_item:"B1GQ",unit:"CLV_PCH_SM",s_adj:"SCA",sinceTimePeriod:"2016-Q1"},maxAge:15},
- hicp:{code:"prc_hicp_manr",params:{freq:"M",unit:"RCH_A",coicop:"CP00",sinceTimePeriod:"2016-01"},maxAge:7},
+ hicp:{code:"prc_hicp_minr",params:{freq:"M",unit:"RCH_A",coicop18:"TOTAL",sinceTimePeriod:"2016-01"},maxAge:7},
  unemp:{code:"une_rt_m",params:{freq:"M",s_adj:"SA",age:"TOTAL",sex:"T",unit:"PC_ACT",sinceTimePeriod:"2016-01"},maxAge:9}};
 const $=id=>document.getElementById(id);
 const fmt=(v,d=1)=>Number.isFinite(v)?v.toLocaleString("el-GR",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
