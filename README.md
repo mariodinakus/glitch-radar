@@ -47,3 +47,11 @@ Open `http://localhost:8080`. There are no build dependencies. Since the browser
 ## Important: no synthetic data
 
 The UI deliberately starts without score values and only displays results from actual API responses. If Eurostat is unavailable or CORS is blocked, it shows an explicit error rather than invented current numbers.
+## V1 Intelligence additions
+
+- Transparent 4-factor z-score decomposition and country-by-country comparison
+- Automatically labelled source freshness, availability, and retrieval times
+- Per-source cached *official* time series as fallback, never synthetic data
+- Archived HICP back-history when ECOICOP2 lacks a 2016–2024 comparator (classification discontinuity documented)
+- Dynamic signal feed, sorting, per-country share URLs and CSV data export
+- Accurate source periods; status is experimental, not an official Eurostat classification
