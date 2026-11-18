@@ -12,7 +12,7 @@
   "dependencies": {
     "next": "15.5.28",
     "react": "19.1.10",
-    "react-dom": "19.1.10",
+    "react-dom": "19.3.1",
     "lucide-react": "^0.468.0",
     "web-push": "^3.6.7",
     "@supabase/supabase-js": "^2.49.10"
