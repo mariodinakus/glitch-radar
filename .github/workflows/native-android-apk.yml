@@ -51,7 +51,7 @@ jobs:
           "$BT/aapt" dump badging GLITCH-RADAR-Android.apk | grep -F "package: name='com.mariodinakus.glitchradar2026'"
           unzip -l GLITCH-RADAR-Android.apk | grep -E 'classes.dex|resources.arsc|AndroidManifest.xml'
           ls -lh GLITCH-RADAR-Android.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: GLITCH-RADAR-INSTALLABLE-APK
           path: android-lite/GLITCH-RADAR-Android.apk

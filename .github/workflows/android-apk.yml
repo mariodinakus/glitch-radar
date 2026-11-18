@@ -41,7 +41,7 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon
       - name: Copy artifact
         run: cp android/app/build/outputs/apk/release/*.apk GLITCH-RADAR.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: GLITCH-RADAR-Android-APK
           path: mobile/GLITCH-RADAR.apk
